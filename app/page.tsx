@@ -26,7 +26,7 @@ export default function Home() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-100 flex flex-col">
       <Navbar type="dashboard" />
       
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10 space-y-10">

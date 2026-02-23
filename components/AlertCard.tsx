@@ -93,7 +93,7 @@ export default function AlertCard({
 
   return (
     <div className={cn(
-      "bg-white rounded-2xl shadow-sm border-l-8 overflow-hidden transition-all hover:shadow-md",
+      "bg-white rounded-2xl shadow-md border-l-8 overflow-hidden transition-all hover:shadow-lg border-slate-200",
       severity === "severe" ? "border-brand-red" : "border-brand-orange",
       className
     )}>

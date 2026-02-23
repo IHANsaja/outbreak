@@ -5,13 +5,13 @@
   --color-brand-orange: #ef6c00;
   --color-brand-yellow: #fbc02d;
   --color-brand-dark: #0f172a;
-  --color-brand-bg: #f8fafc;
+  --color-brand-bg: #f1f5f9;
 
   --font-outfit: "Outfit", sans-serif;
 }
 
 :root {
-  --background: #f8fafc;
+  --background: #f1f5f9;
   --foreground: #0f172a;
 }
 
