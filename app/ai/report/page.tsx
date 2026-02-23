@@ -22,14 +22,16 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function PredictionReportPage() {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
        <header className="bg-white border-b border-gray-100 flex items-center justify-between px-6 py-4 sticky top-0 z-50">
           <Link href="/ai" className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-black transition-colors">
              <ArrowLeft className="w-4 h-4" />
-             Back to Dashboard
+             {t("back_to_dashboard")}
           </Link>
           <div className="flex items-center gap-4 text-xs font-black text-gray-600">
              <span>Colombo, LK</span>

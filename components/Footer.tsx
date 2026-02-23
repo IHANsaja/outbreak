@@ -1,16 +1,19 @@
 "use client";
 
 import { Phone } from "lucide-react";
+import { useLanguage, Language } from "@/context/LanguageContext";
+import { cn } from "@/lib/utils";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <footer className="w-full bg-[#0F172A] text-white pt-12 pb-6 px-4 md:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12">
           <div className="space-y-4">
-            <h3 className="text-lg font-bold">Emergency Hotlines</h3>
+            <h3 className="text-lg font-bold">{t("emergency_hotlines")}</h3>
             <div className="flex flex-wrap gap-4">
               <a
                 href="tel:117"
@@ -38,13 +41,31 @@ export default function Footer() {
 
           <div className="flex flex-col items-end gap-3">
             <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-              <button className="px-4 py-1.5 text-xs font-bold rounded-md transition-colors hover:bg-slate-700 text-slate-400">
+              <button 
+                onClick={() => setLanguage("si")}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold rounded-md transition-colors",
+                  language === "si" ? "bg-white text-slate-900" : "text-slate-400 hover:bg-slate-700"
+                )}
+              >
                 Sinhala
               </button>
-              <button className="px-4 py-1.5 text-xs font-bold rounded-md transition-colors hover:bg-slate-700 text-slate-400">
+              <button 
+                onClick={() => setLanguage("ta")}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold rounded-md transition-colors",
+                  language === "ta" ? "bg-white text-slate-900" : "text-slate-400 hover:bg-slate-700"
+                )}
+              >
                 Tamil
               </button>
-              <button className="px-4 py-1.5 text-xs font-bold rounded-md bg-white text-slate-900">
+              <button 
+                onClick={() => setLanguage("en")}
+                className={cn(
+                  "px-4 py-1.5 text-xs font-bold rounded-md transition-colors",
+                  language === "en" ? "bg-white text-slate-900" : "text-slate-400 hover:bg-slate-700"
+                )}
+              >
                 English
               </button>
             </div>
@@ -53,7 +74,7 @@ export default function Footer() {
 
         <div className="pt-8 border-t border-slate-800 text-center">
           <p className="text-slate-500 text-xs">
-            © {currentYear} Disaster Management Center of Sri Lanka. All rights reserved.
+            © {currentYear} {t("dmc_rights")}
           </p>
         </div>
       </div>

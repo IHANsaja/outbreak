@@ -25,13 +25,14 @@ import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 import { NLPDeepDiveModal, DispatchModal, WaterLevelAnalyticsModal } from "@/components/AIModals";
 
-const stats = [
-  { label: "Total Reports Processed", value: "12,405", change: "+12%", icon: Cpu, color: "text-blue-500", bg: "bg-blue-50" },
-  { label: "Active Anomalies", value: "3", sub: "Requires immediate attention", status: "CRITICAL", icon: AlertCircle, color: "text-red-500", bg: "bg-red-50" },
-  { label: "Critical SOS Alerts", value: "142", change: "+5%", icon: Heart, color: "text-orange-500", bg: "bg-orange-50" },
-  { label: "AI Confidence Score", value: "92%", status: "Stable", icon: Brain, color: "text-green-500", bg: "bg-green-50" },
+const statsData = [
+  { key: "total_reports", value: "12,405", change: "+12%", icon: Cpu, color: "text-blue-500", bg: "bg-blue-50" },
+  { key: "active_anomalies", value: "3", sub: "requires_attention", status: "CRITICAL", icon: AlertCircle, color: "text-red-500", bg: "bg-red-50" },
+  { key: "critical_sos", value: "142", change: "+5%", icon: Heart, color: "text-orange-500", bg: "bg-orange-50" },
+  { key: "ai_confidence", value: "92%", status: "stable", icon: Brain, color: "text-green-500", bg: "bg-green-50" },
 ];
 
 const messages = [
@@ -41,7 +42,8 @@ const messages = [
 ];
 
 export default function AIDashboard() {
-  const [sosFilter, setSosFilter] = useState("All");
+  const [sosFilter, setSosFilter] = useState("all");
+  const { t } = useLanguage();
   const [isNLPModalOpen, setIsNLPModalOpen] = useState(false);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
   const [isWaterAnalyticsOpen, setIsWaterAnalyticsOpen] = useState(false);
@@ -55,10 +57,10 @@ export default function AIDashboard() {
            <div className="space-y-1">
               <h1 className="text-3xl font-black text-zinc-900 tracking-tight italic flex items-center gap-3">
                  <Brain className="w-8 h-8 text-orange-500" />
-                 AI Insights & Predictions
+                 {t("ai_insights")}
               </h1>
               <p className="text-sm font-medium text-gray-500 max-w-2xl">
-                Real-time anomaly detection and predictive analysis for disaster management authorities using Deep Learning models.
+                {t("ai_dashboard_subtitle")}
               </p>
            </div>
            
@@ -69,7 +71,7 @@ export default function AIDashboard() {
               </div>
               <Link href="/ai/report" className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black italic shadow-lg shadow-orange-900/10 transition-all flex items-center gap-2">
                  <FileText className="w-4 h-4" />
-                 Generate Full Report
+                 {t("generate_report")}
               </Link>
            </div>
         </div>
@@ -78,7 +80,7 @@ export default function AIDashboard() {
            <div className="lg:col-span-8 flex flex-col gap-8">
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                 {stats.map((s, idx) => (
+                 {statsData.map((s, idx) => (
                     <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
                        <div className="flex justify-between items-start mb-4">
                           <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", s.bg, s.color)}>
@@ -91,16 +93,16 @@ export default function AIDashboard() {
                           )}
                           {s.status && (
                             <span className={cn(
-                              "text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest",
+                              "text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest uppercase",
                               s.status === 'CRITICAL' ? "bg-red-500 text-white animate-pulse" : "bg-green-500 text-white"
                             )}>
-                               {s.status}
+                               {t(s.status.toLowerCase())}
                             </span>
                           )}
                        </div>
-                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</span>
+                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t(s.key)}</span>
                        <div className="text-2xl font-black text-zinc-900 italic tracking-tight mt-1">{s.value}</div>
-                       {s.sub && <p className="text-[9px] font-bold text-red-500 mt-1 uppercase tracking-tighter">{s.sub}</p>}
+                       {s.sub && <p className="text-[9px] font-bold text-red-500 mt-1 uppercase tracking-tighter">{t(s.sub)}</p>}
                     </div>
                  ))}
               </div>
@@ -111,8 +113,8 @@ export default function AIDashboard() {
                  <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 relative group">
                     <div className="flex justify-between items-center mb-10">
                        <div className="space-y-1">
-                          <h3 className="font-black text-zinc-900 italic">Kelani River Water Levels</h3>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase">Predicted vs Actual (Last 24h + Next 4h)</p>
+                          <h3 className="font-black text-zinc-900 italic">{t("water_levels_title")}</h3>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase">Predicted vs Actual</p>
                        </div>
                        <div className="flex flex-col items-end gap-1">
                           <span className="text-[8px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100 tracking-widest">CRITICAL LEVEL DETECTED</span>
@@ -175,7 +177,7 @@ export default function AIDashboard() {
                  <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 group">
                     <div className="flex justify-between items-center mb-10">
                        <div className="space-y-1">
-                          <h3 className="font-black text-zinc-900 italic">Seismic Activity Monitor</h3>
+                          <h3 className="font-black text-zinc-900 italic">{t("seismic_monitor_title")}</h3>
                           <p className="text-[10px] font-bold text-gray-400 uppercase">Central Province • Sensor Cluster A4</p>
                        </div>
                        <div className="flex flex-col items-end gap-1">
@@ -213,7 +215,7 @@ export default function AIDashboard() {
                  <div className="flex justify-between items-center">
                     <h2 className="text-xl font-black text-zinc-900 italic flex items-center gap-3 underline decoration-orange-500 decoration-4 underline-offset-8">
                        <Zap className="w-6 h-6 text-orange-500" />
-                       AI Message Summary (NLP Analysis)
+                       {t("nlp_analysis_title")}
                     </h2>
                     <button 
                       onClick={() => setIsNLPModalOpen(true)}
@@ -266,7 +268,7 @@ export default function AIDashboard() {
                  <div className="flex items-center justify-between mb-8">
                     <h3 className="font-black text-zinc-900 italic flex items-center gap-2">
                        <Activity className="w-5 h-5 text-red-500" />
-                       Priority SOS Feed
+                       {t("priority_sos_feed")}
                     </h3>
                  </div>
 
