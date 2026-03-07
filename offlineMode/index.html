@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Outbreak | Edge Node #8392-A</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --sidebar: #ffffff;
+        --accent-red: #ef4444;
+        --accent-green: #22c55e;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      }
+
+      [data-theme="dark"] {
+        --bg: #0f172a;
+        --sidebar: #1e293b;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border: #334155;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+      }
+
+      body {
+        background-color: var(--bg);
+        color: var(--text-main);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: background 0.3s ease;
+      }
+
+      /* --- Header --- */
+      header {
+        height: 64px;
+        background: var(--sidebar);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        z-index: 100;
+      }
+
+      .logo-area {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .logo-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--accent-red);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+      }
+
+      .node-info {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .node-tag {
+        background: #f1f5f9;
+        color: var(--text-muted);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        margin-left: 8px;
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-main);
+        border: 1px solid var(--border);
+      }
+      .btn-ghost:hover {
+        background: #f1f5f9;
+      }
+      .btn-sos {
+        background: var(--accent-red);
+        color: white;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      }
+      .btn-sos:hover {
+        transform: scale(1.05);
+        filter: brightness(1.1);
+      }
+
+      /* --- Main Layout --- */
+      .app-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* --- Sidebar --- */
+      .sidebar {
+        width: 300px;
+        background: var(--sidebar);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        gap: 24px;
+        overflow-y: auto;
+      }
+
+      .map-box {
+        width: 100%;
+        aspect-ratio: 4/3;
+        background: #e2e8f0;
+        border-radius: 12px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+
+      .map-marker {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 12px;
+        height: 12px;
+        background: var(--accent-green);
+        border: 2px solid white;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.2);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+        }
+      }
+
+      .metric-card {
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+      }
+
+      .metric-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .metric-value {
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--text-main);
+        margin-top: 4px;
+      }
+      .metric-sub {
+        font-size: 12px;
+        color: var(--accent-green);
+        font-weight: 600;
+        margin-top: 2px;
+      }
+
+      /* --- Content Area --- */
+      .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+      }
+
+      .banner {
+        background: #fef3c7;
+        padding: 10px 24px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #92400e;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid #fde68a;
+      }
+
+      .feed-container {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .msg {
+        max-width: 80%;
+        padding: 16px;
+        background: var(--sidebar);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: var(--card-shadow);
+        position: relative;
+      }
+
+      .msg-self {
+        align-self: flex-end;
+        background: #f1f5f9;
+      }
+
+      .msg-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .msg-user {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .msg-time {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .msg-body {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .msg-status {
+        font-size: 10px;
+        color: var(--accent-red);
+        font-weight: 700;
+        margin-top: 8px;
+        text-transform: uppercase;
+      }
+
+      .input-area {
+        height: 80px;
+        padding: 16px 24px;
+        background: var(--sidebar);
+        border-top: 1px solid var(--border);
+        display: flex;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .chat-input {
+        flex: 1;
+        background: #f1f5f9;
+        border: 1px solid var(--border);
+        padding: 12px 18px;
+        border-radius: 12px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      .btn-send {
+        width: 48px;
+        height: 48px;
+        background: var(--accent-red);
+        border: none;
+        border-radius: 12px;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* --- Footer / Sync Bar --- */
+      .sync-bar {
+        height: 60px;
+        background: var(--sidebar);
+        border-top: 1px solid var(--border);
+        padding: 0 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .sync-status {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+      }
+      .progress-outer {
+        width: 120px;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .progress-inner {
+        height: 100%;
+        background: var(--accent-red);
+        width: 45%;
+      }
+
+      /* --- Modals --- */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .modal {
+        background: var(--sidebar);
+        width: 100%;
+        max-width: 450px;
+        border-radius: 24px;
+        padding: 32px;
+        text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      }
+
+      .modal-icon {
+        font-size: 48px;
+        margin-bottom: 24px;
+        display: block;
+      }
+      .modal-title {
+        font-size: 24px;
+        font-weight: 800;
+        margin-bottom: 12px;
+      }
+      .modal-desc {
+        font-size: 15px;
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin-bottom: 24px;
+      }
+      .modal-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .btn-lg {
+        width: 100%;
+        padding: 16px;
+        font-size: 16px;
+      }
+
+      /* Power Saver Mode */
+      .power-saver body {
+        filter: grayscale(1) contrast(1.2);
+      }
+      .power-saver {
+        background: #000 !important;
+        color: #0f0 !important;
+      }
+      .power-saver * {
+        background: transparent !important;
+        border-color: #0f0 !important;
+        color: #0f0 !important;
+        box-shadow: none !important;
+      }
+      .power-saver .btn-sos {
+        background: #0f0 !important;
+        color: #000 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header id="appHeader">
+      <div class="logo-area">
+        <div class="logo-icon">!</div>
+        <div class="node-info">
+          Edge Node: #8392-A
+          <span class="node-tag">Colombo Sector 4</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" onclick="togglePowerSaver()">
+          ⚡ Power Saver
+        </button>
+        <button class="btn btn-sos" onclick="openSOS()">
+          🆘 SOS Broadcast
+        </button>
+      </div>
+    </header>
+
+    <div class="app-container">
+      <aside class="sidebar">
+        <div class="map-box">
+          <svg width="100%" height="100%" viewBox="0 0 200 150">
+            <rect width="200" height="150" fill="#cbd5e1" />
+            <path d="M20,20 L180,20 L180,130 L20,130 Z" fill="#e2e8f0" />
+            <circle cx="100" cy="75" r="40" fill="#94a3b8" opacity="0.2" />
+          </svg>
+          <div class="map-marker"></div>
+          <div
+            style="
+              position: absolute;
+              bottom: 10px;
+              left: 10px;
+              background: white;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 9px;
+              font-weight: bold;
+              color: #1e293b;
+              border: 1px solid #e2e8f0;
+            "
+          >
+            YOU ARE HERE
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Signal Strength</div>
+          <div class="metric-value">Strong (4/4)</div>
+          <div class="metric-sub">98% Packet Rate</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Broadcast Range</div>
+          <div class="metric-value">~100 Meters</div>
+          <div class="metric-sub">LoRa Mesh Active</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Peers Connected</div>
+          <div class="metric-value" id="peerCount">12 Devices</div>
+          <div class="metric-sub">Secure Channel #1</div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <div class="banner">
+          <span>📡</span>
+          Offline Mode Active — Local Network Only. Communicating with devices
+          within ~100m range.
+        </div>
+
+        <div class="feed-container" id="feed">
+          <!-- Messages will appear here -->
+        </div>
+
+        <div class="input-area">
+          <input
+            type="text"
+            class="chat-input"
+            id="messageInput"
+            placeholder="Type a message to nearby devices (Plain text only)..."
+          />
+          <button class="btn-send" onclick="sendMessage()">➤</button>
+        </div>
+      </main>
+    </div>
+
+    <div class="sync-bar">
+      <div class="sync-status">
+        <span>Cloud Sync Pending</span>
+        <div class="progress-outer">
+          <div class="progress-inner" id="syncProgress"></div>
+        </div>
+        <span style="font-weight: bold" id="queueCount">5 Items</span>
+      </div>
+      <button
+        class="btn btn-ghost"
+        onclick="openSync()"
+        style="color: var(--accent-red); border-color: var(--accent-red)"
+      >
+        Sync Manager
+      </button>
+    </div>
+
+    <!-- SOS Modal -->
+    <div class="modal-overlay" id="sosModal">
+      <div class="modal">
+        <span class="modal-icon">🚨</span>
+        <h2 class="modal-title">CONFIRM SOS?</h2>
+        <p class="modal-desc">
+          This will broadcast a high-priority distress signal to all nearby
+          nodes in the mesh network. Use only in real emergencies.
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-sos btn-lg" onclick="triggerSOS()">
+            BROADCAST NOW
+          </button>
+          <button class="btn btn-ghost btn-lg" onclick="closeModal('sosModal')">
+            Cancel SOS
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sync Modal -->
+    <div class="modal-overlay" id="syncModal">
+      <div class="modal">
+        <span class="modal-icon">📤</span>
+        <h2 class="modal-title">Sync Manager</h2>
+        <p class="modal-desc">
+          You have <span id="modalQueueCount">0</span> items queued for the main
+          platform. Syncing will generate a JSON bundle for data relay.
+        </p>
+        <div class="modal-actions">
+          <button
+            class="btn btn-sos btn-lg"
+            style="background: #0f172a"
+            onclick="syncNow()"
+          >
+            GENERATE SYNC JSON
+          </button>
+          <button
+            class="btn btn-ghost btn-lg"
+            onclick="closeModal('syncModal')"
+          >
+            Back to Feed
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Utilities ---
+      function getSLTime() {
+        // Calculate Sri Lanka Time (UTC+5:30)
+        const now = new Date();
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const slDate = new Date(utc + (3600000 * 5.5));
+        return slDate;
+      }
+
+      function formatSLTime(date) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      async function getGPSLocation() {
+        return new Promise((resolve) => {
+          if (!navigator.geolocation) {
+            resolve("6.9271,79.8612"); // Default Mock (Colombo)
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve(`${pos.coords.latitude.toFixed(4)},${pos.coords.longitude.toFixed(4)}`),
+            () => resolve("6.9271,79.8612"),
+            { timeout: 5000 }
+          );
+        });
+      }
+
+      // --- State Management ---
+      const state = {
+        messages: [
+          {
+            id: 1,
+            user: "User A (Medic)",
+            text: "Need clean water supplies at Sector 4 distribution point.",
+            time: "10:02 AM",
+            dist: "10m",
+          },
+          {
+            id: 2,
+            user: "User B (Scout)",
+            text: "CAUTION: Road blocked near the old bridge. Debris falling.",
+            time: "09:55 AM",
+            dist: "55m",
+            alert: true,
+          },
+          {
+            id: 3,
+            user: "Volunteer 4",
+            text: "Generator fuel is running low at the command post. Can anyone spare 5L?",
+            time: "09:48 AM",
+            dist: "30m",
+          },
+        ],
+        syncQueue: [
+          {
+            id: "S1",
+            type: "ALERT",
+            content: "Flood Surge Warning - Sector 4",
+            priority: "CRITICAL",
+            timestamp: Date.now() - 100000,
+          },
+          {
+            id: "S2",
+            type: "RESOURCE",
+            content: "Medical Supply Low",
+            priority: "HIGH",
+            timestamp: Date.now() - 50000,
+          },
+        ],
+        isPowerSaver: false,
+      };
+
+      const feedEl = document.getElementById("feed");
+      const queueCountEl = document.getElementById("queueCount");
+      const modalQueueCountEl = document.getElementById("modalQueueCount");
+      const syncProgressEl = document.getElementById("syncProgress");
+
+      // --- Core Functions ---
+      function renderFeed() {
+        feedEl.innerHTML = "";
+        state.messages.forEach((msg) => {
+          const div = document.createElement("div");
+          div.className = `msg ${msg.isSelf ? "msg-self" : ""}`;
+          div.innerHTML = `
+                    <div class="msg-header">
+                        <span class="msg-user">${msg.user} <small style="color:var(--text-muted); font-weight:normal;">${msg.dist ? "∙ " + msg.dist : ""}</small></span>
+                        <span class="msg-time">${msg.time}</span>
+                    </div>
+                    <div class="msg-body">
+                        ${msg.alert ? '<span style="color:var(--accent-red); font-weight:800;">CAUTION: </span>' : ""}
+                        ${msg.text}
+                    </div>
+                    ${msg.queued ? '<div class="msg-status">Queued for sync</div>' : ""}
+                `;
+          feedEl.appendChild(div);
+        });
+        feedEl.scrollTop = feedEl.scrollHeight;
+      }
+
+      function sendMessage() {
+        const input = document.getElementById("messageInput");
+        const text = input.value.trim();
+        if (!text) return;
+
+        const slTime = getSLTime();
+        const newMsg = {
+          id: Date.now(),
+          user: "Me",
+          text: text,
+          time: formatSLTime(slTime),
+          isSelf: true,
+          queued: true,
+        };
+
+        state.messages.push(newMsg);
+        state.syncQueue.push({
+          id: "MSG-" + newMsg.id,
+          type: "MESSAGE",
+          content: text,
+          priority: "NORMAL",
+          timestamp_sl: slTime.toISOString(),
+          timestamp_ms: slTime.getTime()
+        });
+
+        input.value = "";
+        updateSyncUI();
+        renderFeed();
+      }
+
+      async function triggerSOS() {
+        const slTime = getSLTime();
+        const location = await getGPSLocation();
+        
+        const sosData = {
+          id: "SOS-" + Date.now(),
+          type: "SOS_BROADCAST",
+          content: "EMERGENCY SOS TRIGGERED FROM EDGE NODE #8392-A",
+          priority: "CRITICAL",
+          location_coordinates: location,
+          maps_search_link: `https://www.google.com/maps/search/?api=1&query=${location}`,
+          timestamp_sl: slTime.toISOString(),
+          timestamp_ms: slTime.getTime()
+        };
+
+        state.syncQueue.push(sosData);
+        state.messages.push({
+          id: Date.now(),
+          user: "SYSTEM",
+          text: `SOS BROADCAST SENT. LOCATION: ${location}. DISTRESS SIGNAL QUEUED.`,
+          time: formatSLTime(slTime),
+          alert: true,
+          queued: true,
+        });
+
+        closeModal("sosModal");
+        updateSyncUI();
+        renderFeed();
+      }
+
+      function syncNow() {
+        const slTime = getSLTime();
+        // Add priority indicator to all items as requested
+        const finalData = state.syncQueue.map((item) => ({
+          ...item,
+          metadata: {
+            node_id: "8392-A",
+            is_prio_critical: true, // Special indicator for main platform
+            delivery_priority: "CRITICAL",
+            captured_at_sl: slTime.toISOString()
+          },
+        }));
+
+        const syncPayload = {
+          package_id: "SYNC-" + Math.random().toString(36).substr(2, 9),
+          timestamp_iso: slTime.toISOString(),
+          timestamp_sl: new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeStyle: 'long', timeZone: 'Asia/Colombo' }).format(slTime),
+          node_id: "8392-A",
+          data_points: finalData,
+          status: "EDGE_READY",
+          is_emergency_relay: true,
+        };
+
+        const dataStr =
+          "data:text/json;charset=utf-8," +
+          encodeURIComponent(JSON.stringify(syncPayload, null, 2));
+        const downloadAnchorNode = document.createElement("a");
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute(
+          "download",
+          `outbreak_sync_sl_${Date.now()}.json`,
+        );
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+
+        alert("Sync Bundle Generated with Sri Lanka Time & Location Data.");
+
+        // Clear queue simulation
+        state.syncQueue = [];
+        state.messages = state.messages.map((m) => ({ ...m, queued: false }));
+        updateSyncUI();
+        renderFeed();
+        closeModal("syncModal");
+      }
+
+      // --- UI Utils ---
+      function updateSyncUI() {
+        const count = state.syncQueue.length;
+        queueCountEl.innerText = count + " Items";
+        modalQueueCountEl.innerText = count;
+        const progress = Math.min(count * 5, 100);
+        syncProgressEl.style.width = (count === 0 ? 0 : 20 + progress) + "%";
+      }
+
+      function openSOS() {
+        document.getElementById("sosModal").style.display = "flex";
+      }
+      function openSync() {
+        document.getElementById("syncModal").style.display = "flex";
+      }
+      function closeModal(id) {
+        document.getElementById(id).style.display = "none";
+      }
+
+      function togglePowerSaver() {
+        state.isPowerSaver = !state.isPowerSaver;
+        document.body.classList.toggle("power-saver");
+        if (state.isPowerSaver) {
+          alert(
+            "Power Saver Mode Enabled: Graphics minimized to conserve battery.",
+          );
+        }
+      }
+
+      // Initial Setup
+      updateSyncUI();
+      renderFeed();
+
+      // Simulate mesh connection fluctuation
+      setInterval(() => {
+        const peers = Math.floor(Math.random() * 5) + 10;
+        document.getElementById("peerCount").innerText = peers + " Devices";
+      }, 5000);
+    </script>
+  </body>
+</html>

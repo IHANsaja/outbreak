@@ -7,6 +7,18 @@
   --color-brand-dark: #0f172a;
   --color-brand-bg: #f1f5f9;
 
+  /* Authority Dark Theme (Sidebar) */
+  --color-auth-sidebar: #1e293b;
+  --color-auth-sidebar-active: #334155;
+  --color-auth-accent-red: #ef4444;
+
+  /* Authority Light Theme (Content) */
+  --color-auth-bg: #f8fafc;
+  --color-auth-card: #ffffff;
+  --color-auth-text-main: #0f172a;
+  --color-auth-text-sub: #64748b;
+  --color-auth-border: #e2e8f0;
+
   --font-outfit: "Outfit", sans-serif;
 }
 
@@ -36,4 +48,15 @@ body {
 
 .emergency-gradient {
   background: linear-gradient(135deg, #ff4b2b 0%, #ff416c 100%);
+}
+
+.auth-panel-dark {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: white;
+}
+
+.auth-card-shadow {
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.05),
+    0 2px 4px -2px rgb(0 0 0 / 0.05);
 }

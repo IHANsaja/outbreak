@@ -13,14 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Outbreak | Disaster Response & Management",
-  description: "Real-time disaster briefing, SOS management, and AI-driven predictive insights for emergency response teams and citizens.",
   icons: {
     icon: "/outbreak-logo.png",
   },
 };
 
 import { LanguageProvider } from "@/context/LanguageContext";
+import { ToastProvider } from "@/context/ToastContext";
 
 export default function RootLayout({
   children,
@@ -33,7 +32,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <LanguageProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </LanguageProvider>
       </body>
     </html>
