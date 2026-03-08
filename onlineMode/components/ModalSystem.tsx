@@ -1,6 +1,7 @@
-"use client";
+import React, { useState } from "react";
 
-import { X, MapPin, Camera, ChevronRight, AlertTriangle, Info, Send } from "lucide-react";
+import { X, MapPin, Camera, ChevronRight, AlertTriangle, Info, Send, LifeBuoy, Heart, Anchor, Package, Flame, PlusSquare } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,7 +18,7 @@ export function Modal({ isOpen, onClose, title, children, subtitle, icon }: Moda
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -33,20 +34,20 @@ export function Modal({ isOpen, onClose, title, children, subtitle, icon }: Moda
           >
             <div className="p-6 border-b border-gray-50 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                 {icon && <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-brand-red">{icon}</div>}
-                 <div className="flex flex-col">
-                    <h2 className="text-xl font-black text-zinc-900 italic uppercase tracking-tight leading-none">{title}</h2>
-                    {subtitle && <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">{subtitle}</p>}
-                 </div>
+                {icon && <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-brand-red">{icon}</div>}
+                <div className="flex flex-col">
+                  <h2 className="text-xl font-black text-zinc-900 italic uppercase tracking-tight leading-none">{title}</h2>
+                  {subtitle && <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">{subtitle}</p>}
+                </div>
               </div>
-              <button 
+              <button
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-6">
               {children}
             </div>
@@ -83,10 +84,10 @@ export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
   ];
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title="Nearby Active Hazards" 
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Nearby Active Hazards"
       subtitle="Within 5km of your location"
       icon={<AlertTriangle className="w-6 h-6" />}
     >
@@ -94,29 +95,29 @@ export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
         {hazards.map((hazard, idx) => (
           <div key={idx} className={cn(
             "p-5 rounded-2xl border transition-all hover:shadow-md",
-            hazard.severity === "high" ? "border-red-200 bg-red-50/20" : 
-            hazard.severity === "medium" ? "border-orange-200 bg-orange-50/20" : "border-yellow-200 bg-yellow-50/20"
+            hazard.severity === "high" ? "border-red-200 bg-red-50/20" :
+              hazard.severity === "medium" ? "border-orange-200 bg-orange-50/20" : "border-yellow-200 bg-yellow-50/20"
           )}>
             <div className="flex justify-between items-start mb-3">
-               <div className="flex items-center gap-2">
-                 <span className={cn(
-                   "text-[9px] font-black px-2 py-0.5 rounded tracking-widest uppercase",
-                   hazard.severity === "high" ? "bg-red-100 text-brand-red" : 
-                   hazard.severity === "medium" ? "bg-orange-100 text-brand-orange" : "bg-yellow-100 text-brand-yellow"
-                 )}>
-                   {hazard.severity} severity
-                 </span>
-                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">{hazard.meta}</span>
-               </div>
-               <div className="flex items-center gap-1 text-[9px] font-black text-gray-500 uppercase tracking-widest">
-                 <MapPin className="w-3 h-3" />
-                 {hazard.dist}
-               </div>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "text-[9px] font-black px-2 py-0.5 rounded tracking-widest uppercase",
+                  hazard.severity === "high" ? "bg-red-100 text-brand-red" :
+                    hazard.severity === "medium" ? "bg-orange-100 text-brand-orange" : "bg-yellow-100 text-brand-yellow"
+                )}>
+                  {hazard.severity} severity
+                </span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">{hazard.meta}</span>
+              </div>
+              <div className="flex items-center gap-1 text-[9px] font-black text-gray-500 uppercase tracking-widest">
+                <MapPin className="w-3 h-3" />
+                {hazard.dist}
+              </div>
             </div>
-            
+
             <h4 className="font-black text-zinc-900 mb-2 italic tracking-tight">{hazard.title}</h4>
             <p className="text-xs font-medium text-gray-500 leading-relaxed mb-4">{hazard.description}</p>
-            
+
             <div className="flex gap-2">
               <button className="flex-1 bg-brand-red text-white py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors">
                 Evacuation Map
@@ -127,17 +128,17 @@ export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             </div>
           </div>
         ))}
-        
+
         <div className="pt-4 flex items-center justify-between">
-           <button className="text-[10px] font-black text-brand-red uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
-             View Full Map <ChevronRight className="w-3 h-3" />
-           </button>
-           <button 
-             onClick={onClose}
-             className="px-6 py-2.5 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold border border-gray-100"
-           >
-             Close
-           </button>
+          <button className="text-[10px] font-black text-brand-red uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
+            View Full Map <ChevronRight className="w-3 h-3" />
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold border border-gray-100"
+          >
+            Close
+          </button>
         </div>
       </div>
     </Modal>
@@ -146,66 +147,165 @@ export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
 
 export function ReportModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title="OUTBREAK" 
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="OUTBREAK"
       subtitle="REPORT INCIDENT"
       icon={<Camera className="w-6 h-6" />}
     >
       <div className="space-y-6">
-         <div className="space-y-3">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Location</span>
-            <button className="w-full py-4 bg-blue-50 text-blue-600 border border-blue-100 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-100 transition-all active:scale-[0.98]">
-               <MapPin className="w-4 h-4" />
-               <span className="font-bold text-sm italic">Detect My Location</span>
+        <div className="space-y-3">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Location</span>
+          <button className="w-full py-4 bg-blue-50 text-blue-600 border border-blue-100 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-100 transition-all active:scale-[0.98]">
+            <MapPin className="w-4 h-4" />
+            <span className="font-bold text-sm italic">Detect My Location</span>
+          </button>
+          <div className="flex items-center gap-2 px-2">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-[10px] text-gray-400 font-medium italic">GPS accuracy: ~5 meters</span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Incident Type</span>
+          <select className="w-full p-4 rounded-2xl border border-gray-100 bg-white font-bold text-zinc-900 text-sm italic focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none appearance-none">
+            <option>Select Damage Type...</option>
+            <option>Flooding</option>
+            <option>Landslide</option>
+            <option>Structural Damage</option>
+            <option>Road Block</option>
+          </select>
+        </div>
+
+        <div className="space-y-3">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Evidence Photo</span>
+          <div className="w-full aspect-video border-2 border-dashed border-gray-100 rounded-3xl flex flex-col items-center justify-center gap-4 group hover:border-brand-red/20 transition-all cursor-pointer bg-gray-50/50">
+            <div className="w-12 h-12 rounded-2xl bg-white shadow-md flex items-center justify-center text-gray-300 group-hover:text-brand-red transition-colors">
+              <Camera className="w-6 h-6" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-bold text-zinc-900 italic">Tap to take photo</p>
+              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">or upload from gallery</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</span>
+          <textarea
+            placeholder="Describe the damage or situation briefly..."
+            className="w-full h-32 p-4 rounded-2xl border border-gray-100 bg-white shadow-sm focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none transition-all placeholder:text-gray-300 font-medium text-sm"
+          />
+        </div>
+
+        <button className="w-full py-5 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl shadow-xl shadow-orange-500/20 font-black text-xl italic tracking-tight uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98]">
+          <Send className="w-6 h-6" />
+          Submit Report
+        </button>
+
+        <p className="text-[9px] text-gray-400 text-center font-bold italic">
+          False reporting is a punishable offense under Emergency Regulations.
+        </p>
+      </div>
+    </Modal>
+  );
+}
+export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+
+  const sosActions = [
+    { id: "medical", title: "Medical", icon: Heart, color: "text-red-500", bg: "bg-red-50" },
+    { id: "rescue", title: "Rescue", icon: Anchor, color: "text-blue-500", bg: "bg-blue-50" },
+    { id: "supplies", title: "Supplies", icon: Package, color: "text-orange-500", bg: "bg-orange-50" },
+    { id: "fire", title: "Fire", icon: Flame, color: "text-amber-600", bg: "bg-amber-50" },
+  ];
+
+  const handleSend = () => {
+    // Simulate sending
+    onClose();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Request SOS"
+      subtitle="Immediate Emergency Assistance"
+      icon={<LifeBuoy className="w-6 h-6" />}
+    >
+      <div className="space-y-6">
+        <p className="text-[13px] font-medium text-gray-500 leading-relaxed text-center px-4">
+          Select a category to alert nearest responders. Help will be dispatched to your current location.
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          {sosActions.map((action) => (
+            <button
+              key={action.id}
+              onClick={() => setSelected(action.id)}
+              className={cn(
+                "flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all active:scale-95 group",
+                selected === action.id
+                  ? "border-brand-red bg-white shadow-lg ring-4 ring-brand-red/5"
+                  : "border-gray-50 bg-gray-50/50 hover:bg-gray-100/50"
+              )}
+            >
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-transform",
+                selected === action.id ? action.bg : "bg-white",
+                action.color
+              )}>
+                <action.icon className="w-5 h-5" />
+              </div>
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-widest transition-colors",
+                selected === action.id ? "text-brand-red" : "text-gray-400"
+              )}>
+                {action.title}
+              </span>
             </button>
-            <div className="flex items-center gap-2 px-2">
-               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-               <span className="text-[10px] text-gray-400 font-medium italic">GPS accuracy: ~5 meters</span>
+          ))}
+        </div>
+
+        <div className="space-y-3">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Additional Information</span>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="People involved, injuries, blocked access..."
+            className="w-full h-24 p-4 rounded-2xl border border-gray-100 bg-white shadow-sm focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none transition-all placeholder:text-gray-300 font-medium text-sm resize-none"
+          />
+        </div>
+
+        <div className="p-5 bg-slate-900 rounded-3xl text-white space-y-4 shadow-xl">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-red-500">Broadcasting GPS</span>
             </div>
-         </div>
+            <span className="text-[9px] font-bold text-white/40 tracking-wider">6.9271° N, 79.8612° E</span>
+          </div>
 
-         <div className="space-y-3">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Incident Type</span>
-            <select className="w-full p-4 rounded-2xl border border-gray-100 bg-white font-bold text-zinc-900 text-sm italic focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none appearance-none">
-               <option>Select Damage Type...</option>
-               <option>Flooding</option>
-               <option>Landslide</option>
-               <option>Structural Damage</option>
-               <option>Road Block</option>
-            </select>
-         </div>
+          <button
+            disabled={!selected}
+            onClick={handleSend}
+            className={cn(
+              "w-full py-4 rounded-2xl font-black text-xl italic uppercase tracking-tighter transition-all flex flex-col items-center justify-center gap-0.5",
+              selected
+                ? "emergency-gradient text-white shadow-lg shadow-red-900/40 active:scale-[0.98]"
+                : "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
+            )}
+          >
+            SEND SOS
+            <span className="text-[8px] tracking-[0.2em] font-black opacity-60 normal-case">Alerts nearest response team</span>
+          </button>
+        </div>
 
-         <div className="space-y-3">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Evidence Photo</span>
-            <div className="w-full aspect-video border-2 border-dashed border-gray-100 rounded-3xl flex flex-col items-center justify-center gap-4 group hover:border-brand-red/20 transition-all cursor-pointer bg-gray-50/50">
-               <div className="w-12 h-12 rounded-2xl bg-white shadow-md flex items-center justify-center text-gray-300 group-hover:text-brand-red transition-colors">
-                  <Camera className="w-6 h-6" />
-               </div>
-               <div className="text-center">
-                  <p className="text-sm font-bold text-zinc-900 italic">Tap to take photo</p>
-                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">or upload from gallery</p>
-               </div>
-            </div>
-         </div>
-
-         <div className="space-y-3">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</span>
-            <textarea 
-               placeholder="Describe the damage or situation briefly..."
-               className="w-full h-32 p-4 rounded-2xl border border-gray-100 bg-white shadow-sm focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none transition-all placeholder:text-gray-300 font-medium text-sm"
-            />
-         </div>
-
-         <button className="w-full py-5 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl shadow-xl shadow-orange-500/20 font-black text-xl italic tracking-tight uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98]">
-            <Send className="w-6 h-6" />
-            Submit Report
-         </button>
-         
-         <p className="text-[9px] text-gray-400 text-center font-bold italic">
-           False reporting is a punishable offense under Emergency Regulations.
-         </p>
+        <p className="text-[10px] text-gray-400 text-center font-medium leading-relaxed italic px-2">
+          By tapping "Send SOS", you share your live location with emergency services. Misuse is a punishable offense.
+        </p>
       </div>
     </Modal>
   );

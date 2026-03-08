@@ -9,21 +9,21 @@ export default function AuthorityDashboard() {
     <AuthorityLayout>
       <div className="max-w-[1400px] mx-auto space-y-8">
         {/* Header Section */}
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Authority Dashboard</h1>
-          <p className="text-slate-500 mt-1">Real-time disaster management overview for Sri Lanka Region.</p>
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Authority Dashboard</h1>
+          <p className="text-slate-500 text-sm mt-1">Real-time disaster management overview.</p>
         </div>
 
         {/* Top Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard 
+          <StatCard
             title="ACTIVE INCIDENTS"
             value="12"
             trend="+2 new"
             description="Critical attention needed in Galle district."
             icon="incident"
           />
-          <StatCard 
+          <StatCard
             title="PENDING REQUESTS"
             value="45"
             trend="+15% load"
@@ -31,7 +31,7 @@ export default function AuthorityDashboard() {
             description="Avg response time: 14 mins."
             icon="request"
           />
-          <StatCard 
+          <StatCard
             title="REGIONS AFFECTED"
             value="3"
             trend="Stable"
@@ -44,18 +44,18 @@ export default function AuthorityDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* AI Insights & Charts */}
           <div className="lg:col-span-2 space-y-8">
-             <AIInsightsPanel />
-             
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <MessageVolumeChart />
-                <RegionalSeverityCard />
-             </div>
+            <AIInsightsPanel />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <MessageVolumeChart />
+              <RegionalSeverityCard />
+            </div>
           </div>
 
           {/* Map & Recent Activity Sidebar */}
           <div className="space-y-8">
-             <LiveOperationsMap />
-             <RecentActivityCard />
+            <LiveOperationsMap />
+            <RecentActivityCard />
           </div>
         </div>
       </div>
@@ -68,30 +68,29 @@ export default function AuthorityDashboard() {
 function StatCard({ title, value, trend, description, icon, trendColor = "red" }: any) {
   const { showToast } = useToast();
   return (
-    <div 
+    <div
       onClick={() => showToast(`Opening detailed view for ${title}`, "info")}
-      className="bg-white p-6 rounded-3xl border border-auth-border auth-card-shadow flex flex-col justify-between h-48 group hover:border-auth-accent-red hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+      className="bg-white p-5 md:p-6 rounded-3xl border border-auth-border auth-card-shadow flex flex-col justify-between h-40 md:h-48 group hover:border-auth-accent-red hover:-translate-y-1 transition-all duration-300 cursor-pointer"
     >
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-[11px] font-bold text-slate-400 tracking-widest uppercase mb-1">{title}</p>
-          <div className="flex items-baseline gap-3">
-            <h2 className="text-5xl font-bold text-slate-900 tracking-tighter">{value}</h2>
-            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-              trendColor === 'red' ? 'bg-red-50 text-red-600' : 
-              trendColor === 'orange' ? 'bg-orange-50 text-orange-600' :
-              'bg-slate-100 text-slate-500'
-            }`}>
+          <p className="text-[10px] md:text-[11px] font-bold text-slate-400 tracking-widest uppercase mb-1">{title}</p>
+          <div className="flex items-baseline gap-2 md:gap-3">
+            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tighter">{value}</h2>
+            <span className={`text-[9px] md:text-[11px] font-bold px-1.5 md:px-2 py-0.5 rounded-full ${trendColor === 'red' ? 'bg-red-50 text-red-600' :
+                trendColor === 'orange' ? 'bg-orange-50 text-orange-600' :
+                  'bg-slate-100 text-slate-500'
+              }`}>
               {trend}
             </span>
           </div>
         </div>
-        <div className="w-12 h-12 flex items-center justify-center opacity-10 group-hover:scale-110 group-hover:opacity-100 group-hover:text-auth-accent-red transition-all duration-500">
-           {/* Mock icon placeholder */}
-           <div className="w-10 h-10 border-2 border-current rounded-lg flex items-center justify-center font-bold">!</div>
+        <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center opacity-10 group-hover:scale-110 group-hover:opacity-100 group-hover:text-auth-accent-red transition-all duration-500">
+          {/* Mock icon placeholder */}
+          <div className="w-8 h-8 md:w-10 md:h-10 border-2 border-current rounded-lg flex items-center justify-center font-bold text-sm md:text-base">!</div>
         </div>
       </div>
-      <p className="text-sm text-slate-500 font-medium group-hover:text-slate-700 transition-colors">{description}</p>
+      <p className="text-xs md:text-sm text-slate-500 font-medium group-hover:text-slate-700 transition-colors line-clamp-2 md:line-clamp-none">{description}</p>
     </div>
   );
 }
@@ -109,55 +108,55 @@ function AIInsightsPanel() {
   };
 
   return (
-    <div className="auth-panel-dark rounded-[32px] p-8 relative overflow-hidden">
+    <div className="auth-panel-dark rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 relative overflow-hidden">
       <div className="relative z-10">
-        <div className="flex justify-between items-start mb-10">
-          <div className="flex gap-4">
-             <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 backdrop-blur-sm">
-                <Radio className={`w-6 h-6 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
-             </div>
-             <div>
-                <h3 className="text-xl font-bold text-white tracking-tight">AI Insights Panel</h3>
-                <p className="text-slate-400 text-sm">Predictive analysis based on live telemetry.</p>
-             </div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-10">
+          <div className="flex gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 backdrop-blur-sm">
+              <Radio className={`w-5 h-5 md:w-6 md:h-6 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+            </div>
+            <div>
+              <h3 className="text-lg md:text-xl font-bold text-white tracking-tight leading-tight">AI Insights Panel</h3>
+              <p className="text-slate-400 text-[12px] md:text-sm">Predictive analysis based on live telemetry.</p>
+            </div>
           </div>
-          <button 
+          <button
             disabled={isRefreshing}
             onClick={handleRefresh}
-            className="px-5 py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 disabled:opacity-50 disabled:active:scale-100 transition-all border border-white/10 rounded-xl text-xs font-bold tracking-wide uppercase flex items-center gap-2"
+            className="w-full sm:w-auto px-4 md:px-5 py-2 md:py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 disabled:opacity-50 transition-all border border-white/10 rounded-xl text-[10px] md:text-xs font-bold tracking-wide uppercase flex items-center justify-center gap-2"
           >
             {isRefreshing ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
             {isRefreshing ? "Analyzing..." : "Refresh Analysis"}
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           {/* Alert 1 */}
-           <div className="bg-slate-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 space-y-4 hover:border-red-500/30 transition-colors cursor-pointer group">
-              <div className="flex justify-between items-center">
-                 <span className="text-[10px] font-bold bg-red-500/20 text-red-300 px-3 py-1 rounded-full border border-red-500/20 uppercase tracking-widest">Priority Alert</span>
-                 <span className="text-[10px] text-slate-400 font-bold uppercase">2m ago</span>
-              </div>
-              <div>
-                <h4 className="text-lg font-bold text-white group-hover:text-red-400 transition-colors">Flood Surge Warning</h4>
-                <p className="text-sm text-slate-400">High probability of river overflow in <span className="text-white font-bold underline decoration-red-500/50">Kalutara District</span> within 2 hours based on rainfall intensity.</p>
-              </div>
-           </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          {/* Alert 1 */}
+          <div className="bg-slate-800/40 backdrop-blur-md rounded-2xl p-5 md:p-6 border border-white/5 space-y-3 md:space-y-4 hover:border-red-500/30 transition-colors cursor-pointer group">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] md:text-[10px] font-bold bg-red-500/20 text-red-300 px-2.5 md:px-3 py-1 rounded-full border border-red-500/20 uppercase tracking-widest">Priority Alert</span>
+              <span className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">2m ago</span>
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-base md:text-lg font-bold text-white group-hover:text-red-400 transition-colors leading-tight">Flood Surge Warning</h4>
+              <p className="text-[12px] md:text-sm text-slate-400 leading-relaxed">High probability of river overflow in <span className="text-white font-bold underline decoration-red-500/50">Kalutara District</span> within 2 hours.</p>
+            </div>
+          </div>
 
-           {/* Alert 2 */}
-           <div className="bg-slate-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 space-y-4 hover:border-yellow-500/30 transition-colors cursor-pointer group">
-              <div className="flex justify-between items-center">
-                 <span className="text-[10px] font-bold bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-500/20 uppercase tracking-widest">Resource Warning</span>
-                 <span className="text-[10px] text-slate-400 font-bold uppercase">15m ago</span>
-              </div>
-              <div>
-                <h4 className="text-lg font-bold text-white group-hover:text-yellow-400 transition-colors">Medical Supply Low</h4>
-                <p className="text-sm text-slate-400">Medical supplies in Galle district reaching critical levels. Recommend dispatch from Colombo hub.</p>
-              </div>
-           </div>
+          {/* Alert 2 */}
+          <div className="bg-slate-800/40 backdrop-blur-md rounded-2xl p-5 md:p-6 border border-white/5 space-y-3 md:space-y-4 hover:border-yellow-500/30 transition-colors cursor-pointer group">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] md:text-[10px] font-bold bg-yellow-500/20 text-yellow-300 px-2.5 md:px-3 py-1 rounded-full border border-yellow-500/20 uppercase tracking-widest">Resource Warning</span>
+              <span className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase">15m ago</span>
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-base md:text-lg font-bold text-white group-hover:text-yellow-400 transition-colors leading-tight">Medical Supply Low</h4>
+              <p className="text-[12px] md:text-sm text-slate-400 leading-relaxed">Medical supplies in Galle district reaching critical levels. Dispatch recommended from hub.</p>
+            </div>
+          </div>
         </div>
       </div>
-      
+
       {/* Decorative background element */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-red-500/10 blur-[100px] -translate-y-1/2 translate-x-1/2 rounded-full"></div>
     </div>
@@ -167,7 +166,7 @@ function AIInsightsPanel() {
 function MessageVolumeChart() {
   const { showToast } = useToast();
   return (
-    <div 
+    <div
       onClick={() => showToast("Opening Advanced Messaging Analytics", "info")}
       className="bg-white p-8 rounded-[32px] border border-auth-border auth-card-shadow flex flex-col gap-6 cursor-pointer hover:border-auth-accent-red/20 transition-all"
     >
@@ -181,7 +180,7 @@ function MessageVolumeChart() {
           <div className="text-[10px] font-bold text-green-600 mt-1 uppercase tracking-widest">+120% vs yesterday</div>
         </div>
       </div>
-      
+
       <div className="h-48 w-full mt-4 flex items-end">
         <svg viewBox="0 0 400 150" className="w-full h-full overflow-visible">
           <defs>
@@ -190,27 +189,27 @@ function MessageVolumeChart() {
               <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
             </linearGradient>
           </defs>
-          <path 
-            d="M0,120 L40,110 L80,130 L120,40 L160,90 L200,100 L240,30 L280,60 L320,10 L360,50 L400,20" 
-            fill="none" 
-            stroke="#ef4444" 
-            strokeWidth="4" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
+          <path
+            d="M0,120 L40,110 L80,130 L120,40 L160,90 L200,100 L240,30 L280,60 L320,10 L360,50 L400,20"
+            fill="none"
+            stroke="#ef4444"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <path 
-            d="M0,120 L40,110 L80,130 L120,40 L160,90 L200,100 L240,30 L280,60 L320,10 L360,50 L400,20 V150 H0 Z" 
-            fill="url(#gradient-line)" 
+          <path
+            d="M0,120 L40,110 L80,130 L120,40 L160,90 L200,100 L240,30 L280,60 L320,10 L360,50 L400,20 V150 H0 Z"
+            fill="url(#gradient-line)"
           />
         </svg>
       </div>
-      
+
       <div className="flex justify-between text-[10px] text-slate-300 font-bold uppercase tracking-widest px-2">
-         <span>00:00</span>
-         <span>06:00</span>
-         <span>12:00</span>
-         <span>18:00</span>
-         <span className="text-auth-accent-red">Now</span>
+        <span>00:00</span>
+        <span>06:00</span>
+        <span>12:00</span>
+        <span>18:00</span>
+        <span className="text-auth-accent-red">Now</span>
       </div>
     </div>
   );
@@ -234,7 +233,7 @@ function RegionalSeverityCard() {
           <p className="text-xs text-slate-400 font-medium mt-1">Current impact distribution</p>
         </div>
         <button onClick={() => showToast("Downloading Regional Impact Report PDF", "success")} className="text-slate-300 hover:text-auth-accent-red transition-colors">
-           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
         </button>
       </div>
 
@@ -243,14 +242,13 @@ function RegionalSeverityCard() {
           <div key={region.name} className="flex items-center gap-6 group cursor-pointer" onClick={() => showToast(`Opening ${region.name} Region Details`, "info")}>
             <span className="text-sm font-bold text-slate-500 w-20 group-hover:text-slate-900 transition-colors uppercase tracking-tight">{region.name}</span>
             <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-               <div className={`h-full ${region.color} rounded-full transition-all duration-1000 group-hover:brightness-110`} style={{ width: region.width }}></div>
+              <div className={`h-full ${region.color} rounded-full transition-all duration-1000 group-hover:brightness-110`} style={{ width: region.width }}></div>
             </div>
-            <span className={`text-xs font-bold w-16 text-right transition-all group-hover:scale-110 ${
-              region.level === 'Critical' ? 'text-red-600' :
-              region.level === 'High' ? 'text-orange-600' :
-              region.level === 'Mod' ? 'text-yellow-600' :
-              'text-green-600'
-            }`}>{region.level}</span>
+            <span className={`text-xs font-bold w-16 text-right transition-all group-hover:scale-110 ${region.level === 'Critical' ? 'text-red-600' :
+                region.level === 'High' ? 'text-orange-600' :
+                  region.level === 'Mod' ? 'text-yellow-600' :
+                    'text-green-600'
+              }`}>{region.level}</span>
           </div>
         ))}
       </div>
@@ -263,36 +261,36 @@ function LiveOperationsMap() {
   return (
     <div className="bg-white rounded-[32px] border border-auth-border auth-card-shadow overflow-hidden group">
       <div className="p-6 flex justify-between items-center bg-white">
-          <h3 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            Live Operations Map
-            <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-          </h3>
+        <h3 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+          Live Operations Map
+          <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+        </h3>
       </div>
       <div className="h-72 bg-slate-100 relative overflow-hidden flex items-center justify-center">
-         <div className="absolute inset-0 bg-[#e5e7eb] opacity-50">
-             <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(#9ca3af 0.5px, transparent 0.5px)', backgroundSize: '15px 15px' }}></div>
-         </div>
-         
-         <div className="absolute top-1/2 left-1/3 cursor-pointer group/ping" onClick={(e) => { e.stopPropagation(); showToast("Focusing on Flood Surge: Kalutara", "warning"); }}>
-             <div className="w-4 h-4 bg-red-500 rounded-full shadow-lg shadow-red-500/50 animate-bounce"></div>
-             <div className="absolute -inset-2 bg-red-500/20 rounded-full animate-ping"></div>
-         </div>
-         <div className="absolute top-1/4 right-1/4 cursor-pointer" onClick={(e) => { e.stopPropagation(); showToast("Resource Status: Galle Hub", "info"); }}>
-             <div className="w-4 h-4 bg-orange-500 rounded-full shadow-lg shadow-orange-500/50"></div>
-         </div>
+        <div className="absolute inset-0 bg-[#e5e7eb] opacity-50">
+          <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(#9ca3af 0.5px, transparent 0.5px)', backgroundSize: '15px 15px' }}></div>
+        </div>
 
-         <div className="relative z-10 text-center uppercase tracking-widest text-[10px] font-bold text-slate-400">
-            [ Interactive GIS View ]
-         </div>
+        <div className="absolute top-1/2 left-1/3 cursor-pointer group/ping" onClick={(e) => { e.stopPropagation(); showToast("Focusing on Flood Surge: Kalutara", "warning"); }}>
+          <div className="w-4 h-4 bg-red-500 rounded-full shadow-lg shadow-red-500/50 animate-bounce"></div>
+          <div className="absolute -inset-2 bg-red-500/20 rounded-full animate-ping"></div>
+        </div>
+        <div className="absolute top-1/4 right-1/4 cursor-pointer" onClick={(e) => { e.stopPropagation(); showToast("Resource Status: Galle Hub", "info"); }}>
+          <div className="w-4 h-4 bg-orange-500 rounded-full shadow-lg shadow-orange-500/50"></div>
+        </div>
+
+        <div className="relative z-10 text-center uppercase tracking-widest text-[10px] font-bold text-slate-400">
+          [ Interactive GIS View ]
+        </div>
       </div>
       <div className="p-4 border-t border-auth-border bg-white text-center">
-          <button 
-            onClick={() => showToast("Switching to Full GIS Interface...", "info")}
-            className="text-auth-accent-red font-bold text-xs uppercase tracking-widest hover:underline flex items-center justify-center gap-2 mx-auto active:scale-95 transition-all"
-          >
-             Open Full Map
-             <ChevronRight className="w-4 h-4" />
-          </button>
+        <button
+          onClick={() => showToast("Switching to Full GIS Interface...", "info")}
+          className="text-auth-accent-red font-bold text-xs uppercase tracking-widest hover:underline flex items-center justify-center gap-2 mx-auto active:scale-95 transition-all"
+        >
+          Open Full Map
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
@@ -317,7 +315,7 @@ function RecentActivityCard() {
         {activities.map((activity) => (
           <div key={activity.id} className="flex gap-4 group cursor-pointer" onClick={() => showToast(`Opening: ${activity.title}`, "info")}>
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${activity.color} transition-all duration-300 group-hover:scale-110 group-hover:rotate-6`}>
-               <Bell className="w-5 h-5 transition-transform group-hover:animate-shake" />
+              <Bell className="w-5 h-5 transition-transform group-hover:animate-shake" />
             </div>
             <div className="flex-1">
               <div className="flex justify-between items-start">
