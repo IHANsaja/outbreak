@@ -68,7 +68,9 @@ CREATE TABLE public.profiles (
     full_name VARCHAR(255) NOT NULL,
     role user_role NOT NULL DEFAULT 'citizen',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_login TIMESTAMP WITH TIME ZONE
+    last_login TIMESTAMP WITH TIME ZONE,
+    last_location_lat DECIMAL(10, 8),
+    last_location_lng DECIMAL(11, 8)
 );
 
 -- Row Level Security (RLS) for Profiles
@@ -165,3 +167,22 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_incidents_updated_at BEFORE UPDATE ON incidents FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 CREATE TRIGGER update_regions_updated_at BEFORE UPDATE ON regions FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 CREATE TRIGGER update_resources_updated_at BEFORE UPDATE ON resources FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
+-- RPC for Chart Data
+CREATE OR REPLACE FUNCTION get_hourly_stats()
+RETURNS TABLE (hour int, count bigint) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        EXTRACT(HOUR FROM created_at)::int as hour,
+        COUNT(*)::bigint as count
+    FROM (
+        SELECT created_at FROM public.sos_requests
+        UNION ALL
+        SELECT created_at FROM public.incidents
+    ) combined_activity
+    WHERE created_at > NOW() - INTERVAL '24 hours'
+    GROUP BY hour
+    ORDER BY hour;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

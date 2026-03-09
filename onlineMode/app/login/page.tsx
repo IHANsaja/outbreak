@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Shield, User, Bot, ArrowRight, AlertCircle, Mail, Lock, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/Skeleton";
 import Link from "next/link";
+import { useToast } from "@/context/ToastContext";
+import { login } from "@/app/auth/actions";
 
 const roles = [
   {
@@ -26,7 +28,7 @@ const roles = [
     path: "/authority",
   },
   {
-    id: "community",
+    id: "community_supporter",
     title: "Community Supporter",
     description: "Support local response and monitor community reports.",
     icon: UserPlus,
@@ -35,23 +37,39 @@ const roles = [
   },
 ];
 
-export default function LoginPage() {
+function LoginContent() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { showToast } = useToast();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsInitialLoading(false), 1500);
+    const message = searchParams.get('message');
+    if (message) {
+      showToast(message, "info");
+    }
     return () => clearTimeout(timer);
-  }, []);
+  }, [searchParams, showToast]);
 
-  const handleLogin = (path: string) => {
-    setIsLoading(true);
-    // Simulate a brief delay for "verification"
-    setTimeout(() => {
-      router.push(path);
-    }, 1200);
+  const handleLoginAction = async (formData: FormData) => {
+    if (!selectedRole) {
+      showToast("Please select a clearance level", "warning");
+      return;
+    }
+
+    formData.append('role', selectedRole);
+
+    startTransition(async () => {
+      const result = await login(formData);
+      if (result?.error) {
+        showToast(result.error, "error");
+      } else {
+        showToast("Logged in successfully", "success");
+      }
+    });
   };
 
   return (
@@ -79,7 +97,7 @@ export default function LoginPage() {
             </p>
           </header>
 
-          <form className="space-y-8">
+          <form action={handleLoginAction} className="space-y-8">
             <AnimatePresence mode="wait">
               {isInitialLoading ? (
                 <motion.div
@@ -111,6 +129,7 @@ export default function LoginPage() {
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-white/20 group-focus-within:text-brand-red transition-colors" />
                       <input
                         type="email"
+                        name="email"
                         required
                         placeholder="yourname@domain.com"
                         className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 md:py-4 pl-11 md:pl-12 pr-4 text-[13px] md:text-base text-white placeholder:text-white/10 focus:outline-none focus:border-brand-red transition-all focus:bg-white/[0.08]"
@@ -127,6 +146,7 @@ export default function LoginPage() {
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-white/20 group-focus-within:text-brand-red transition-colors" />
                       <input
                         type="password"
+                        name="password"
                         required
                         placeholder="••••••••"
                         className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 md:py-4 pl-11 md:pl-12 pr-4 text-[13px] md:text-base text-white placeholder:text-white/10 focus:outline-none focus:border-brand-red transition-all focus:bg-white/[0.08]"
@@ -138,61 +158,57 @@ export default function LoginPage() {
             </AnimatePresence>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-1">Select Clearance Level</label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <AnimatePresence mode="wait">
-                  {isInitialLoading ? (
-                    <>
-                      {[1, 2, 3].map((i) => (
-                        <div key={`sk-role-${i}`} className="bg-white/5 border border-white/5 p-6 rounded-2xl h-32 flex flex-col justify-center gap-3">
-                          <Skeleton className="w-8 h-8 rounded-lg" />
-                          <Skeleton className="h-4 w-1/2" />
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    roles.map((role) => (
-                      <motion.div
-                        key={role.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.08)" }}
-                        onClick={() => setSelectedRole(role.id)}
-                        className={cn(
-                          "cursor-pointer p-4 md:p-6 rounded-2xl transition-all duration-300 border-2 flex flex-col items-center text-center gap-2 md:gap-3 group/role",
-                          selectedRole === role.id
-                            ? "border-brand-red bg-white/10 shadow-lg shadow-brand-red/10"
-                            : "border-white/5 bg-white/5 hover:border-white/20"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center transition-transform group-hover/role:scale-110",
-                          selectedRole === role.id ? role.color : "bg-white/10"
-                        )}>
-                          <role.icon className={cn("w-4 h-4 md:w-5 md:h-5 text-white", selectedRole !== role.id && "opacity-40")} />
-                        </div>
-                        <span className={cn(
-                          "text-[10px] md:text-xs font-black uppercase tracking-widest",
-                          selectedRole === role.id ? "text-white" : "text-white/30"
-                        )}>
-                          {role.title.split(' ')[0]}
-                        </span>
-                      </motion.div>
-                    ))
-                  )}
-                </AnimatePresence>
-              </div>
+               <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-1">Select Clearance Level</label>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <AnimatePresence mode="wait">
+                   {isInitialLoading ? (
+                     <>
+                       {[1, 2, 3].map((i) => (
+                         <div key={`sk-role-${i}`} className="bg-white/5 border border-white/5 p-6 rounded-2xl h-32 flex flex-col justify-center gap-3">
+                           <Skeleton className="w-8 h-8 rounded-lg" />
+                           <Skeleton className="h-4 w-1/2" />
+                         </div>
+                       ))}
+                     </>
+                   ) : (
+                     roles.map((role) => (
+                       <motion.div
+                         key={role.id}
+                         initial={{ opacity: 0, scale: 0.95 }}
+                         animate={{ opacity: 1, scale: 1 }}
+                         whileHover={{ y: -4, backgroundColor: "rgba(255,255,255,0.08)" }}
+                         onClick={() => setSelectedRole(role.id)}
+                         className={cn(
+                           "cursor-pointer p-4 md:p-6 rounded-2xl transition-all duration-300 border-2 flex flex-col items-center text-center gap-2 md:gap-3 group/role",
+                           selectedRole === role.id
+                             ? "border-brand-red bg-white/10 shadow-lg shadow-brand-red/10"
+                             : "border-white/5 bg-white/5 hover:border-white/20"
+                         )}
+                       >
+                         <div className={cn(
+                           "w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center transition-transform group-hover/role:scale-110",
+                           selectedRole === role.id ? role.color : "bg-white/10"
+                         )}>
+                           <role.icon className={cn("w-4 h-4 md:w-5 md:h-5 text-white", selectedRole !== role.id && "opacity-40")} />
+                         </div>
+                         <span className={cn(
+                           "text-[10px] md:text-xs font-black uppercase tracking-widest",
+                           selectedRole === role.id ? "text-white" : "text-white/30"
+                         )}>
+                           {role.title.split(' ')[0]}
+                         </span>
+                       </motion.div>
+                     ))
+                   )}
+                 </AnimatePresence>
+               </div>
             </div>
 
             <div className="pt-4 space-y-6">
               <motion.button
                 whileTap={{ scale: 0.98 }}
-                disabled={!selectedRole || isLoading}
-                onClick={(e) => {
-                  e.preventDefault();
-                  const role = roles.find(r => r.id === selectedRole);
-                  if (role) handleLogin(role.path);
-                }}
+                type="submit"
+                disabled={!selectedRole || isPending}
                 className={cn(
                   "w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-sm transition-all duration-300 flex items-center justify-center gap-3",
                   selectedRole
@@ -200,28 +216,36 @@ export default function LoginPage() {
                     : "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
                 )}
               >
-                {isLoading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Authenticating
-                  </>
-                ) : (
-                  <>
-                    Login to Account <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
+                 {isPending ? (
+                   <>
+                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                     Authenticating
+                   </>
+                 ) : (
+                   <>
+                     Login to Account <ArrowRight className="w-5 h-5" />
+                   </>
+                 )}
               </motion.button>
 
-              <p className="text-center text-white/40 text-sm">
-                New to the platform?{" "}
-                <Link href="/signup" className="text-brand-red font-bold hover:underline">
-                  Create Account
-                </Link>
-              </p>
+               <p className="text-center text-white/40 text-sm">
+                 New to the platform?{" "}
+                 <Link href="/signup" className="text-brand-red font-bold hover:underline">
+                   Create Account
+                 </Link>
+               </p>
             </div>
           </form>
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-brand-dark flex items-center justify-center"><div className="w-8 h-8 border-2 border-brand-red border-t-transparent rounded-full animate-spin"></div></div>}>
+      <LoginContent />
+    </React.Suspense>
   );
 }

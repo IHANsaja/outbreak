@@ -11,7 +11,8 @@ import {
   Radio,
   Settings,
   User,
-  X
+  X,
+  Zap
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -21,10 +22,11 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const navItems = [
+const navItems: { name: string, href: string, icon: any, badge?: number }[] = [
   { name: "Dashboard", href: "/authority/dashboard", icon: LayoutDashboard },
-  { name: "Incidents", href: "/authority/incidents", icon: AlertTriangle, badge: 12 },
+  { name: "Incidents", href: "/authority/incidents", icon: AlertTriangle },
   { name: "Resources", href: "/authority/resources", icon: Package },
+  { name: "Hazards", href: "/authority/hazards", icon: Zap },
   { name: "Map View", href: "/authority/map", icon: MapIcon },
   { name: "Analysis", href: "/authority/analysis", icon: BarChart3 },
 ];
@@ -37,10 +39,23 @@ interface AuthoritySidebarProps {
 export default function AuthoritySidebar({ isOpen, onClose }: AuthoritySidebarProps) {
   const pathname = usePathname();
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [incidentCount, setIncidentCount] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    import('@/app/actions/data').then(({ getStats }) => {
+      getStats().then(stats => setIncidentCount(stats.activeIncidents)).catch(console.error);
+    });
+  }, []);
+
+  const dynamicNavItems = navItems.map(item => {
+    if (item.name === "Incidents" && incidentCount !== null && incidentCount > 0) {
+      return { ...item, badge: incidentCount };
+    }
+    return item;
+  });
 
   return (
-    <>
-      <div className={cn(
+    <>      <div className={cn(
         "w-64 h-screen bg-auth-sidebar text-white flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
@@ -66,7 +81,7 @@ export default function AuthoritySidebar({ isOpen, onClose }: AuthoritySidebarPr
 
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {navItems.map((item) => {
+          {dynamicNavItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
             return (
               <Link

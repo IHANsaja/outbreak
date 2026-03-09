@@ -79,30 +79,38 @@ export function NetworkStatus() {
 
 export function OfficialUpdates() {
   const [loading, setLoading] = useState(true);
+  const [updates, setUpdates] = useState<any[]>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2500);
-    return () => clearTimeout(timer);
+    async function fetchData() {
+      try {
+        const { getOfficialUpdates } = await import('@/app/actions/data');
+        const data = await getOfficialUpdates();
+        setUpdates(data);
+      } catch (err) {
+        console.error('Failed to fetch updates:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
-  const updates = [
-    {
-      type: "info",
-      title: "Relief centers opened in Panadura North",
-      detail: "The Divisional Secretariat has authorized 3 new locations for displaced persons.",
-      meta: "Disaster Management Center • 45m ago",
-      icon: Info,
-      color: "bg-blue-50 text-blue-600 border-blue-100"
-    },
-    {
-      type: "warning",
-      title: "Power outage expected in sector 4",
-      detail: "Preventative shutdown scheduled to avoid electrocution hazards in flooded areas.",
-      meta: "CEB • 2h ago",
-      icon: AlertTriangle,
-      color: "bg-orange-50 text-orange-600 border-orange-100"
-    },
-  ];
+  const getIcon = (severity: string) => {
+    switch (severity) {
+      case 'urgent': return AlertTriangle;
+      case 'warning': return AlertTriangle;
+      default: return Info;
+    }
+  };
+
+  const getColor = (severity: string) => {
+    switch (severity) {
+      case 'urgent': return "bg-red-50 text-red-600 border-red-100";
+      case 'warning': return "bg-orange-50 text-orange-600 border-orange-100";
+      default: return "bg-blue-50 text-blue-600 border-blue-100";
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -123,22 +131,32 @@ export function OfficialUpdates() {
             ))}
           </>
         ) : (
-          updates.map((update, idx) => (
-            <Link
-              key={idx}
-              href={`/updates/${idx + 1}`}
-              className={cn("p-6 rounded-2xl border flex gap-4 transition-all hover:shadow-lg cursor-pointer group outline-none", update.color, "border-slate-200")}
-            >
-              <div className="mt-1">
-                <update.icon className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-zinc-900 text-sm group-hover:text-black transition-colors">{update.title}</h4>
-                <p className="text-xs font-medium text-gray-600 leading-relaxed max-w-2xl">{update.detail}</p>
-                <span className="block text-[10px] font-bold text-gray-400 mt-2">{update.meta}</span>
-              </div>
-            </Link>
-          ))
+          updates.map((update, idx) => {
+            const Icon = getIcon(update.severity);
+            return (
+              <Link
+                key={update.id}
+                href={`/updates/${update.id}`}
+                className={cn("p-6 rounded-2xl border flex gap-4 transition-all hover:shadow-lg cursor-pointer group outline-none", getColor(update.severity), "border-slate-200")}
+              >
+                <div className="mt-1">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-zinc-900 text-sm group-hover:text-black transition-colors">{update.title}</h4>
+                  <p className="text-xs font-medium text-gray-600 leading-relaxed max-w-2xl text-ellipsis line-clamp-2">{update.content}</p>
+                  <span className="block text-[10px] font-bold text-gray-400 mt-2">
+                    {new Date(update.created_at).toLocaleString()}
+                  </span>
+                </div>
+              </Link>
+            );
+          })
+        )}
+        {!loading && updates.length === 0 && (
+          <div className="p-10 text-center text-gray-400 border border-dashed border-slate-200 rounded-2xl">
+            No official updates at this time.
+          </div>
         )}
       </div>
     </div>

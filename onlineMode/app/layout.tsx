@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ToastProvider } from "@/context/ToastContext";
+import LocationTracker from "@/components/LocationTracker";
 
 export default function RootLayout({
   children,
@@ -33,6 +34,7 @@ export default function RootLayout({
       >
         <LanguageProvider>
           <ToastProvider>
+            <LocationTracker />
             {children}
           </ToastProvider>
         </LanguageProvider>
@@ -40,3 +42,4 @@ export default function RootLayout({
     </html>
   );
 }
+

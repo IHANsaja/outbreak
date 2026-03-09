@@ -1,36 +1,44 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { UserPlus, Shield, User, Bot, ArrowRight, AlertCircle, Mail, Lock, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Skeleton } from "@/components/Skeleton";
+import { useToast } from "@/context/ToastContext";
+import { signup } from "@/app/auth/actions";
 
 const clearanceLevels = [
     { id: "citizen", title: "Citizen", icon: User, color: "text-blue-500" },
     { id: "authority", title: "Authority", icon: Shield, color: "text-red-500" },
-    { id: "community", title: "Supporter", icon: UserPlus, color: "text-emerald-500" },
+    { id: "community_supporter", title: "Supporter", icon: UserPlus, color: "text-emerald-500" },
 ];
 
 export default function SignupPage() {
     const [selectedRole, setSelectedRole] = useState<string>("citizen");
-    const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [isPending, startTransition] = useTransition();
     const router = useRouter();
+    const { showToast } = useToast();
 
     useEffect(() => {
         const timer = setTimeout(() => setIsInitialLoading(false), 1800);
         return () => clearTimeout(timer);
     }, []);
 
-    const handleSignup = (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setTimeout(() => {
-            router.push("/login");
-        }, 1500);
+    const handleSignupAction = (formData: FormData) => {
+        formData.append('role', selectedRole);
+        
+        startTransition(async () => {
+            const result = await signup(formData);
+            if (result?.error) {
+                showToast(result.error, "error");
+            } else {
+                showToast("Account created! Please check your email.", "success");
+            }
+        });
     };
 
     return (
@@ -96,7 +104,7 @@ export default function SignupPage() {
                                 key="signup-form"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                onSubmit={handleSignup}
+                                action={handleSignupAction}
                                 className="space-y-6"
                             >
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -106,6 +114,7 @@ export default function SignupPage() {
                                             <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-white/20 group-focus-within:text-brand-red transition-colors" />
                                             <input
                                                 type="text"
+                                                name="fullName"
                                                 required
                                                 placeholder="John Doe"
                                                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 md:py-4 pl-11 md:pl-12 pr-4 text-[13px] md:text-base text-white placeholder:text-white/10 focus:outline-none focus:border-brand-red transition-all focus:bg-white/[0.08]"
@@ -118,6 +127,7 @@ export default function SignupPage() {
                                             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-white/20 group-focus-within:text-brand-red transition-colors" />
                                             <input
                                                 type="email"
+                                                name="email"
                                                 required
                                                 placeholder="john@example.com"
                                                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 md:py-4 pl-11 md:pl-12 pr-4 text-[13px] md:text-base text-white placeholder:text-white/10 focus:outline-none focus:border-brand-red transition-all focus:bg-white/[0.08]"
@@ -164,6 +174,7 @@ export default function SignupPage() {
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-white/20 group-focus-within:text-brand-red transition-colors" />
                                         <input
                                             type="password"
+                                            name="password"
                                             required
                                             placeholder="••••••••"
                                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 md:py-4 pl-11 md:pl-12 pr-4 text-[13px] md:text-base text-white placeholder:text-white/10 focus:outline-none focus:border-brand-red transition-all focus:bg-white/[0.08]"
@@ -173,13 +184,14 @@ export default function SignupPage() {
 
                                 <motion.button
                                     whileTap={{ scale: 0.98 }}
-                                    disabled={isLoading}
+                                    type="submit"
+                                    disabled={isPending}
                                     className={cn(
                                         "w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-sm transition-all duration-300 flex items-center justify-center gap-3",
                                         "emergency-gradient text-white shadow-xl shadow-brand-red/30 cursor-pointer"
                                     )}
                                 >
-                                    {isLoading ? (
+                                    {isPending ? (
                                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                     ) : (
                                         <>

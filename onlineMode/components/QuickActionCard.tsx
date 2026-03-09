@@ -9,6 +9,7 @@ interface QuickActionProps {
   title: string;
   description: string;
   count?: number;
+  showSOSBadge?: boolean;
   className?: string;
   onClick?: () => void;
 }
@@ -19,6 +20,7 @@ export default function QuickActionCard({
   title,
   description,
   count,
+  showSOSBadge,
   className,
   onClick,
 }: QuickActionProps) {
@@ -54,7 +56,7 @@ export default function QuickActionCard({
           </div>
         )}
 
-        {title === "Request Help" && (
+        {title === "Request Help" && showSOSBadge && (
           <div className="absolute top-4 right-4 md:top-6 md:right-6">
             <div className="flex flex-col items-center">
               <span className="text-[8px] md:text-[10px] font-black text-brand-red uppercase mb-0.5 md:mb-1">SOS</span>

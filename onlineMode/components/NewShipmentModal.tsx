@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/context/ToastContext";
+import { addResource } from "@/app/actions/data";
 
 interface NewShipmentModalProps {
   isOpen: boolean;
@@ -26,16 +27,32 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    const formData = new FormData(e.currentTarget);
+    
+    const category = formData.get('category') as string;
+    const dest = formData.get('destination') as string;
+    
+    const finalData = new FormData();
+    finalData.set('rname', `${category} - ${dest}`);
+    finalData.set('quantity', formData.get('quantity') as string);
+    finalData.set('unit', formData.get('unit') as string);
+    finalData.set('rstatus', 'available');
+    finalData.set('additional_info', `Arrival ETA: ${formData.get('arrival')}`);
+
+    try {
+      await addResource(finalData);
       showToast("Shipment registered and tracking initiated.", "success");
       onClose();
-    }, 2000);
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to register shipment. Please check connectivity.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -94,11 +111,11 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                               <Box className="w-5 h-5" />
                            </div>
-                           <select required className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-12 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
-                              <option>Medical Supplies</option>
-                              <option>Food & Water</option>
-                              <option>Infrastructure Equipment</option>
-                              <option>Personnel Gear</option>
+                           <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-12 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
+                              <option value="Medical Supplies">Medical Supplies</option>
+                              <option value="Food & Water">Food & Water</option>
+                              <option value="Infrastructure Equipment">Infrastructure Equipment</option>
+                              <option value="Personnel Gear">Personnel Gear</option>
                            </select>
                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
                         </div>
@@ -106,15 +123,15 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                      <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-3">
                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Quantity</label>
-                           <input type="number" required placeholder="0" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                           <input name="quantity" type="number" required placeholder="0" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
                         </div>
                         <div className="space-y-3">
                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Unit</label>
-                           <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
-                              <option>Kits</option>
-                              <option>Metric Tons</option>
-                              <option>Units</option>
-                              <option>Pallets</option>
+                           <select name="unit" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
+                              <option value="Kits">Kits</option>
+                              <option value="Metric Tons">Metric Tons</option>
+                              <option value="Units">Units</option>
+                              <option value="Pallets">Pallets</option>
                            </select>
                         </div>
                      </div>
@@ -127,10 +144,10 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                               <MapPin className="w-5 h-5" />
                            </div>
-                           <select required className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-12 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
-                              <option>Regional Hub A (Colombo)</option>
-                              <option>Field Hospital Beta (Kandy)</option>
-                              <option>Distribution Center (Galle)</option>
+                           <select name="destination" required className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-12 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
+                              <option value="Regional Hub A (Colombo)">Regional Hub A (Colombo)</option>
+                              <option value="Field Hospital Beta (Kandy)">Field Hospital Beta (Kandy)</option>
+                              <option value="Distribution Center (Galle)">Distribution Center (Galle)</option>
                            </select>
                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
                         </div>
@@ -141,7 +158,7 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                               <Calendar className="w-5 h-5" />
                            </div>
-                           <input type="datetime-local" required className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-6 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
+                           <input name="arrival" type="datetime-local" required className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-6 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
                         </div>
                      </div>
                   </div>
@@ -172,9 +189,9 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                      ) : (
                         <>
                            {step === 1 ? (
-                              <>Next Step <ArrowRight className="w-5 h-5" /></>
+                               <>Next Step <ArrowRight className="w-5 h-5" /></>
                            ) : (
-                              <>Initiate Shipment <Truck className="w-5 h-5" /></>
+                               <>Initiate Shipment <Truck className="w-5 h-5" /></>
                            )}
                         </>
                      )}

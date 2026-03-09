@@ -1,13 +1,46 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import AuthorityLayout from "@/components/AuthorityLayout";
 import { Download, Calendar, ArrowUpRight, ArrowDownRight, TrendingUp, HelpCircle, Map as MapIcon, ChevronRight, AlertTriangle, Loader2 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import ExportReportModal from "@/components/ExportReportModal";
+import { getRegions, getAllIncidents } from "@/app/actions/data";
+import { cn } from "@/lib/utils";
 
 export default function AnalysisPage() {
   const { showToast } = useToast();
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [regions, setRegions] = useState<any[]>([]);
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [r, i] = await Promise.all([getRegions(), getAllIncidents()]);
+        setRegions(r);
+        setIncidents(i);
+      } catch (err) {
+        showToast("Error fetching analysis data", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const distribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    incidents.forEach(inc => {
+      counts[inc.itype] = (counts[inc.itype] || 0) + 1;
+    });
+    const total = incidents.length || 1;
+    return Object.entries(counts).map(([label, count]) => ({
+      label,
+      value: `${Math.round((count / total) * 100)}%`,
+      count
+    })).sort((a, b) => b.count - (a as any).count);
+  }, [incidents]);
 
   return (
     <AuthorityLayout>
@@ -120,16 +153,23 @@ export default function AnalysisPage() {
                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#3b82f6" strokeWidth="15" strokeDasharray="8.17 251.32" strokeDashoffset="-243.15" />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                       <span className="text-4xl font-bold text-slate-900 tracking-tighter">57</span>
+                       <span className="text-4xl font-bold text-slate-900 tracking-tighter">{incidents.length}</span>
                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
                     </div>
                  </div>
 
-                 <div className="w-full space-y-4">
-                    <DistributionLegned color="bg-red-500" label="Floods" value="55%" />
-                    <DistributionLegned color="bg-amber-500" label="Landslides" value="28%" />
-                    <DistributionLegned color="bg-blue-500" label="Coastal Surge" value="17%" />
-                 </div>
+                  <div className="w-full space-y-4">
+                    {loading ? <p className="text-slate-400 text-xs animate-pulse">Calculating distribution...</p> : 
+                      distribution.slice(0, 4).map((d, i) => (
+                        <DistributionLegned 
+                          key={d.label} 
+                          color={i === 0 ? "bg-red-500" : i === 1 ? "bg-amber-500" : i === 2 ? "bg-blue-500" : "bg-purple-500"} 
+                          label={d.label} 
+                          value={d.value} 
+                        />
+                      ))
+                    }
+                  </div>
               </div>
            </div>
         </div>
@@ -206,9 +246,22 @@ export default function AnalysisPage() {
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                     <RegionRow id="REG-001 (Western)" risk="Critical" riskColor="text-red-600 bg-red-50" pop="1.2M" trend="Rising" trendIcon={<ArrowUpRight className="w-4 h-4 text-red-500" />} />
-                     <RegionRow id="REG-004 (Southern)" risk="Moderate" riskColor="text-orange-600 bg-orange-50" pop="450k" trend="Stable" trendIcon={<div className="flex items-center gap-2"><div className="w-2 h-0.5 bg-slate-300"></div><span className="text-sm font-bold text-slate-400 tracking-tighter">Stable</span></div>} />
-                     <RegionRow id="REG-009 (Central)" risk="Low" riskColor="text-green-600 bg-green-50" pop="120k" trend="Falling" trendIcon={<ArrowDownRight className="w-4 h-4 text-green-500" />} />
+                     {loading ? (
+                        <tr><td colSpan={5} className="py-10 text-center text-slate-400 animate-pulse">Loading regional data...</td></tr>
+                     ) : regions.map(region => (
+                        <RegionRow 
+                          key={region.id}
+                          id={region.name} 
+                          risk={region.severity_level} 
+                          riskColor={
+                            region.severity_level === 'Critical' ? "text-red-600 bg-red-50" :
+                            region.severity_level === 'High' ? "text-orange-600 bg-orange-50" : "text-green-600 bg-green-50"
+                          } 
+                          pop={region.impact_percentage > 50 ? "High Impact" : "Moderate"} 
+                          trend={region.impact_percentage > 50 ? "Rising" : "Stable"} 
+                          trendIcon={region.impact_percentage > 50 ? <ArrowUpRight className="w-4 h-4 text-red-500" /> : <div className="flex items-center gap-2"><div className="w-2 h-0.5 bg-slate-300"></div><span className="text-sm font-bold text-slate-400 tracking-tighter">Stable</span></div>} 
+                        />
+                     ))}
                   </tbody>
                </table>
            </div>

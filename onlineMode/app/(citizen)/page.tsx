@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AlertCard from "@/components/AlertCard";
@@ -15,7 +15,8 @@ import {
   Maximize2,
   Plus,
   Camera,
-  Activity
+  Activity,
+  CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
@@ -24,7 +25,31 @@ export default function Home() {
   const [isHazardsOpen, setIsHazardsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isSOSOpen, setIsSOSOpen] = useState(false);
+  const [stats, setStats] = useState({ activeIncidents: 0, criticalNeeds: 0, activeHazards: 0, activeSos: 0 });
+  const [urgentHazard, setUrgentHazard] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const { t } = useLanguage();
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const { getStats, getActiveHazards } = await import('@/app/actions/data');
+        const [statsData, hazardsData] = await Promise.all([
+          getStats(),
+          getActiveHazards()
+        ]);
+        setStats(statsData);
+        if (hazardsData && hazardsData.length > 0) {
+          setUrgentHazard(hazardsData[0]); // Take the most recent active hazard
+        }
+      } catch (err) {
+        console.error('Home Page Data Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
@@ -33,15 +58,25 @@ export default function Home() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-6 md:space-y-10">
 
         {/* Urgent Alert Banner */}
-        <AlertCard
-          variant="compact"
-          severity="urgent"
-          title="FLOOD WARNING: Kalutara District"
-          description="Water levels rising rapidly due to heavy rainfall. Evacuate to higher ground immediately if you are in low-lying zones."
-          updatedTime="12 mins ago"
-          routesHref="/map/navigation"
-          detailsHref="/briefing"
-        />
+        {urgentHazard ? (
+          <AlertCard
+            variant="compact"
+            severity={urgentHazard.severity === 'high' ? 'urgent' : 'moderate'}
+            title={urgentHazard.title}
+            description={urgentHazard.description}
+            updatedTime={new Date(urgentHazard.created_at).toLocaleString()}
+            routesHref="/map/situation"
+            detailsHref="/news"
+          />
+        ) : !loading && (
+          <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <p className="text-sm font-bold text-emerald-900 tracking-tight">System Status: No immediate hazards in your sector.</p>
+            </div>
+            <Link href="/news" className="text-[10px] font-black uppercase text-emerald-600 hover:underline">View History</Link>
+          </div>
+        )}
 
         {/* Quick Actions Grid */}
         <section className="space-y-4 md:space-y-6">
@@ -52,6 +87,7 @@ export default function Home() {
               bgIcon={LifeBuoy}
               title="Request Help"
               description="Medical, Rescue, or Supplies needed immediately."
+              showSOSBadge={stats.activeSos > 0}
               className="h-full"
               onClick={() => setIsSOSOpen(true)}
             />
@@ -60,6 +96,7 @@ export default function Home() {
               bgIcon={Camera}
               title="Report Damage"
               description="Submit photos of infrastructure issues or hazards."
+              count={stats.activeIncidents > 0 ? stats.activeIncidents : undefined}
               className="h-full"
               onClick={() => setIsReportOpen(true)}
             />
@@ -68,7 +105,7 @@ export default function Home() {
               bgIcon={Activity}
               title="View Nearby Alerts"
               description="See active hazard zones in your proximity."
-              count={3}
+              count={stats.activeHazards > 0 ? stats.activeHazards : undefined}
               className="h-full"
               onClick={() => setIsHazardsOpen(true)}
             />
