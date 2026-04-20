@@ -46,6 +46,10 @@ export default function AIDashboard() {
    const [reports, setReports] = useState<any[]>([]);
    const [loading, setLoading] = useState(true);
 
+   // Filter states
+   const [filterRiver, setFilterRiver] = useState<string>("All");
+   const [filterAI, setFilterAI] = useState<boolean>(false);
+
    useEffect(() => {
       async function init() {
          const list = await getMonitoredStations();
@@ -66,6 +70,29 @@ export default function AIDashboard() {
 
    const latestReport = reports[reports.length - 1];
    const currentStation = stations.find(s => s.id === selectedStationId);
+
+   // ──────────────────────────────────────────────
+   // Filtered Stations & Rivers computations
+   // ──────────────────────────────────────────────
+   const rivers = useMemo(() => {
+      const r = new Set<string>();
+      stations.forEach(s => r.add(s.river));
+      return Array.from(r).sort();
+   }, [stations]);
+
+   const filteredStations = useMemo(() => {
+      return stations.filter(s => {
+         if (filterRiver !== "All" && s.river !== filterRiver) return false;
+         if (filterAI && !s.hasData) return false;
+         return true;
+      });
+   }, [stations, filterRiver, filterAI]);
+
+   useEffect(() => {
+      if (filteredStations.length > 0 && !filteredStations.find(s => s.id === selectedStationId)) {
+         setSelectedStationId(filteredStations[0].id);
+      }
+   }, [filteredStations, selectedStationId]);
 
    // ──────────────────────────────────────────────
    // Chart scaling logic — dynamic based on actual data
@@ -239,14 +266,39 @@ export default function AIDashboard() {
                </div>
 
                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                  <div className="flex gap-2 w-full sm:w-auto">
+                     <select
+                        value={filterRiver}
+                        onChange={(e) => setFilterRiver(e.target.value)}
+                        className="w-full sm:w-auto appearance-none bg-white border-2 border-zinc-100 hover:border-zinc-300 px-4 py-3 rounded-2xl text-xs font-bold text-zinc-600 transition-all cursor-pointer focus:outline-none shadow-sm"
+                     >
+                        <option value="All">All Rivers</option>
+                        {rivers.map(r => (
+                           <option key={r} value={r}>{r}</option>
+                        ))}
+                     </select>
+                     <label className="flex items-center gap-2 bg-white border-2 border-zinc-100 hover:border-zinc-300 px-4 py-3 rounded-2xl text-xs font-bold text-zinc-600 cursor-pointer shadow-sm select-none transition-all">
+                        <input 
+                           type="checkbox" 
+                           checked={filterAI} 
+                           onChange={(e) => setFilterAI(e.target.checked)}
+                           className="rounded text-orange-500 focus:ring-orange-500 border-zinc-300 w-4 h-4 cursor-pointer"
+                        />
+                        AI Live
+                     </label>
+                  </div>
+
                   <div className="relative w-full sm:w-64">
                      <select 
                         value={selectedStationId}
                         onChange={(e) => setSelectedStationId(Number(e.target.value))}
                         className="w-full appearance-none bg-white border-2 border-zinc-100 hover:border-zinc-900 px-5 py-3 rounded-2xl text-xs font-black italic tracking-tight text-zinc-900 transition-all cursor-pointer focus:outline-none shadow-sm"
                      >
-                        {stations.map(s => (
-                           <option key={s.id} value={s.id}>{s.river} - {s.name}</option>
+                        {filteredStations.length === 0 && <option value={-1}>No stations found</option>}
+                        {filteredStations.map(s => (
+                           <option key={s.id} value={s.id}>
+                              {s.hasData ? "🟢 " : ""}{s.river} - {s.name}
+                           </option>
                         ))}
                      </select>
                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />

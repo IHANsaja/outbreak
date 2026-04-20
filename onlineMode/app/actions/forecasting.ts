@@ -27,8 +27,24 @@ export async function getLatestRiverReports(stationId: number) {
 import stationsData from "../../lib/stations.json";
 
 /**
- * Returns available stations based on current active monitoring.
+ * Returns available stations based on current active monitoring,
+ * decorated with a boolean indicating if AI data is available.
  */
 export async function getMonitoredStations() {
-  return stationsData;
+  // Fetch a recent sample of reports to determine which stations are active
+  const { data } = await supabase
+    .from("river_reports")
+    .select("station_id")
+    .order("timestamp", { ascending: false })
+    .limit(2000);
+    
+  const activeIds = new Set<number>();
+  if (data) {
+    data.forEach(r => activeIds.add(r.station_id));
+  }
+  
+  return stationsData.map(s => ({
+    ...s,
+    hasData: activeIds.has(s.id)
+  }));
 }
