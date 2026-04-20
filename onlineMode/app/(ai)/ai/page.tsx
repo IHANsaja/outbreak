@@ -18,334 +18,320 @@ import {
    Maximize2,
    Settings,
    Waves,
-   Heart
+   Heart,
+   ChevronDown
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { NLPDeepDiveModal, DispatchModal, WaterLevelAnalyticsModal } from "@/components/AIModals";
-
-const statsData = [
-   { key: "total_reports", value: "12,405", change: "+12%", icon: Cpu, color: "text-blue-500", bg: "bg-blue-50" },
-   { key: "active_anomalies", value: "3", sub: "requires_attention", status: "CRITICAL", icon: AlertCircle, color: "text-red-500", bg: "bg-red-50" },
-   { key: "critical_sos", value: "142", change: "+5%", icon: Heart, color: "text-orange-500", bg: "bg-orange-50" },
-   { key: "ai_confidence", value: "92%", status: "stable", icon: Brain, color: "text-green-500", bg: "bg-green-50" },
-];
-
-const messages = [
-   { id: "NLP-992", type: "HIGH PANIC", title: "Flooding in Kalutara", count: 450, topics: ["Water entering homes", "Road blocked"], color: "border-red-500" },
-   { id: "NLP-841", type: "WARNING", title: "Landslide Risk - Ratnapura", count: 128, topics: ["Mud flow", "Cracked walls"], color: "border-orange-500", active: true },
-   { id: "NLP-772", type: "RECOVERING", title: "Power Restoration - Galle", count: 210, topics: ["Electricity back", "Thank you"], color: "border-green-500" },
-];
+import { getLatestRiverReports, getMonitoredStations } from "@/app/actions/forecasting";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIDashboard() {
-   const [sosFilter, setSosFilter] = useState("all");
    const { t } = useLanguage();
    const [isNLPModalOpen, setIsNLPModalOpen] = useState(false);
    const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
    const [isWaterAnalyticsOpen, setIsWaterAnalyticsOpen] = useState(false);
+   
+   // State for dynamic data
+   const [stations, setStations] = useState<any[]>([]);
+   const [selectedStationId, setSelectedStationId] = useState(21);
+   const [reports, setReports] = useState<any[]>([]);
+   const [loading, setLoading] = useState(true);
+
+   useEffect(() => {
+      async function init() {
+         const list = await getMonitoredStations();
+         setStations(list);
+      }
+      init();
+   }, []);
+
+   useEffect(() => {
+      async function loadData() {
+         setLoading(true);
+         const data = await getLatestRiverReports(selectedStationId);
+         setReports(data);
+         setLoading(false);
+      }
+      loadData();
+   }, [selectedStationId]);
+
+   const latestReport = reports[reports.length - 1];
+   const currentStation = stations.find(s => s.id === selectedStationId);
+
+   // Stats derived from current station or global (as per user request: Global Selection)
+   const statsData = [
+      { key: "water_level", value: latestReport ? `${latestReport.water_level_now.toFixed(2)}m` : "--", change: latestReport && latestReport.water_level_now > latestReport.water_level_lag1 ? "+Rise" : "Stable", icon: Waves, color: "text-blue-500", bg: "bg-blue-50" },
+      { key: "alert_status", value: latestReport?.water_level_now >= latestReport?.minor_flood ? "WARNING" : "NORMAL", status: latestReport?.water_level_now >= latestReport?.minor_flood ? "CRITICAL" : "OK", icon: AlertCircle, color: latestReport?.water_level_now >= latestReport?.minor_flood ? "text-red-500" : "text-green-500", bg: latestReport?.water_level_now >= latestReport?.minor_flood ? "bg-red-50" : "bg-green-50" },
+      { key: "rainfall_24h", value: latestReport ? `${latestReport.rainfall_roll3.toFixed(1)}mm` : "--", change: "Current", icon: Zap, color: "text-orange-500", bg: "bg-orange-50" },
+      { key: "ai_confidence", value: "94%", status: "stable", icon: Brain, color: "text-green-500", bg: "bg-green-50" },
+   ];
+
+   const messages = [
+      { id: "NLP-992", type: "HIGH PANIC", title: `Reports near ${currentStation?.name || 'Station'}`, count: latestReport?.water_level_now > 5 ? 450 : 22, topics: ["Rising water", "Inundation"], color: "border-red-500" },
+      { id: "NLP-841", type: "WARNING", title: "Regional Risk Assessment", count: 128, topics: ["Mud flow", "Drainage block"], color: "border-orange-500", active: true },
+      { id: "NLP-772", type: "RECOVERING", title: "Upstream Discharge", count: 210, topics: ["Gate opening", "Flow rate"], color: "border-green-500" },
+   ];
 
    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col font-sans">
          <Navbar />
 
-         <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10">
+         <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-6">
+            {/* Header / Station Selector */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
                <div className="space-y-1">
-                  <h1 className="text-3xl font-black text-zinc-900 tracking-tight italic flex items-center gap-3">
-                     <Brain className="w-8 h-8 text-orange-500" />
+                  <div className="flex items-center gap-2 text-orange-500 font-black text-[10px] tracking-[0.2em] uppercase mb-1">
+                     <div className="w-4 h-0.5 bg-orange-500" />
+                     Forecast Engine Active
+                  </div>
+                  <h1 className="text-4xl font-black text-zinc-900 tracking-tighter flex items-center gap-3 italic">
+                     <Brain className="w-10 h-10 text-zinc-900" />
                      {t("ai_insights")}
                   </h1>
-                  <p className="text-sm font-medium text-gray-500 max-w-2xl">
-                     {t("ai_dashboard_subtitle")}
-                  </p>
                </div>
 
-               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-                  <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black tracking-widest uppercase border border-green-100">
-                     <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                     Live Prediction Model V2.4
+               <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                  <div className="relative w-full sm:w-64">
+                     <select 
+                        value={selectedStationId}
+                        onChange={(e) => setSelectedStationId(Number(e.target.value))}
+                        className="w-full appearance-none bg-white border-2 border-zinc-100 hover:border-zinc-900 px-5 py-3 rounded-2xl text-xs font-black italic tracking-tight text-zinc-900 transition-all cursor-pointer focus:outline-none shadow-sm"
+                     >
+                        {stations.map(s => (
+                           <option key={s.id} value={s.id}>{s.river} - {s.name}</option>
+                        ))}
+                     </select>
+                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
                   </div>
-                  <Link href="/ai/report" className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black italic shadow-lg shadow-orange-900/10 transition-all flex items-center justify-center gap-2">
-                     <FileText className="w-4 h-4" />
+                  <Link href="/ai/report" className="px-6 py-3.5 bg-zinc-900 hover:bg-orange-500 text-white rounded-2xl text-xs font-black italic tracking-tight transition-all flex items-center justify-center gap-2 shadow-xl shadow-zinc-900/10">
                      {t("generate_report")}
+                     <ArrowUpRight className="w-4 h-4" />
                   </Link>
                </div>
             </div>
 
+            {/* Immersive Hero Analytics */}
+            <div className="mb-8 p-1 bg-zinc-50 rounded-[2.5rem]">
+               <div className="bg-white rounded-[2.4rem] p-8 md:p-12 shadow-sm border border-zinc-100 relative overflow-hidden">
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-12">
+                     <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                           <div className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100 flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                              Live Telemetry
+                           </div>
+                           {latestReport?.water_level_now >= latestReport?.alert_level && (
+                              <div className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-100 flex items-center gap-2">
+                                 AI Alert: {latestReport.water_level_now >= latestReport.major_flood ? 'Major Flood' : 'Alert Level'}
+                              </div>
+                           )}
+                        </div>
+                        <h2 className="text-2xl font-black text-zinc-900 tracking-tight italic">
+                           {currentStation?.river} • {currentStation?.name} <span className="text-zinc-300 ml-2">Monitor</span>
+                        </h2>
+                     </div>
+
+                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full md:w-auto">
+                        {statsData.map((s, i) => (
+                           <div key={i} className="flex flex-col">
+                              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t(s.key)}</span>
+                              <span className={cn("text-lg font-black italic tracking-tighter", s.color)}>{s.value}</span>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+
+                  <div className="h-64 md:h-80 relative flex items-end">
+                     {loading ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
+                           <div className="flex flex-col items-center gap-4">
+                              <div className="w-10 h-10 border-4 border-zinc-100 border-t-orange-500 rounded-full animate-spin" />
+                              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Compiling Forecasts...</span>
+                           </div>
+                        </div>
+                     ) : (
+                        <svg className="w-full h-full" viewBox="0 0 1000 300" preserveAspectRatio="none">
+                           {/* Threshold Bands */}
+                           {latestReport && (
+                              <>
+                                 <line x1="0" y1={300 - (latestReport.major_flood * 30)} x2="1000" y2={300 - (latestReport.major_flood * 30)} stroke="#fee2e2" strokeWidth="2" strokeDasharray="8 4" />
+                                 <text x="10" y={295 - (latestReport.major_flood * 30)} className="text-[10px] font-black fill-red-400 uppercase italic">Major Flood Limit</text>
+                                 
+                                 <line x1="0" y1={300 - (latestReport.minor_flood * 30)} x2="1000" y2={300 - (latestReport.minor_flood * 30)} stroke="#ffedd5" strokeWidth="1" strokeDasharray="4 4" />
+                                 <text x="10" y={295 - (latestReport.minor_flood * 30)} className="text-[10px] font-black fill-orange-300 uppercase italic">Minor Flood Limit</text>
+                              </>
+                           )}
+
+                           {/* Historical Path (Last 12) */}
+                           <motion.path
+                              initial={{ pathLength: 0 }}
+                              animate={{ pathLength: 1 }}
+                              transition={{ duration: 1.5 }}
+                              d={`M ${reports.map((r, i) => `${i * 60},${300 - (r.water_level_now * 30)}`).join(' L ')}`}
+                              fill="none"
+                              stroke="#0ea5e9"
+                              strokeWidth="4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                           />
+
+                           {/* Forecast Projection */}
+                           {latestReport && latestReport.forecast_1h && (
+                              <motion.path
+                                 initial={{ opacity: 0 }}
+                                 animate={{ opacity: 1 }}
+                                 transition={{ delay: 1 }}
+                                 d={`M ${(reports.length - 1) * 60},${300 - (latestReport.water_level_now * 30)} 
+                                     L ${reports.length * 60},${300 - (latestReport.forecast_1h * 30)} 
+                                     L ${(reports.length + 2) * 60},${300 - (latestReport.forecast_12h * 30)} 
+                                     L ${(reports.length + 4) * 60},${300 - (latestReport.forecast_24h * 30)}`}
+                                 fill="none"
+                                 stroke="#f43f5e"
+                                 strokeWidth="4"
+                                 strokeLinecap="round"
+                                 strokeDasharray="10 5"
+                                 className="animate-pulse"
+                              />
+                           )}
+
+                           {/* Data Points */}
+                           {reports.map((r, i) => (
+                              <g key={i} className="group/point">
+                                 <circle 
+                                    cx={i * 60} 
+                                    cy={300 - (r.water_level_now * 30)} 
+                                    r="6" 
+                                    fill="white" 
+                                    stroke="#0ea5e9" 
+                                    strokeWidth="3" 
+                                    className="cursor-pointer hover:fill-blue-500 transition-colors"
+                                 />
+                                 {i === reports.length - 1 && (
+                                    <circle cx={i * 60} cy={300 - (r.water_level_now * 30)} r="12" fill="#0ea5e9" opacity="0.2" className="animate-ping pointer-events-none" />
+                                 )}
+                              </g>
+                           ))}
+                        </svg>
+                     )}
+
+                     <div className="absolute top-0 right-0 flex flex-col gap-4">
+                        <div className="bg-white/80 backdrop-blur-sm border border-zinc-100 p-4 rounded-3xl shadow-xl space-y-3">
+                           <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full bg-blue-500" />
+                              <span className="text-[10px] font-black text-zinc-900 uppercase italic">Actual level History</span>
+                           </div>
+                           <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full bg-rose-500 animate-pulse border-2 border-rose-100" />
+                              <span className="text-[10px] font-black text-zinc-900 uppercase italic">AI Predicted Trajectory</span>
+                           </div>
+                           <div className="pt-2 border-t border-zinc-50 space-y-1">
+                              <div className="flex justify-between gap-8">
+                                 <span className="text-[9px] font-bold text-zinc-400 uppercase">Next 1h</span>
+                                 <span className="text-[10px] font-black text-rose-500">{latestReport?.forecast_1h ? `${latestReport.forecast_1h.toFixed(2)}m` : '--'}</span>
+                              </div>
+                              <div className="flex justify-between gap-8">
+                                 <span className="text-[9px] font-bold text-zinc-400 uppercase">Next 12h</span>
+                                 <span className="text-[10px] font-black text-orange-500">{latestReport?.forecast_12h ? `${latestReport.forecast_12h.toFixed(2)}m` : '--'}</span>
+                              </div>
+                              <div className="flex justify-between gap-8">
+                                 <span className="text-[9px] font-bold text-zinc-400 uppercase font-black italic">Strategic 24h</span>
+                                 <span className="text-[10px] font-black text-amber-500">{latestReport?.forecast_24h ? `${latestReport.forecast_24h.toFixed(2)}m` : '--'}</span>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                <div className="lg:col-span-8 flex flex-col gap-8">
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                     {statsData.map((s, idx) => (
-                        <div key={idx} className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
-                           <div className="flex justify-between items-start mb-3 md:mb-4">
-                              <div className={cn("w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", s.bg, s.color)}>
-                                 <s.icon className="w-4 h-4 md:w-5 md:h-5" />
-                              </div>
-                              {s.change && (
-                                 <span className="text-[9px] md:text-[10px] font-black text-green-500 bg-green-50 px-1.5 md:px-2 py-0.5 rounded tracking-tighter">
-                                    {s.change}
-                                 </span>
-                              )}
-                              {s.status && (
-                                 <span className={cn(
-                                    "text-[7px] md:text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest uppercase",
-                                    s.status === 'CRITICAL' ? "bg-red-500 text-white animate-pulse" : "bg-green-500 text-white"
-                                 )}>
-                                    {t(s.status.toLowerCase())}
-                                 </span>
-                              )}
-                           </div>
-                           <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{t(s.key)}</span>
-                           <div className="text-xl md:text-2xl font-black text-zinc-900 italic tracking-tight mt-0.5 md:mt-1">{s.value}</div>
-                           {s.sub && <p className="text-[8px] md:text-[9px] font-bold text-red-500 mt-0.5 md:mt-1 uppercase tracking-tighter">{t(s.sub)}</p>}
-                        </div>
-                     ))}
-                  </div>
-
-                  {/* Charts Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                     {/* Water Levels Card */}
-                     <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 shadow-sm border border-gray-100 relative group">
-                        <div className="flex justify-between items-center mb-6 md:mb-10">
-                           <div className="space-y-1">
-                              <h3 className="text-sm md:text-base font-black text-zinc-900 italic">{t("water_levels_title")}</h3>
-                              <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase">Predicted vs Actual</p>
-                           </div>
-                           <div className="flex flex-col items-end gap-1">
-                              <span className="text-[7px] md:text-[8px] font-black text-red-500 bg-red-50 px-1.5 md:px-2 py-0.5 rounded border border-red-100 tracking-widest">CRITICAL LEVEL DETECTED</span>
-                              <Maximize2
-                                 className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-300 hover:text-zinc-900 cursor-pointer"
-                                 onClick={() => setIsWaterAnalyticsOpen(true)}
-                              />
-                           </div>
-                        </div>
-
-                        <div className="h-40 md:h-48 relative flex items-end">
-                           <svg className="w-full h-full" viewBox="0 0 400 200">
-                              {/* Grid Lines */}
-                              <line x1="0" y1="180" x2="400" y2="180" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-                              <line x1="0" y1="120" x2="400" y2="120" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-                              <line x1="0" y1="60" x2="400" y2="60" stroke="#fecaca" strokeWidth="1" strokeDasharray="4 4" />
-
-                              {/* Actual Path */}
-                              <path
-                                 d="M0,150 L50,140 L100,120 L150,110 L200,80"
-                                 fill="none"
-                                 stroke="#3b82f6"
-                                 strokeWidth="3"
-                                 strokeLinecap="round"
-                              />
-                              {/* Predicted Path */}
-                              <path
-                                 d="M200,80 L250,70 L300,50 L350,45"
-                                 fill="none"
-                                 stroke="#f97316"
-                                 strokeWidth="3"
-                                 strokeLinecap="round"
-                                 strokeDasharray="6 4"
-                              />
-                              {/* Current Point */}
-                              <circle cx="200" cy="80" r="4" fill="#3b82f6" />
-                              <circle cx="200" cy="80" r="8" fill="#3b82f6" opacity="0.2" className="animate-ping" />
-                           </svg>
-
-                           <div className="absolute inset-0 flex justify-between items-end pb-1 md:pb-2 opacity-50">
-                              {["00:00", "06:00", "12:00", "18:00"].map(t => (
-                                 <span key={t} className="text-[7px] md:text-[8px] font-black text-gray-400 italic">{t}</span>
-                              ))}
-                           </div>
-
-                           <div className="absolute top-[60px] md:top-[80px] left-[150px] md:left-[200px] flex gap-3 md:gap-4">
-                              <div className="flex items-center gap-1.5">
-                                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
-                                 <span className="text-[8px] md:text-[9px] font-black text-zinc-900 uppercase">Now</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                 <div className="w-1.5 h-0.5 md:w-2 md:h-0.5 bg-orange-500 border-2 border-orange-500 border-dashed" />
-                                 <span className="text-[8px] md:text-[9px] font-black text-orange-500 uppercase">Prediction</span>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-
-                     {/* Seismic Activity Card */}
-                     <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 shadow-sm border border-gray-100 group">
-                        <div className="flex justify-between items-center mb-6 md:mb-10">
-                           <div className="space-y-1">
-                              <h3 className="text-sm md:text-base font-black text-zinc-900 italic">{t("seismic_monitor_title")}</h3>
-                              <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase">Central Province</p>
-                           </div>
-                           <div className="flex flex-col items-end gap-1">
-                              <span className="text-[7px] md:text-[8px] font-black text-green-500 bg-green-50 px-1.5 md:px-2 py-0.5 rounded border border-green-100 tracking-widest">NORMAL ACTIVITY</span>
-                              <Settings className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-300 hover:text-zinc-900 cursor-pointer" />
-                           </div>
-                        </div>
-
-                        <div className="h-32 md:h-40 bg-gray-50 rounded-2xl flex items-center justify-center relative overflow-hidden">
-                           <div className="absolute inset-0 opacity-10">
-                              {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-1px w-full bg-zinc-900" style={{ top: `${i * 16}%` }} />)}
-                           </div>
-                           <svg className="w-full h-full" viewBox="0 0 400 100">
-                              <path
-                                 d="M0,50 L20,50 L30,48 L40,52 L60,50 L80,50 L90,40 L100,60 L110,50 L140,50 L160,50 L170,30 L180,70 L190,50 L220,50 L240,40 L260,60 L280,50 L310,35 L320,65 L330,50 L400,50"
-                                 fill="none"
-                                 stroke="#10b981"
-                                 strokeWidth="2"
-                                 className="animate-[dash_5s_linear_infinite]"
-                              />
-                              <line x1="330" y1="0" x2="330" y2="100" stroke="#10b981" opacity="0.2" />
-                           </svg>
-
-                           <div className="absolute bottom-3 md:bottom-4 left-0 right-0 px-4 md:px-6 flex justify-between">
-                              {["Cluster A", "Cluster B", "Cluster C"].map(c => (
-                                 <span key={c} className="text-[7px] md:text-[8px] font-black text-gray-400 uppercase italic tracking-widest">{c}</span>
-                              ))}
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* Message Summary */}
-                  <div className="space-y-8">
+                  {/* NLP messages Section */}
+                  <div className="space-y-6">
                      <div className="flex justify-between items-center">
                         <h2 className="text-xl font-black text-zinc-900 italic flex items-center gap-3 underline decoration-orange-500 decoration-4 underline-offset-8">
                            <Zap className="w-6 h-6 text-orange-500" />
                            {t("nlp_analysis_title")}
                         </h2>
-                        <button
-                           onClick={() => setIsNLPModalOpen(true)}
-                           className="text-[10px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-2 hover:translate-x-1 transition-transform border border-orange-100 bg-orange-50/50 px-4 py-2 rounded-xl"
-                        >
-                           Deep Dive Analysis <ChevronRight className="w-4 h-4" />
+                        <button onClick={() => setIsNLPModalOpen(true)} className="px-5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-900 hover:text-white transition-all">
+                           Analysis Deep-Dive
                         </button>
                      </div>
 
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {messages.map((msg) => (
                            <div key={msg.id} className={cn(
-                              "bg-white p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border-2 transition-all hover:shadow-xl",
-                              msg.active ? "border-orange-500 ring-4 ring-orange-500/5 shadow-lg" : "border-gray-100"
+                              "bg-white p-6 rounded-[2rem] border-2 transition-all hover:shadow-xl group cursor-pointer",
+                              msg.active ? "border-zinc-900 shadow-lg" : "border-zinc-50 hover:border-zinc-200"
                            )}>
-                              <div className="flex justify-between items-center mb-4 md:mb-6">
+                              <div className="flex justify-between items-center mb-6">
                                  <span className={cn(
-                                    "text-[7px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 rounded tracking-widest uppercase",
+                                    "text-[8px] font-black px-2 py-0.5 rounded tracking-widest uppercase",
                                     msg.type === 'HIGH PANIC' ? "bg-red-500 text-white" :
                                        msg.type === 'WARNING' ? "bg-orange-500 text-white" : "bg-green-500 text-white"
                                  )}>{msg.type}</span>
-                                 <span className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-tighter italic">ID: {msg.id}</span>
+                                 <Settings className="w-3.5 h-3.5 text-zinc-200 group-hover:text-zinc-900" />
                               </div>
-
-                              <h4 className="text-base md:text-lg font-black text-zinc-900 italic tracking-tight mb-2 leading-tight">{msg.title}</h4>
-                              <p className="text-[9px] md:text-[10px] font-bold text-gray-500 tracking-tighter uppercase mb-4 md:mb-6">Aggregated from <span className="text-zinc-900">{msg.count}+ reports</span></p>
-
-                              <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
-                                 <span className="text-[8px] md:text-[9px] font-black text-gray-300 uppercase italic tracking-widest block">Key Topics</span>
-                                 <div className="flex flex-wrap gap-1.5 md:gap-2">
-                                    {msg.topics.map(t => (
-                                       <span key={t} className="px-2.5 md:px-3 py-1 md:py-1.5 bg-gray-50 text-[9px] md:text-[10px] font-bold text-gray-600 rounded-lg group-hover:bg-white transition-colors">{t}</span>
-                                    ))}
-                                 </div>
+                              <h4 className="text-lg font-black text-zinc-900 italic leading-tight mb-2">{msg.title}</h4>
+                              <p className="text-[10px] font-bold text-zinc-400 uppercase mb-6">{msg.count}+ Shared sentiments</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                 {msg.topics.map(t => (
+                                    <span key={t} className="px-3 py-1 bg-zinc-50 text-[10px] font-black text-zinc-500 rounded-xl group-hover:bg-zinc-100">{t}</span>
+                                 ))}
                               </div>
-
-                              <Link href="/ai/briefing" className="w-full py-3 md:py-4 rounded-xl bg-gray-50 hover:bg-zinc-900 border border-gray-100 hover:border-zinc-900 text-[9px] md:text-[10px] font-black uppercase text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2 tracking-widest italic group">
-                                 Generate Briefing
-                                 <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:translate-x-1 transition-transform" />
-                              </Link>
                            </div>
                         ))}
                      </div>
                   </div>
                </div>
 
-               {/* Sidebar - SOS Feed */}
-               <div className="lg:col-span-4 flex flex-col gap-8">
-                  <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 flex flex-col h-full sticky top-8">
-                     <div className="flex items-center justify-between mb-8">
-                        <h3 className="font-black text-zinc-900 italic flex items-center gap-2">
-                           <Activity className="w-5 h-5 text-red-500" />
-                           {t("priority_sos_feed")}
+               {/* Sidebar SOS */}
+               <div className="lg:col-span-4">
+                  <div className="bg-zinc-900 text-white rounded-[2.5rem] p-8 shadow-2xl h-full border border-white/5 relative overflow-hidden group">
+                     {/* Background Glow */}
+                     <div className="absolute -top-24 -right-24 w-64 h-64 bg-red-500/10 blur-[100px] group-hover:bg-red-500/20 transition-all" />
+                     
+                     <div className="flex items-center justify-between mb-8 relative">
+                        <h3 className="font-black italic flex items-center gap-3 tracking-tight text-xl">
+                           <Activity className="w-6 h-6 text-red-500 animate-pulse" />
+                           Priority Feed
                         </h3>
                      </div>
 
-                     <div className="flex bg-gray-100 p-1 rounded-xl mb-8">
-                        {["All (14)", "Critical (5)", "High (9)"].map((f) => (
-                           <button
-                              key={f}
-                              onClick={() => setSosFilter(f.split(' ')[0])}
-                              className={cn(
-                                 "flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
-                                 sosFilter === f.split(' ')[0] ? "bg-orange-500 text-white shadow-lg" : "text-gray-400 hover:text-zinc-900"
-                              )}
-                           >
-                              {f}
-                           </button>
-                        ))}
-                     </div>
-
-                     <div className="space-y-4 md:space-y-6 flex-1 overflow-y-auto pr-2 scrollbar-hide">
+                     <div className="space-y-6 relative">
                         {[
-                           { match: "98%", time: "2m ago", title: "Medical Emergency - Galle Face", desc: '"Urgent help needed. Elderly person with breathing difficulty. Water rising fast on ground floor."', priority: "CRITICAL" },
-                           { match: "92%", time: "15m ago", title: "Trapped Family - Kandy", desc: '"Landslide blocked our exit. 4 people inside including children. Please hurry."', priority: "CRITICAL" },
-                           { priority: "HIGH", title: "Stranded Group - Matara", desc: '"Bus stuck in flood water. Engine dead. ~20 passengers. Water level stable for now."', time: "32m ago" },
-                           { priority: "MEDIUM", title: "Supply Request - Shelter 4", desc: '"Running low on clean water bottles. Need restock by tomorrow morning."', time: "1h ago" }
+                           { title: "Rescue Needed: Matara", time: "Just Now", status: "Critical", desc: "Elderly person stranded. Water level 1.2m and rising." },
+                           { title: "Bridge Blocked: Kelanimulla", time: "12m ago", status: "High", desc: "Debris causing local backup. Heavy flow predicted." }
                         ].map((sos, i) => (
-                           <div key={i} className={cn(
-                              "relative p-4 md:p-5 rounded-2xl border transition-all hover:shadow-md group",
-                              sos.priority === 'CRITICAL' ? "bg-white border-l-4 border-l-red-500 shadow-sm" :
-                                 sos.priority === 'HIGH' ? "bg-white border-l-4 border-l-orange-500" : "bg-gray-50 border-gray-100"
-                           )}>
-                              <div className="flex justify-between items-center mb-2 md:mb-3">
-                                 {sos.match ? (
-                                    <span className="text-[7px] md:text-[8px] font-black bg-red-500 text-white px-1.5 py-0.5 rounded tracking-widest">{sos.priority} - {sos.match}</span>
-                                 ) : (
-                                    <span className={cn(
-                                       "text-[7px] md:text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest uppercase",
-                                       sos.priority === 'HIGH' ? "bg-orange-500 text-white" : "bg-gray-400 text-white"
-                                    )}>{sos.priority}</span>
-                                 )}
-                                 <div className="flex items-center gap-1.5 text-[7px] md:text-[8px] font-bold text-gray-400 italic">
-                                    <div className="w-1 h-1 bg-red-500 rounded-full animate-pulse" />
-                                    {sos.time}
-                                 </div>
+                           <div key={i} className="p-5 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-all group/item">
+                              <div className="flex justify-between items-start mb-2">
+                                 <span className={cn(
+                                    "text-[8px] font-black px-2 py-0.5 rounded tracking-widest uppercase",
+                                    sos.status === 'Critical' ? "bg-red-600" : "bg-orange-600"
+                                 )}>{sos.status}</span>
+                                 <span className="text-[9px] font-bold text-zinc-500 italic uppercase">{sos.time}</span>
                               </div>
-                              <h4 className="text-[11px] md:text-[12px] font-black text-zinc-900 italic mb-1 md:mb-2 tracking-tight group-hover:text-red-500 transition-colors">{sos.title}</h4>
-                              <p className="text-[10px] md:text-[11px] font-medium text-gray-500 leading-relaxed italic line-clamp-2">{sos.desc}</p>
-
-                              <div className="mt-3 md:mt-4 flex gap-2">
-                                 {sos.priority === 'CRITICAL' ? (
-                                    <>
-                                       <button
-                                          onClick={() => setIsDispatchModalOpen(true)}
-                                          className="flex-1 bg-red-500 hover:bg-black text-white text-[9px] md:text-[10px] font-black uppercase italic py-1.5 md:py-2 rounded-lg transition-all flex items-center justify-center gap-2"
-                                       >
-                                          <Zap className="w-3 h-3 md:w-3.5 md:h-3.5 fill-white" />
-                                          Dispatch
-                                       </button>
-                                       <button className="p-1.5 md:p-2 border border-gray-100 hover:bg-gray-50 rounded-lg transition-colors">
-                                          <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-400" />
-                                       </button>
-                                    </>
-                                 ) : (
-                                    <button className="w-full bg-slate-100 hover:bg-white border border-transparent hover:border-gray-200 text-gray-600 hover:text-zinc-900 text-[8px] md:text-[9px] font-black uppercase italic py-1.5 md:py-2 rounded-lg transition-all flex items-center justify-center gap-2">
-                                       {sos.priority === 'MEDIUM' ? 'Log Request' : 'Verify'}
-                                       {sos.priority === 'MEDIUM' ? <FileText className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
-                                    </button>
-                                 )}
-                              </div>
+                              <h4 className="text-sm font-black italic mb-2 tracking-tight">{sos.title}</h4>
+                              <p className="text-xs text-zinc-400 font-medium leading-relaxed">{sos.desc}</p>
+                              <button className="mt-4 w-full py-3 bg-white text-zinc-900 rounded-xl text-[10px] font-black uppercase italic tracking-widest hover:bg-orange-500 hover:text-white transition-all">
+                                 Dispatch Team
+                              </button>
                            </div>
                         ))}
                      </div>
 
-                     <div className="pt-8 border-t border-gray-50 mt-8 space-y-4">
-                        <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest italic">
-                           <span className="text-gray-300">System Status:</span>
-                           <span className="text-green-500">Operational • Latency: 24ms</span>
-                        </div>
+                     <div className="mt-8 pt-8 border-t border-white/10">
+                        <Link href="/sos" className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
+                           View Global SOS Map
+                           <ChevronRight className="w-5 h-5" />
+                        </Link>
                      </div>
                   </div>
                </div>
@@ -358,21 +344,6 @@ export default function AIDashboard() {
          <NLPDeepDiveModal isOpen={isNLPModalOpen} onClose={() => setIsNLPModalOpen(false)} />
          <DispatchModal isOpen={isDispatchModalOpen} onClose={() => setIsDispatchModalOpen(false)} />
          <WaterLevelAnalyticsModal isOpen={isWaterAnalyticsOpen} onClose={() => setIsWaterAnalyticsOpen(false)} />
-
-         <style jsx global>{`
-        @keyframes dash {
-          to {
-            stroke-dashoffset: -400;
-          }
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
       </div>
    );
 }

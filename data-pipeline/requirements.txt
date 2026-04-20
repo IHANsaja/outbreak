@@ -1,0 +1,9 @@
+requests
+beautifulsoup4
+pdfplumber
+easyocr
+pytz
+apscheduler
+pandas
+numpy
+python-dotenv

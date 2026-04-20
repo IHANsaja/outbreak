@@ -1,0 +1,29 @@
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env/
+.venv/
+
+# Node/Next.js
+node_modules/
+.next/
+out/
+build/
+
+# Project specifics
+dmc_downloads/
+*.log
+pipeline_state.json
+latest_history.json
+data-pipeline/processed_urls.json
+data/training_data.csv
