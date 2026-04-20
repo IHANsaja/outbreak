@@ -1,0 +1,452 @@
+[
+  {
+    "id": 0,
+    "name": "Agra Oya",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 1,
+    "name": "Attanagalu Oya",
+    "river": "Attanagalu Oya (RB 103)"
+  },
+  {
+    "id": 2,
+    "name": "AttanagaluOya",
+    "river": "AttanagaluOya (RB103)"
+  },
+  {
+    "id": 3,
+    "name": "Badalgama",
+    "river": "Maha Oya (RB 102)"
+  },
+  {
+    "id": 4,
+    "name": "Baddegama",
+    "river": "Gin Ganga (RB 09)"
+  },
+  {
+    "id": 5,
+    "name": "Badulu Oya",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 6,
+    "name": "BaduluOya",
+    "river": "Mahaweli Ganga (RB60)"
+  },
+  {
+    "id": 7,
+    "name": "Bolana",
+    "river": "Walawe Ganga (RB 18)"
+  },
+  {
+    "id": 8,
+    "name": "Calidonia",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 9,
+    "name": "Deduru Oya",
+    "river": "Deduru Oya (RB 99)"
+  },
+  {
+    "id": 10,
+    "name": "DeduruOya",
+    "river": "DeduruOya (RB99)"
+  },
+  {
+    "id": 11,
+    "name": "Deraniyagala",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 12,
+    "name": "Dunamale",
+    "river": "Attanagalu Oya (RB 103)"
+  },
+  {
+    "id": 13,
+    "name": "Ellagawa",
+    "river": "Kalu Ganga (RB 03)"
+  },
+  {
+    "id": 14,
+    "name": "Galgamuwa",
+    "river": "Mee Oya (RB 95)"
+  },
+  {
+    "id": 15,
+    "name": "Gin Ganga",
+    "river": "Gin Ganga (RB 09)"
+  },
+  {
+    "id": 16,
+    "name": "GinGanga",
+    "river": "GinGanga (RB09)"
+  },
+  {
+    "id": 17,
+    "name": "Giriulla",
+    "river": "Maha Oya (RB 102)"
+  },
+  {
+    "id": 18,
+    "name": "Glencourse",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 19,
+    "name": "Gurugoda Oya",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 20,
+    "name": "GurugodaOya",
+    "river": "KelaniGanga (RB01)"
+  },
+  {
+    "id": 21,
+    "name": "Hanwella",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 22,
+    "name": "Heda Oya",
+    "river": "Heda Oya (RB 36)"
+  },
+  {
+    "id": 23,
+    "name": "HedaOya",
+    "river": "HedaOya (RB36)"
+  },
+  {
+    "id": 24,
+    "name": "Holombuwa",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 25,
+    "name": "Horowpatana",
+    "river": "Yan Oya (RB 67)"
+  },
+  {
+    "id": 26,
+    "name": "Kalu Ganga",
+    "river": "Kalu Ganga (RB 03)"
+  },
+  {
+    "id": 27,
+    "name": "KaluGanga",
+    "river": "KaluGanga (RB03)"
+  },
+  {
+    "id": 28,
+    "name": "Kehelgamu Oya",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 29,
+    "name": "KehelgamuOya",
+    "river": "KelaniGanga (RB01)"
+  },
+  {
+    "id": 30,
+    "name": "Kelani Ganga",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 31,
+    "name": "KelaniGanga",
+    "river": "KelaniGanga (RB01)"
+  },
+  {
+    "id": 32,
+    "name": "Kirindi Oya",
+    "river": "Kirindi Oya (RB 22)"
+  },
+  {
+    "id": 33,
+    "name": "KirindiOya",
+    "river": "KirindiOya (RB22)"
+  },
+  {
+    "id": 34,
+    "name": "Kitulgala",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 35,
+    "name": "Kuda Ganga",
+    "river": "Kalu Ganga (RB 03)"
+  },
+  {
+    "id": 36,
+    "name": "Kuda Oya",
+    "river": "Kirindi Oya (RB 22)"
+  },
+  {
+    "id": 37,
+    "name": "KudaGanga",
+    "river": "KaluGanga (RB03)"
+  },
+  {
+    "id": 38,
+    "name": "KudaOya",
+    "river": "KirindiOya (RB22)"
+  },
+  {
+    "id": 39,
+    "name": "Kumbukkan Oya",
+    "river": "Kumbukkan Oya (RB 31)"
+  },
+  {
+    "id": 40,
+    "name": "KumbukkanOya",
+    "river": "KumbukkanOya (RB31)"
+  },
+  {
+    "id": 41,
+    "name": "Maduru Oya",
+    "river": "Maduru Oya (RB 54)"
+  },
+  {
+    "id": 42,
+    "name": "MaduruOya",
+    "river": "MaduruOya (RB54)"
+  },
+  {
+    "id": 44,
+    "name": "Maguru Ganga",
+    "river": "Kalu Ganga (RB 03)"
+  },
+  {
+    "id": 45,
+    "name": "MaguruGanga",
+    "river": "KaluGanga (RB03)"
+  },
+  {
+    "id": 46,
+    "name": "Maha Oya",
+    "river": "Maha Oya (RB 102)"
+  },
+  {
+    "id": 47,
+    "name": "MahaOya",
+    "river": "MahaOya (RB102)"
+  },
+  {
+    "id": 48,
+    "name": "Mahaweli Ganga",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 49,
+    "name": "MahaweliGanga",
+    "river": "Mahaweli Ganga (RB60)"
+  },
+  {
+    "id": 50,
+    "name": "Malwathu Oya",
+    "river": "Malwathu Oya (RB 90)"
+  },
+  {
+    "id": 51,
+    "name": "MalwathuOya",
+    "river": "MalwathuOya (RB90)"
+  },
+  {
+    "id": 52,
+    "name": "Manampitiya",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 53,
+    "name": "Mee Oya",
+    "river": "Mee Oya (RB 95)"
+  },
+  {
+    "id": 54,
+    "name": "MeeOya",
+    "river": "MeeOya (RB95)"
+  },
+  {
+    "id": 55,
+    "name": "Menik Ganga",
+    "river": "Menik Ganga (RB 26) Kumbukkan Oya (RB 31)"
+  },
+  {
+    "id": 56,
+    "name": "MenikGanga",
+    "river": "MenikGanga (RB26)"
+  },
+  {
+    "id": 57,
+    "name": "Millakanda",
+    "river": "Kalu Ganga (RB 03)"
+  },
+  {
+    "id": 58,
+    "name": "Mukunu Oya",
+    "river": "Maa Oya (RB 69)"
+  },
+  {
+    "id": 59,
+    "name": "MukunuOya",
+    "river": "MaaOya(RB 69)"
+  },
+  {
+    "id": 60,
+    "name": "N' Street",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 61,
+    "name": "Nakkala",
+    "river": "Kumbukkan Oya (RB 31)"
+  },
+  {
+    "id": 62,
+    "name": "Nawalapitiya",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 63,
+    "name": "Nilwala Ganga",
+    "river": "Nilwala Ganga (RB 12)"
+  },
+  {
+    "id": 64,
+    "name": "NilwalaGanga",
+    "river": "NilwalaGanga (RB12)"
+  },
+  {
+    "id": 65,
+    "name": "Norwood",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 66,
+    "name": "P anadugama",
+    "river": "Nilwala Ganga (RB 12)"
+  },
+  {
+    "id": 67,
+    "name": "Padiyatalawa",
+    "river": "Maduru Oya (RB 54)"
+  },
+  {
+    "id": 68,
+    "name": "Panadugama",
+    "river": "Nilwala Ganga (RB 12)"
+  },
+  {
+    "id": 69,
+    "name": "Peradeniya",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 70,
+    "name": "Pitabeddara",
+    "river": "Nilwala Ganga (RB 12)"
+  },
+  {
+    "id": 71,
+    "name": "Putupaula",
+    "river": "Kalu Ganga (RB 03)"
+  },
+  {
+    "id": 72,
+    "name": "Ratnapura",
+    "river": "Kalu Ganga (RB 03)"
+  },
+  {
+    "id": 73,
+    "name": "Ridi bendi Ella (Dam)",
+    "river": "Deduru Oya (RB 99)"
+  },
+  {
+    "id": 74,
+    "name": "Seethawaka Ganga",
+    "river": "Kelani Ganga (RB 01)"
+  },
+  {
+    "id": 75,
+    "name": "SeethawakaGanga",
+    "river": "KelaniGanga (RB01)"
+  },
+  {
+    "id": 76,
+    "name": "Siyambalanduwa",
+    "river": "Heda Oya (RB 36)"
+  },
+  {
+    "id": 77,
+    "name": "Taldena",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 78,
+    "name": "Tanamalwila",
+    "river": "Kirindi Oya (RB 22)"
+  },
+  {
+    "id": 79,
+    "name": "Tantirimale",
+    "river": "Malwathu Oya (RB 90)"
+  },
+  {
+    "id": 80,
+    "name": "Tawalama",
+    "river": "Gin Ganga (RB 09)"
+  },
+  {
+    "id": 81,
+    "name": "Urawa",
+    "river": "Nilwala Ganga (RB 12)"
+  },
+  {
+    "id": 82,
+    "name": "Urubokka Ganga",
+    "river": "Nilwala Ganga (RB 12)"
+  },
+  {
+    "id": 83,
+    "name": "UrubokkaGanga",
+    "river": "NilwalaGanga (RB12)"
+  },
+  {
+    "id": 84,
+    "name": "Walawe Ganga",
+    "river": "Walawe Ganga (RB 18)"
+  },
+  {
+    "id": 85,
+    "name": "WalaweGanga",
+    "river": "WalaweGanga (RB18)"
+  },
+  {
+    "id": 86,
+    "name": "Wellawaya",
+    "river": "Kirindi Oya (RB 22)"
+  },
+  {
+    "id": 87,
+    "name": "Weragantota",
+    "river": "Mahaweli Ganga (RB 60)"
+  },
+  {
+    "id": 88,
+    "name": "Yakawewa",
+    "river": "Maa Oya (RB 69) Mukunu Oya"
+  },
+  {
+    "id": 89,
+    "name": "Yan Oya",
+    "river": "Yan Oya (RB 67)"
+  },
+  {
+    "id": 90,
+    "name": "YanOya",
+    "river": "YanOya (RB67)"
+  }
+]

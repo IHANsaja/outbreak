@@ -19,13 +19,16 @@ import {
    Settings,
    Waves,
    Heart,
-   ChevronDown
+   ChevronDown,
+   Droplets,
+   CloudRain,
+   Gauge
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { NLPDeepDiveModal, DispatchModal, WaterLevelAnalyticsModal } from "@/components/AIModals";
 import { getLatestRiverReports, getMonitoredStations } from "@/app/actions/forecasting";
@@ -64,12 +67,143 @@ export default function AIDashboard() {
    const latestReport = reports[reports.length - 1];
    const currentStation = stations.find(s => s.id === selectedStationId);
 
-   // Stats derived from current station or global (as per user request: Global Selection)
+   // ──────────────────────────────────────────────
+   // Chart scaling logic — dynamic based on actual data
+   // ──────────────────────────────────────────────
+   const chartConfig = useMemo(() => {
+      if (!reports.length || !latestReport) return null;
+
+      const waterLevels = reports.map(r => r.water_level_now);
+      const allValues = [
+         ...waterLevels,
+         latestReport.minor_flood,
+         latestReport.major_flood,
+      ];
+
+      // Include forecasts if available
+      if (latestReport.forecast_1h) allValues.push(latestReport.forecast_1h);
+      if (latestReport.forecast_12h) allValues.push(latestReport.forecast_12h);
+      if (latestReport.forecast_24h) allValues.push(latestReport.forecast_24h);
+
+      const dataMin = Math.min(...allValues);
+      const dataMax = Math.max(...allValues);
+      
+      // Add 15% padding above and below
+      const range = dataMax - dataMin || 1;
+      const yMin = Math.max(0, dataMin - range * 0.15);
+      const yMax = dataMax + range * 0.15;
+
+      // Chart dimensions (inside padding)
+      const chartW = 880;
+      const chartH = 280;
+      const padLeft = 60;
+      const padRight = 20;
+      const padTop = 20;
+      const padBottom = 40;
+
+      const scaleY = (val: number) => {
+         const ratio = (val - yMin) / (yMax - yMin);
+         return padTop + chartH - ratio * chartH;
+      };
+
+      const totalPoints = reports.length;
+      // Reserve horizontal space for future forecasts (up to +4 offset)
+      const forecastReserve = 4.5; 
+      const domainX = totalPoints > 1 ? (totalPoints - 1) + forecastReserve : Math.max(1, forecastReserve);
+      const xStep = chartW / domainX;
+      const scaleX = (i: number) => padLeft + i * xStep;
+
+      // Generate nice Y-axis ticks
+      const tickCount = 5;
+      const niceStep = (yMax - yMin) / (tickCount - 1);
+      const yTicks: number[] = [];
+      for (let i = 0; i < tickCount; i++) {
+         yTicks.push(yMin + i * niceStep);
+      }
+
+      return { yMin, yMax, chartW, chartH, padLeft, padRight, padTop, padBottom, scaleY, scaleX, yTicks, xStep, totalPoints };
+   }, [reports, latestReport]);
+
+   // Build SVG path strings
+   const historyPath = useMemo(() => {
+      if (!chartConfig || reports.length < 1) return "";
+      return reports.map((r, i) => {
+         const x = chartConfig.scaleX(i);
+         const y = chartConfig.scaleY(r.water_level_now);
+         return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+   }, [reports, chartConfig]);
+
+   const areaPath = useMemo(() => {
+      if (!chartConfig || reports.length < 1) return "";
+      const { scaleX, scaleY, padTop, chartH } = chartConfig;
+      const bottom = padTop + chartH;
+      const points = reports.map((r, i) => `${scaleX(i).toFixed(1)},${scaleY(r.water_level_now).toFixed(1)}`);
+      return `M ${scaleX(0).toFixed(1)},${bottom} L ${points.join(' L ')} L ${scaleX(reports.length - 1).toFixed(1)},${bottom} Z`;
+   }, [reports, chartConfig]);
+
+   const forecastPath = useMemo(() => {
+      if (!chartConfig || !latestReport?.forecast_1h) return "";
+      const { scaleX, scaleY } = chartConfig;
+      const lastIdx = reports.length - 1;
+      const startX = scaleX(lastIdx);
+      const startY = scaleY(latestReport.water_level_now);
+      
+      const forecasts = [
+         { val: latestReport.forecast_1h, offset: 1 },
+         { val: latestReport.forecast_12h, offset: 2.5 },
+         { val: latestReport.forecast_24h, offset: 4 },
+      ].filter(f => f.val != null);
+
+      if (!forecasts.length) return "";
+      
+      let d = `M ${startX.toFixed(1)},${startY.toFixed(1)}`;
+      forecasts.forEach(f => {
+         d += ` L ${scaleX(lastIdx + f.offset).toFixed(1)},${scaleY(f.val).toFixed(1)}`;
+      });
+      return d;
+   }, [reports, latestReport, chartConfig]);
+
+   // Human-readable metric cards
    const statsData = [
-      { key: "water_level", value: latestReport ? `${latestReport.water_level_now.toFixed(2)}m` : "--", change: latestReport && latestReport.water_level_now > latestReport.water_level_lag1 ? "+Rise" : "Stable", icon: Waves, color: "text-blue-500", bg: "bg-blue-50" },
-      { key: "alert_status", value: latestReport?.water_level_now >= latestReport?.minor_flood ? "WARNING" : "NORMAL", status: latestReport?.water_level_now >= latestReport?.minor_flood ? "CRITICAL" : "OK", icon: AlertCircle, color: latestReport?.water_level_now >= latestReport?.minor_flood ? "text-red-500" : "text-green-500", bg: latestReport?.water_level_now >= latestReport?.minor_flood ? "bg-red-50" : "bg-green-50" },
-      { key: "rainfall_24h", value: latestReport ? `${latestReport.rainfall_roll3.toFixed(1)}mm` : "--", change: "Current", icon: Zap, color: "text-orange-500", bg: "bg-orange-50" },
-      { key: "ai_confidence", value: "94%", status: "stable", icon: Brain, color: "text-green-500", bg: "bg-green-50" },
+      { 
+         label: "Water Level", 
+         value: latestReport ? `${latestReport.water_level_now.toFixed(2)}m` : "--", 
+         sub: latestReport && latestReport.water_level_lag1 
+            ? `${latestReport.water_level_now > latestReport.water_level_lag1 ? '▲' : '▼'} from ${latestReport.water_level_lag1.toFixed(2)}m`
+            : "Current reading",
+         icon: Waves, 
+         color: "text-sky-600", 
+         bg: "bg-sky-50",
+         border: "border-sky-100"
+      },
+      { 
+         label: "Alert Status", 
+         value: latestReport?.water_level_now >= latestReport?.minor_flood ? "WARNING" : "NORMAL", 
+         sub: latestReport?.water_level_now >= latestReport?.major_flood ? "Major flood level exceeded" : latestReport?.water_level_now >= latestReport?.minor_flood ? "Minor flood level reached" : "Below alert threshold",
+         icon: ShieldAlert, 
+         color: latestReport?.water_level_now >= latestReport?.minor_flood ? "text-red-600" : "text-emerald-600", 
+         bg: latestReport?.water_level_now >= latestReport?.minor_flood ? "bg-red-50" : "bg-emerald-50",
+         border: latestReport?.water_level_now >= latestReport?.minor_flood ? "border-red-100" : "border-emerald-100"
+      },
+      { 
+         label: "Rainfall (3h avg)", 
+         value: latestReport ? `${latestReport.rainfall_roll3.toFixed(1)}mm` : "--", 
+         sub: "Rolling 3-hour average",
+         icon: CloudRain, 
+         color: "text-orange-600", 
+         bg: "bg-orange-50",
+         border: "border-orange-100"
+      },
+      { 
+         label: "AI Confidence", 
+         value: latestReport?.forecast_1h ? "94%" : "—", 
+         sub: latestReport?.forecast_1h ? "Model ensemble active" : "Awaiting forecast data",
+         icon: Brain, 
+         color: "text-violet-600", 
+         bg: "bg-violet-50",
+         border: "border-violet-100"
+      },
    ];
 
    const messages = [
@@ -77,6 +211,14 @@ export default function AIDashboard() {
       { id: "NLP-841", type: "WARNING", title: "Regional Risk Assessment", count: 128, topics: ["Mud flow", "Drainage block"], color: "border-orange-500", active: true },
       { id: "NLP-772", type: "RECOVERING", title: "Upstream Discharge", count: 210, topics: ["Gate opening", "Flow rate"], color: "border-green-500" },
    ];
+
+   // Format timestamp for X-axis
+   const formatTime = (ts: string) => {
+      try {
+         const d = new Date(ts);
+         return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      } catch { return ""; }
+   };
 
    return (
       <div className="min-h-screen bg-white flex flex-col font-sans">
@@ -116,11 +258,35 @@ export default function AIDashboard() {
                </div>
             </div>
 
-            {/* Immersive Hero Analytics */}
+            {/* ─── Stat Cards Row ─── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+               {statsData.map((s, i) => (
+                  <motion.div
+                     key={i}
+                     initial={{ opacity: 0, y: 12 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     transition={{ delay: i * 0.08 }}
+                     className={cn(
+                        "p-5 rounded-2xl border transition-all hover:shadow-md",
+                        s.bg, s.border
+                     )}
+                  >
+                     <div className="flex items-center gap-2 mb-3">
+                        <s.icon className={cn("w-4 h-4", s.color)} />
+                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{s.label}</span>
+                     </div>
+                     <div className={cn("text-2xl font-black italic tracking-tighter mb-1", s.color)}>{s.value}</div>
+                     <div className="text-[10px] font-medium text-zinc-400">{s.sub}</div>
+                  </motion.div>
+               ))}
+            </div>
+
+            {/* ─── Hero Water Level Chart ─── */}
             <div className="mb-8 p-1 bg-zinc-50 rounded-[2.5rem]">
-               <div className="bg-white rounded-[2.4rem] p-8 md:p-12 shadow-sm border border-zinc-100 relative overflow-hidden">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-12">
-                     <div className="space-y-2">
+               <div className="bg-white rounded-[2.4rem] p-6 md:p-8 shadow-sm border border-zinc-100 relative overflow-hidden">
+                  {/* Chart Header */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
                            <div className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100 flex items-center gap-2">
                               <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
@@ -132,22 +298,30 @@ export default function AIDashboard() {
                               </div>
                            )}
                         </div>
-                        <h2 className="text-2xl font-black text-zinc-900 tracking-tight italic">
-                           {currentStation?.river} • {currentStation?.name} <span className="text-zinc-300 ml-2">Monitor</span>
+                        <h2 className="text-xl font-black text-zinc-900 tracking-tight italic">
+                           {currentStation?.river} • {currentStation?.name} <span className="text-zinc-300 ml-2">Water Level Monitor</span>
                         </h2>
                      </div>
 
-                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full md:w-auto">
-                        {statsData.map((s, i) => (
-                           <div key={i} className="flex flex-col">
-                              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{t(s.key)}</span>
-                              <span className={cn("text-lg font-black italic tracking-tighter", s.color)}>{s.value}</span>
-                           </div>
-                        ))}
+                     {/* Legend */}
+                     <div className="flex items-center gap-5 flex-wrap">
+                        <div className="flex items-center gap-2">
+                           <div className="w-6 h-[3px] rounded-full bg-sky-500" />
+                           <span className="text-[10px] font-bold text-zinc-500">Actual Level</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <div className="w-6 h-[3px] rounded-full bg-rose-500" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #f43f5e 0px, #f43f5e 4px, transparent 4px, transparent 8px)' }} />
+                           <span className="text-[10px] font-bold text-zinc-500">AI Forecast</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <div className="w-6 h-[2px] rounded-full bg-red-300" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #fca5a5 0px, #fca5a5 6px, transparent 6px, transparent 10px)' }} />
+                           <span className="text-[10px] font-bold text-zinc-500">Flood Limits</span>
+                        </div>
                      </div>
                   </div>
 
-                  <div className="h-64 md:h-80 relative flex items-end">
+                  {/* Chart Area */}
+                  <div className="h-80 md:h-96 relative">
                      {loading ? (
                         <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
                            <div className="flex flex-col items-center gap-4">
@@ -155,98 +329,199 @@ export default function AIDashboard() {
                               <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Compiling Forecasts...</span>
                            </div>
                         </div>
+                     ) : !chartConfig || reports.length === 0 ? (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                           <div className="text-center space-y-3">
+                              <Waves className="w-12 h-12 text-zinc-200 mx-auto" />
+                              <p className="text-sm font-bold text-zinc-400">No telemetry data available for this station</p>
+                              <p className="text-xs text-zinc-300">Data will appear after the next scraper cycle</p>
+                           </div>
+                        </div>
                      ) : (
-                        <svg className="w-full h-full" viewBox="0 0 1000 300" preserveAspectRatio="none">
-                           {/* Threshold Bands */}
+                        <svg className="w-full h-full" viewBox={`0 0 ${chartConfig.padLeft + chartConfig.chartW + chartConfig.padRight} ${chartConfig.padTop + chartConfig.chartH + chartConfig.padBottom}`} preserveAspectRatio="xMidYMid meet">
+                           <defs>
+                              <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.15" />
+                                 <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.01" />
+                              </linearGradient>
+                              <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.08" />
+                                 <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.01" />
+                              </linearGradient>
+                           </defs>
+
+                           {/* Y-axis grid lines & labels */}
+                           {chartConfig.yTicks.map((tick, i) => {
+                              const y = chartConfig.scaleY(tick);
+                              return (
+                                 <g key={`ytick-${i}`}>
+                                    <line x1={chartConfig.padLeft} y1={y} x2={chartConfig.padLeft + chartConfig.chartW} y2={y} stroke="#f4f4f5" strokeWidth="1" />
+                                    <text x={chartConfig.padLeft - 8} y={y + 3} textAnchor="end" className="text-[10px] font-bold" fill="#a1a1aa">
+                                       {tick.toFixed(1)}m
+                                    </text>
+                                 </g>
+                              );
+                           })}
+
+                           {/* X-axis time labels */}
+                           {reports.map((r, i) => {
+                              const x = chartConfig.scaleX(i);
+                              return (
+                                 <text key={`xlabel-${i}`} x={x} y={chartConfig.padTop + chartConfig.chartH + 25} textAnchor="middle" className="text-[9px] font-bold" fill="#a1a1aa">
+                                    {formatTime(r.timestamp)}
+                                 </text>
+                              );
+                           })}
+
+                           {/* Flood threshold lines */}
                            {latestReport && (
                               <>
-                                 <line x1="0" y1={300 - (latestReport.major_flood * 30)} x2="1000" y2={300 - (latestReport.major_flood * 30)} stroke="#fee2e2" strokeWidth="2" strokeDasharray="8 4" />
-                                 <text x="10" y={295 - (latestReport.major_flood * 30)} className="text-[10px] font-black fill-red-400 uppercase italic">Major Flood Limit</text>
+                                 {/* Major Flood */}
+                                 <line 
+                                    x1={chartConfig.padLeft} y1={chartConfig.scaleY(latestReport.major_flood)} 
+                                    x2={chartConfig.padLeft + chartConfig.chartW} y2={chartConfig.scaleY(latestReport.major_flood)} 
+                                    stroke="#fca5a5" strokeWidth="2" strokeDasharray="8 4" 
+                                 />
+                                 <rect x={chartConfig.padLeft + 4} y={chartConfig.scaleY(latestReport.major_flood) - 14} width="90" height="16" rx="4" fill="#fef2f2" />
+                                 <text x={chartConfig.padLeft + 8} y={chartConfig.scaleY(latestReport.major_flood) - 3} className="text-[9px] font-black" fill="#ef4444">
+                                    ⚠ MAJOR {latestReport.major_flood.toFixed(1)}m
+                                 </text>
                                  
-                                 <line x1="0" y1={300 - (latestReport.minor_flood * 30)} x2="1000" y2={300 - (latestReport.minor_flood * 30)} stroke="#ffedd5" strokeWidth="1" strokeDasharray="4 4" />
-                                 <text x="10" y={295 - (latestReport.minor_flood * 30)} className="text-[10px] font-black fill-orange-300 uppercase italic">Minor Flood Limit</text>
+                                 {/* Minor Flood */}
+                                 <line 
+                                    x1={chartConfig.padLeft} y1={chartConfig.scaleY(latestReport.minor_flood)} 
+                                    x2={chartConfig.padLeft + chartConfig.chartW} y2={chartConfig.scaleY(latestReport.minor_flood)} 
+                                    stroke="#fdba74" strokeWidth="1.5" strokeDasharray="4 4" 
+                                 />
+                                 <rect x={chartConfig.padLeft + 4} y={chartConfig.scaleY(latestReport.minor_flood) - 14} width="86" height="16" rx="4" fill="#fff7ed" />
+                                 <text x={chartConfig.padLeft + 8} y={chartConfig.scaleY(latestReport.minor_flood) - 3} className="text-[9px] font-black" fill="#f97316">
+                                    ▲ MINOR {latestReport.minor_flood.toFixed(1)}m
+                                 </text>
+
+                                 {/* Alert Level */}
+                                 <line 
+                                    x1={chartConfig.padLeft} y1={chartConfig.scaleY(latestReport.alert_level)} 
+                                    x2={chartConfig.padLeft + chartConfig.chartW} y2={chartConfig.scaleY(latestReport.alert_level)} 
+                                    stroke="#fde68a" strokeWidth="1" strokeDasharray="3 3" 
+                                 />
                               </>
                            )}
 
-                           {/* Historical Path (Last 12) */}
-                           <motion.path
-                              initial={{ pathLength: 0 }}
-                              animate={{ pathLength: 1 }}
-                              transition={{ duration: 1.5 }}
-                              d={`M ${reports.map((r, i) => `${i * 60},${300 - (r.water_level_now * 30)}`).join(' L ')}`}
-                              fill="none"
-                              stroke="#0ea5e9"
-                              strokeWidth="4"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                           />
-
-                           {/* Forecast Projection */}
-                           {latestReport && latestReport.forecast_1h && (
+                           {/* Area fill under history line */}
+                           {areaPath && (
                               <motion.path
                                  initial={{ opacity: 0 }}
                                  animate={{ opacity: 1 }}
-                                 transition={{ delay: 1 }}
-                                 d={`M ${(reports.length - 1) * 60},${300 - (latestReport.water_level_now * 30)} 
-                                     L ${reports.length * 60},${300 - (latestReport.forecast_1h * 30)} 
-                                     L ${(reports.length + 2) * 60},${300 - (latestReport.forecast_12h * 30)} 
-                                     L ${(reports.length + 4) * 60},${300 - (latestReport.forecast_24h * 30)}`}
-                                 fill="none"
-                                 stroke="#f43f5e"
-                                 strokeWidth="4"
-                                 strokeLinecap="round"
-                                 strokeDasharray="10 5"
-                                 className="animate-pulse"
+                                 transition={{ duration: 1 }}
+                                 d={areaPath}
+                                 fill="url(#areaGradient)"
                               />
                            )}
 
-                           {/* Data Points */}
-                           {reports.map((r, i) => (
-                              <g key={i} className="group/point">
-                                 <circle 
-                                    cx={i * 60} 
-                                    cy={300 - (r.water_level_now * 30)} 
-                                    r="6" 
-                                    fill="white" 
-                                    stroke="#0ea5e9" 
-                                    strokeWidth="3" 
-                                    className="cursor-pointer hover:fill-blue-500 transition-colors"
-                                 />
-                                 {i === reports.length - 1 && (
-                                    <circle cx={i * 60} cy={300 - (r.water_level_now * 30)} r="12" fill="#0ea5e9" opacity="0.2" className="animate-ping pointer-events-none" />
-                                 )}
-                              </g>
-                           ))}
+                           {/* Historical water level line */}
+                           {historyPath && (
+                              <motion.path
+                                 initial={{ pathLength: 0 }}
+                                 animate={{ pathLength: 1 }}
+                                 transition={{ duration: 1.2, ease: "easeOut" }}
+                                 d={historyPath}
+                                 fill="none"
+                                 stroke="#0ea5e9"
+                                 strokeWidth="3"
+                                 strokeLinecap="round"
+                                 strokeLinejoin="round"
+                              />
+                           )}
+
+                           {/* Forecast projection line */}
+                           {forecastPath && (
+                              <motion.path
+                                 initial={{ opacity: 0, pathLength: 0 }}
+                                 animate={{ opacity: 1, pathLength: 1 }}
+                                 transition={{ delay: 1, duration: 0.8 }}
+                                 d={forecastPath}
+                                 fill="none"
+                                 stroke="#f43f5e"
+                                 strokeWidth="3"
+                                 strokeLinecap="round"
+                                 strokeDasharray="8 4"
+                              />
+                           )}
+
+                           {/* Data points */}
+                           {reports.map((r, i) => {
+                              const cx = chartConfig.scaleX(i);
+                              const cy = chartConfig.scaleY(r.water_level_now);
+                              const isLast = i === reports.length - 1;
+                              return (
+                                 <g key={`point-${i}`}>
+                                    {/* Tooltip hover area */}
+                                    <title>{`${formatTime(r.timestamp)}: ${r.water_level_now.toFixed(2)}m`}</title>
+                                    <circle cx={cx} cy={cy} r="5" fill="white" stroke="#0ea5e9" strokeWidth="2.5" className="cursor-pointer hover:r-[7] transition-all" />
+                                    {isLast && (
+                                       <>
+                                          <circle cx={cx} cy={cy} r="14" fill="#0ea5e9" opacity="0.1" className="animate-ping" />
+                                          <circle cx={cx} cy={cy} r="8" fill="#0ea5e9" opacity="0.15" />
+                                          {/* Current value label */}
+                                          <rect x={cx + 12} y={cy - 12} width="52" height="20" rx="6" fill="#0ea5e9" />
+                                          <text x={cx + 16} y={cy + 2} className="text-[10px] font-black" fill="white">
+                                             {r.water_level_now.toFixed(2)}m
+                                          </text>
+                                       </>
+                                    )}
+                                 </g>
+                              );
+                           })}
+
+                           {/* Forecast data points */}
+                           {latestReport?.forecast_1h && chartConfig && (() => {
+                              const lastIdx = reports.length - 1;
+                              const forecasts = [
+                                 { val: latestReport.forecast_1h, offset: 1, label: "1h" },
+                                 { val: latestReport.forecast_12h, offset: 2.5, label: "12h" },
+                                 { val: latestReport.forecast_24h, offset: 4, label: "24h" },
+                              ].filter(f => f.val != null);
+
+                              return forecasts.map((f, i) => {
+                                 const cx = chartConfig.scaleX(lastIdx + f.offset);
+                                 const cy = chartConfig.scaleY(f.val);
+                                 return (
+                                    <g key={`forecast-${i}`}>
+                                       <circle cx={cx} cy={cy} r="4" fill="white" stroke="#f43f5e" strokeWidth="2" className="animate-pulse" />
+                                       <text x={cx} y={cy - 10} textAnchor="middle" className="text-[9px] font-black" fill="#f43f5e">
+                                          {f.label}: {f.val.toFixed(2)}m
+                                       </text>
+                                    </g>
+                                 );
+                              });
+                           })()}
                         </svg>
                      )}
+                  </div>
 
-                     <div className="absolute top-0 right-0 flex flex-col gap-4">
-                        <div className="bg-white/80 backdrop-blur-sm border border-zinc-100 p-4 rounded-3xl shadow-xl space-y-3">
-                           <div className="flex items-center gap-3">
-                              <div className="w-3 h-3 rounded-full bg-blue-500" />
-                              <span className="text-[10px] font-black text-zinc-900 uppercase italic">Actual level History</span>
+                  {/* Forecast Summary Bar */}
+                  {latestReport && (
+                     <div className="mt-4 pt-4 border-t border-zinc-50 grid grid-cols-3 gap-4">
+                        <div className="text-center p-3 rounded-xl bg-sky-50/50">
+                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Next 1h</div>
+                           <div className="text-lg font-black italic tracking-tighter text-sky-600">
+                              {latestReport.forecast_1h ? `${latestReport.forecast_1h.toFixed(2)}m` : '—'}
                            </div>
-                           <div className="flex items-center gap-3">
-                              <div className="w-3 h-3 rounded-full bg-rose-500 animate-pulse border-2 border-rose-100" />
-                              <span className="text-[10px] font-black text-zinc-900 uppercase italic">AI Predicted Trajectory</span>
+                        </div>
+                        <div className="text-center p-3 rounded-xl bg-orange-50/50">
+                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Next 12h</div>
+                           <div className="text-lg font-black italic tracking-tighter text-orange-600">
+                              {latestReport.forecast_12h ? `${latestReport.forecast_12h.toFixed(2)}m` : '—'}
                            </div>
-                           <div className="pt-2 border-t border-zinc-50 space-y-1">
-                              <div className="flex justify-between gap-8">
-                                 <span className="text-[9px] font-bold text-zinc-400 uppercase">Next 1h</span>
-                                 <span className="text-[10px] font-black text-rose-500">{latestReport?.forecast_1h ? `${latestReport.forecast_1h.toFixed(2)}m` : '--'}</span>
-                              </div>
-                              <div className="flex justify-between gap-8">
-                                 <span className="text-[9px] font-bold text-zinc-400 uppercase">Next 12h</span>
-                                 <span className="text-[10px] font-black text-orange-500">{latestReport?.forecast_12h ? `${latestReport.forecast_12h.toFixed(2)}m` : '--'}</span>
-                              </div>
-                              <div className="flex justify-between gap-8">
-                                 <span className="text-[9px] font-bold text-zinc-400 uppercase font-black italic">Strategic 24h</span>
-                                 <span className="text-[10px] font-black text-amber-500">{latestReport?.forecast_24h ? `${latestReport.forecast_24h.toFixed(2)}m` : '--'}</span>
-                              </div>
+                        </div>
+                        <div className="text-center p-3 rounded-xl bg-amber-50/50">
+                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Strategic 24h</div>
+                           <div className="text-lg font-black italic tracking-tighter text-amber-600">
+                              {latestReport.forecast_24h ? `${latestReport.forecast_24h.toFixed(2)}m` : '—'}
                            </div>
                         </div>
                      </div>
-                  </div>
+                  )}
                </div>
             </div>
 

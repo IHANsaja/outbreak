@@ -24,16 +24,11 @@ export async function getLatestRiverReports(stationId: number) {
   return data.reverse();
 }
 
+import stationsData from "../../lib/stations.json";
+
 /**
  * Returns available stations based on current active monitoring.
- * Note: In production, this would come from a 'stations' table.
  */
 export async function getMonitoredStations() {
-  return [
-    { id: 21, name: "Hanwella", river: "Kelani Ganga" },
-    { id: 18, name: "Glencourse", river: "Kelani Ganga" },
-    { id: 4, name: "Baddegama", river: "Gin Ganga" },
-    { id: 68, name: "Panadugama", river: "Nilwala Ganga" },
-    { id: 72, name: "Ratnapura", river: "Kalu Ganga" },
-  ];
+  return stationsData;
 }

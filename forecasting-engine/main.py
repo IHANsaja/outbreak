@@ -48,10 +48,15 @@ def predict(history: List[RiverReport]):
     Expects a list of 12 RiverReport objects (historical window).
     Returns specialized forecasts for 1h, 12h, and 24h.
     """
-    if len(history) < 12:
-        raise HTTPException(status_code=400, detail="Minimum 12 history reports required.")
+    if len(history) < 1:
+        raise HTTPException(status_code=400, detail="At least 1 report is required.")
     
-    df = pd.DataFrame([r.dict() for r in history])
+    # Pad history to 12 records if we have fewer — repeat the oldest record
+    records = [r.dict() for r in history]
+    while len(records) < 12:
+        records.insert(0, records[0].copy())
+    
+    df = pd.DataFrame(records)
     
     # --- Column preparation ---
     # 'rainfall' is required by TFT but not sent by the API client

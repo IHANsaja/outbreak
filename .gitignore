@@ -27,3 +27,5 @@ pipeline_state.json
 latest_history.json
 data-pipeline/processed_urls.json
 data/training_data.csv
+forecasting-engine/lightning_logs/
+forecasting-engine/lightning_logs/version_*

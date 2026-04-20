@@ -20,9 +20,9 @@ class APIClient:
         self.history = self._load_history()
         
         # Supabase Config - Using direct REST API for robustness
-        self.supabase_url = os.getenv("SUPABASE_URL", "https://cemupemxchhgtqtsgats.supabase.co")
+        self.supabase_url = os.getenv("SUPABASE_URL", "")
         # Service role key (Legacy JWT) for backend bypass of RLS
-        self.supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        self.supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
     def _load_history(self):
         if self.history_file.exists():
@@ -112,11 +112,13 @@ class APIClient:
                 logger.error(f"Failed to reach forecasting engine: {e}")
 
             # 3. Persist combined report + forecast to Supabase
+            # Engine response: {"success": true, "forecasts": {"early_warning_1h": ..., ...}}
+            forecasts_data = forecast.get("forecasts", {})
             final_record = {
                 **report,
-                "forecast_1h": forecast.get("early_warning_1h"),
-                "forecast_12h": forecast.get("trend_monitor_12h"),
-                "forecast_24h": forecast.get("strategic_path_24h"),
+                "forecast_1h": forecasts_data.get("early_warning_1h"),
+                "forecast_12h": forecasts_data.get("trend_monitor_12h"),
+                "forecast_24h": forecasts_data.get("strategic_path_24h"),
                 "is_anomaly": forecast.get("is_anomaly", False)
             }
 
