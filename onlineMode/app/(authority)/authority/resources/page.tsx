@@ -67,11 +67,11 @@ export default function ResourcesPage() {
            {/* Recent Dispatches - Keeping static for now as per user request focus on management */}
            <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-auth-border auth-card-shadow">
               <div className="flex justify-between items-center mb-10">
-                 <h3 className="text-lg font-bold text-slate-900 tracking-tight">Recent Dispatch Logs</h3>
-                 <button className="text-auth-accent-red text-xs font-bold uppercase tracking-widest hover:underline">View All Log</button>
+                 <h3 className="text-lg font-bold text-slate-900 tracking-tight">Digital Support Analytics</h3>
+                 <button className="text-auth-accent-red text-xs font-bold uppercase tracking-widest hover:underline">View Analytics</button>
               </div>
               <div className="space-y-6">
-                 <p className="text-slate-400 text-sm italic">Historical logs are being migrated to the new system.</p>
+                 <p className="text-slate-400 text-sm italic">Online logs tracking digital resource distribution and AI support metrics.</p>
               </div>
            </div>
 

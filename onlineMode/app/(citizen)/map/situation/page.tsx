@@ -21,7 +21,7 @@ import { useState } from "react";
 
 const alerts = [
   { id: 1, severity: "critical", title: "Flash Flood Warning", subtext: "River Kalu water levels exceeding safe threshold. Evacuate low-lying areas.", time: "10m ago" },
-  { id: 2, severity: "moderate", title: "Road Blockage", subtext: "Main street obstructed by fallen tree. Crews dispatched.", time: "45m ago" },
+  { id: 2, severity: "moderate", title: "Road Blockage", subtext: "Main street obstructed by fallen tree. Digital routing updated.", time: "45m ago" },
 ];
 
 export default function SituationMapPage() {

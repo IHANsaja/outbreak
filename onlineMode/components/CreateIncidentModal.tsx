@@ -32,7 +32,7 @@ export default function CreateIncidentModal({ isOpen, onClose }: CreateIncidentM
     // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
-      showToast("Incident reported successfully. Dispatching mobile teams.", "success");
+      showToast("Incident reported successfully. Digital relief channels active.", "success");
       onClose();
     }, 2000);
   };
@@ -158,7 +158,7 @@ export default function CreateIncidentModal({ isOpen, onClose }: CreateIncidentM
                      ) : (
                         <>
                            <Zap className="w-5 h-5 fill-white" />
-                           DEPLOY EMERGENCY TEAM
+                           TRIGGER DIGITAL SUPPORT
                         </>
                      )}
                   </button>

@@ -197,7 +197,7 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
   );
 }
 
-export function DispatchModal({ isOpen, onClose }: ModalProps) {
+export function DigitalSupportModal({ isOpen, onClose }: ModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -225,19 +225,19 @@ export function DispatchModal({ isOpen, onClose }: ModalProps) {
 
              <div className="p-10 md:p-14 space-y-10">
                 <div className="flex items-start gap-4">
-                   <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center shrink-0">
-                      <Zap className="w-6 h-6 text-red-500" />
+                   <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center shrink-0">
+                      <Zap className="w-6 h-6 text-blue-500" />
                    </div>
                    <div className="space-y-1">
                       <div className="flex items-center gap-3">
-                         <span className="text-[10px] font-black px-1.5 py-0.5 bg-red-500 text-white rounded uppercase tracking-widest leading-none">CRITICAL INCIDENT</span>
+                         <span className="text-[10px] font-black px-1.5 py-0.5 bg-blue-500 text-white rounded uppercase tracking-widest leading-none">DIGITAL RESPONSE</span>
                          <span className="text-[10px] font-bold text-gray-400 uppercase leading-none">ID: SOS-2294</span>
                       </div>
                       <h2 className="text-2xl font-black text-zinc-900 italic tracking-tight uppercase leading-none flex items-center gap-2">
-                        <Flame className="w-6 h-6 text-red-500 fill-red-500" />
-                        Dispatch Resource Unit
+                        <Activity className="w-6 h-6 text-blue-500" />
+                        Initiate Digital Support
                       </h2>
-                      <p className="text-[11px] font-bold text-gray-400 uppercase">Deploy emergency services to the selected location.</p>
+                      <p className="text-[11px] font-bold text-gray-400 uppercase">Trigger immediate online aid protocols for this location.</p>
                    </div>
                 </div>
 
@@ -264,33 +264,34 @@ export function DispatchModal({ isOpen, onClose }: ModalProps) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                   {/* Nearby Units List */}
+                   {/* Digital Channels List */}
                    <div className="space-y-6">
                       <div className="flex items-center justify-between">
-                         <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Nearby Units</h3>
-                         <span className="text-[8px] font-black px-2 py-0.5 bg-green-500 text-white rounded uppercase">3 Available</span>
+                         <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Support Channels</h3>
+                         <span className="text-[8px] font-black px-2 py-0.5 bg-blue-500 text-white rounded uppercase">4 Available</span>
                       </div>
                       <div className="space-y-3">
                          {[
-                           { name: "Ambulance Unit 04", dist: "0.8km", info: "Crew: 3 Paramedics • Est. Arrival: 4 min", selected: true },
-                           { name: "Fire Rescue F-12", dist: "1.2km", info: "Equip: Flood Boat • Est. Arrival: 7 min" },
-                           { name: "Police Patrol P-09", dist: "2.5km", info: "Traffic Control • Est. Arrival: 12 min" }
+                           { name: "SMS Alert Broadcast", dist: "Instant", info: "Radius: 5km • Targets: App Cache Users", selected: true },
+                           { name: "Evacuation Routing", dist: "Interactive", info: "Protocol: Smart Path • Format: Deep Link" },
+                           { name: "E-Relief Voucher", dist: "Secured", info: "Item: Food/Water Bundle • Auth: SMS Code" },
+                           { name: "Virtual ER (Tele-Med)", dist: "Synced", info: "Wait Time: <1 min • Channel: Encrypted Video" }
                          ].map((unit, i) => (
                            <div key={i} className={cn(
                              "p-4 rounded-2xl border transition-all cursor-pointer group",
-                             unit.selected ? "border-orange-500 bg-orange-50/50" : "border-gray-100 hover:border-gray-300"
+                             unit.selected ? "border-blue-500 bg-blue-50/50" : "border-gray-100 hover:border-gray-300"
                            )}>
                               <div className="flex justify-between items-center mb-1">
                                  <div className="flex items-center gap-3">
                                     <div className={cn(
                                        "w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-sm",
-                                       unit.selected ? "bg-orange-500 text-white" : "bg-white border border-gray-200 text-transparent"
+                                       unit.selected ? "bg-blue-500 text-white" : "bg-white border border-gray-200 text-transparent"
                                     )}>
                                        <CheckCircle2 className="w-4 h-4" />
                                     </div>
                                     <h4 className="text-xs font-black text-zinc-900 italic uppercase italic leading-none">{unit.name}</h4>
                                  </div>
-                                 <span className="text-[10px] font-black text-green-600">{unit.dist}</span>
+                                 <span className="text-[10px] font-black text-blue-600">{unit.dist}</span>
                               </div>
                               <p className="text-[9px] font-bold text-gray-400 pl-9 uppercase tracking-tighter">{unit.info}</p>
                            </div>
@@ -300,11 +301,11 @@ export function DispatchModal({ isOpen, onClose }: ModalProps) {
 
                    {/* Notes & Actions */}
                    <div className="space-y-6 flex flex-col">
-                      <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Notes for Responders</h3>
+                      <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Digital Directive Notes</h3>
                       <div className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl p-6">
-                         <p className="text-[11px] font-medium text-gray-400 leading-relaxed uppercase italic">Enter critical information regarding access routes, hazards, or patient condition...</p>
+                         <p className="text-[11px] font-medium text-gray-400 leading-relaxed uppercase italic">Enter specific instructions for digital aid delivery, map markers, or voucher amounts...</p>
                          <div className="mt-20 flex flex-wrap gap-2">
-                             {["Flooded Road", "Power Lines Down"].map(t => (
+                             {["SMS Broadcast", "Route Optimized"].map(t => (
                                <span key={t} className="px-3 py-1 bg-white shadow-sm border border-gray-100 rounded-lg text-[8px] font-black text-zinc-900 uppercase italic">{t}</span>
                              ))}
                          </div>
@@ -312,7 +313,7 @@ export function DispatchModal({ isOpen, onClose }: ModalProps) {
                       <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex gap-3">
                          <Info className="w-4 h-4 text-blue-500 shrink-0" />
                          <p className="text-[9px] font-bold text-blue-600 uppercase tracking-tighter leading-relaxed italic">
-                           AI Recommendation: Dispatch medical unit with oxygen supply. Ensure vehicle has high clearance due to water levels.
+                           AI Recommendation: Trigger Tele-Medicine hub and broadcast evacuation links. Multi-day rain predicted, prioritize digital vouchers for food.
                          </p>
                       </div>
                    </div>
@@ -320,9 +321,9 @@ export function DispatchModal({ isOpen, onClose }: ModalProps) {
 
                 <div className="pt-6 border-t border-gray-50 flex flex-col md:flex-row gap-4 items-center justify-between">
                     <button onClick={onClose} className="px-8 py-4 text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-zinc-900 transition-colors italic">Cancel</button>
-                    <button className="w-full md:w-auto px-12 py-5 bg-orange-500 hover:bg-black text-white rounded-2xl text-xs font-black italic shadow-xl shadow-orange-900/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/btn">
-                       <Navigation2 className="w-5 h-5 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
-                       CONFIRM DISPATCH
+                    <button className="w-full md:w-auto px-12 py-5 bg-blue-600 hover:bg-black text-white rounded-2xl text-xs font-black italic shadow-xl shadow-blue-900/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/btn">
+                       <Zap className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                       TRIGGER DIGITAL ACTION
                     </button>
                 </div>
              </div>

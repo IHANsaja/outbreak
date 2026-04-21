@@ -30,21 +30,29 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useState, useEffect, useMemo } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { NLPDeepDiveModal, DispatchModal, WaterLevelAnalyticsModal } from "@/components/AIModals";
-import { getLatestRiverReports, getMonitoredStations } from "@/app/actions/forecasting";
+import { NLPDeepDiveModal, DigitalSupportModal, WaterLevelAnalyticsModal } from "@/components/AIModals";
+import { getLatestRiverReports, getMonitoredStations, getGlobalAIInsights } from "@/app/actions/forecasting";
+import { getRecentSos, getActiveHazards } from "@/app/actions/data";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIDashboard() {
    const { t } = useLanguage();
    const [isNLPModalOpen, setIsNLPModalOpen] = useState(false);
-   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
    const [isWaterAnalyticsOpen, setIsWaterAnalyticsOpen] = useState(false);
    
    // State for dynamic data
    const [stations, setStations] = useState<any[]>([]);
    const [selectedStationId, setSelectedStationId] = useState(21);
    const [reports, setReports] = useState<any[]>([]);
+   const [globalReports, setGlobalReports] = useState<any[]>([]);
+   const [priorityFeed, setPriorityFeed] = useState<any[]>([]);
    const [loading, setLoading] = useState(true);
+   const [hasMounted, setHasMounted] = useState(false);
+
+   useEffect(() => {
+      setHasMounted(true);
+   }, []);
 
    // Filter states
    const [filterRiver, setFilterRiver] = useState<string>("All");
@@ -61,8 +69,24 @@ export default function AIDashboard() {
    useEffect(() => {
       async function loadData() {
          setLoading(true);
-         const data = await getLatestRiverReports(selectedStationId);
+         const [data, global, sos, hazards] = await Promise.all([
+            getLatestRiverReports(selectedStationId),
+            getGlobalAIInsights(),
+            getRecentSos(),
+            getActiveHazards()
+         ]);
+         
          setReports(data);
+         setGlobalReports(global);
+         
+         // Combine SOS and Hazards for priority feed
+         const combined = [
+            ...sos.map((s: any) => ({ ...s, feedType: 'sos' })),
+            ...hazards.map((h: any) => ({ ...h, feedType: 'hazard' }))
+         ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+         .slice(0, 10);
+         
+         setPriorityFeed(combined);
          setLoading(false);
       }
       loadData();
@@ -233,19 +257,63 @@ export default function AIDashboard() {
       },
    ];
 
-   const messages = [
-      { id: "NLP-992", type: "HIGH PANIC", title: `Reports near ${currentStation?.name || 'Station'}`, count: latestReport?.water_level_now > 5 ? 450 : 22, topics: ["Rising water", "Inundation"], color: "border-red-500" },
-      { id: "NLP-841", type: "WARNING", title: "Regional Risk Assessment", count: 128, topics: ["Mud flow", "Drainage block"], color: "border-orange-500", active: true },
-      { id: "NLP-772", type: "RECOVERING", title: "Upstream Discharge", count: 210, topics: ["Gate opening", "Flow rate"], color: "border-green-500" },
-   ];
+   // Derived AI Insights
+   const aiInsights = useMemo(() => {
+      if (!globalReports.length) return [];
+      
+      const atRiskCount = globalReports.filter(r => r.water_level_now >= r.alert_level).length;
+      const forecastRiskCount = globalReports.filter(r => r.forecast_12h >= r.major_flood || r.forecast_1h >= r.major_flood).length;
+      const anomalyCount = globalReports.filter(r => r.is_anomaly).length;
 
-   // Format timestamp for X-axis
-   const formatTime = (ts: string) => {
-      try {
-         const d = new Date(ts);
-         return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-      } catch { return ""; }
-   };
+      return [
+         { 
+            id: "INS-1", 
+            type: atRiskCount > 0 ? "HIGH PANIC" : "NORMAL", 
+            title: "Flood Level Alerts", 
+            count: atRiskCount, 
+            topics: ["Critical Stations", "Exceeding Thresholds"], 
+            color: atRiskCount > 0 ? "border-red-500" : "border-emerald-500" 
+         },
+         { 
+            id: "INS-2", 
+            type: forecastRiskCount > 0 ? "WARNING" : "STABLE", 
+            title: "Strategic Risk Path", 
+            count: forecastRiskCount, 
+            topics: ["Major Flood Forecast", "12h Window"], 
+            color: forecastRiskCount > 0 ? "border-orange-500" : "border-blue-500", 
+            active: true 
+         },
+         { 
+            id: "INS-3", 
+            type: anomalyCount > 0 ? "WARNING" : "OPERATIONAL", 
+            title: "Anomaly Detection", 
+            count: anomalyCount, 
+            topics: ["Pattern Detection", "Sensor Integrity"], 
+            color: anomalyCount > 0 ? "border-violet-500" : "border-zinc-500" 
+         },
+      ];
+   }, [globalReports]);
+
+   const messages = aiInsights;
+
+    // Format timestamp for X-axis with day context
+    const formatTime = (ts: string, prevTs?: string) => {
+       if (!hasMounted) return ""; // Prevent hydration mismatch
+       try {
+          const d = new Date(ts);
+          const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          if (prevTs) {
+             const prevD = new Date(prevTs);
+             if (d.toDateString() !== prevD.toDateString()) {
+                return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${timeStr}`;
+             }
+          } else if (reports.length > 0 && ts === reports[0].timestamp) {
+             // First label always shows date
+             return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${timeStr}`;
+          }
+          return timeStr;
+       } catch { return ""; }
+    };
 
    return (
       <div className="min-h-screen bg-white flex flex-col font-sans">
@@ -303,7 +371,7 @@ export default function AIDashboard() {
                      </select>
                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
                   </div>
-                  <Link href="/ai/report" className="px-6 py-3.5 bg-zinc-900 hover:bg-orange-500 text-white rounded-2xl text-xs font-black italic tracking-tight transition-all flex items-center justify-center gap-2 shadow-xl shadow-zinc-900/10">
+                  <Link href={`/ai/report?stationId=${selectedStationId}`} className="px-6 py-3.5 bg-zinc-900 hover:bg-orange-500 text-white rounded-2xl text-xs font-black italic tracking-tight transition-all flex items-center justify-center gap-2 shadow-xl shadow-zinc-900/10">
                      {t("generate_report")}
                      <ArrowUpRight className="w-4 h-4" />
                   </Link>
@@ -418,9 +486,10 @@ export default function AIDashboard() {
                            {/* X-axis time labels */}
                            {reports.map((r, i) => {
                               const x = chartConfig.scaleX(i);
+                              const prevTs = i > 0 ? reports[i-1].timestamp : undefined;
                               return (
                                  <text key={`xlabel-${i}`} x={x} y={chartConfig.padTop + chartConfig.chartH + 25} textAnchor="middle" className="text-[9px] font-bold" fill="#a1a1aa">
-                                    {formatTime(r.timestamp)}
+                                    {formatTime(r.timestamp, prevTs)}
                                  </text>
                               );
                            })}
@@ -578,8 +647,8 @@ export default function AIDashboard() {
             </div>
 
             {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-               <div className="lg:col-span-8 flex flex-col gap-8">
+            {/* Content Sections Stacking */}
+            <div className="flex flex-col gap-12">
                   {/* NLP messages Section */}
                   <div className="space-y-6">
                      <div className="flex justify-between items-center">
@@ -617,11 +686,9 @@ export default function AIDashboard() {
                         ))}
                      </div>
                   </div>
-               </div>
 
-               {/* Sidebar SOS */}
-               <div className="lg:col-span-4">
-                  <div className="bg-zinc-900 text-white rounded-[2.5rem] p-8 shadow-2xl h-full border border-white/5 relative overflow-hidden group">
+                  {/* Priority Feed Section - Now below NLP */}
+                  <div className="bg-zinc-900 text-white rounded-[2.5rem] p-10 shadow-2xl border border-white/5 relative overflow-hidden group">
                      {/* Background Glow */}
                      <div className="absolute -top-24 -right-24 w-64 h-64 bg-red-500/10 blur-[100px] group-hover:bg-red-500/20 transition-all" />
                      
@@ -632,44 +699,57 @@ export default function AIDashboard() {
                         </h3>
                      </div>
 
-                     <div className="space-y-6 relative">
-                        {[
-                           { title: "Rescue Needed: Matara", time: "Just Now", status: "Critical", desc: "Elderly person stranded. Water level 1.2m and rising." },
-                           { title: "Bridge Blocked: Kelanimulla", time: "12m ago", status: "High", desc: "Debris causing local backup. Heavy flow predicted." }
-                        ].map((sos, i) => (
-                           <div key={i} className="p-5 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-all group/item">
-                              <div className="flex justify-between items-start mb-2">
-                                 <span className={cn(
-                                    "text-[8px] font-black px-2 py-0.5 rounded tracking-widest uppercase",
-                                    sos.status === 'Critical' ? "bg-red-600" : "bg-orange-600"
-                                 )}>{sos.status}</span>
-                                 <span className="text-[9px] font-bold text-zinc-500 italic uppercase">{sos.time}</span>
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+                        {loading && priorityFeed.length === 0 ? (
+                           <div className="col-span-full py-12 text-center text-zinc-500 text-[10px] font-black uppercase tracking-widest">Loading Feed...</div>
+                        ) : priorityFeed.length === 0 ? (
+                           <div className="col-span-full py-12 text-center text-zinc-500 text-[10px] font-black uppercase tracking-widest italic">All clear • No active SOS</div>
+                        ) : (
+                           priorityFeed.map((item, i) => (
+                              <div key={item.id} className="p-5 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-all group/item">
+                                 <div className="flex justify-between items-start mb-2">
+                                    <span className={cn(
+                                       "text-[8px] font-black px-2 py-0.5 rounded tracking-widest uppercase",
+                                       item.feedType === 'sos' ? "bg-red-600" : 
+                                       item.severity === 'high' ? "bg-orange-600" : "bg-yellow-600"
+                                    )}>{item.feedType === 'sos' ? (item.stype || 'SOS') : (item.severity || 'Hazard')}</span>
+                                    <span className="text-[9px] font-bold text-zinc-500 italic uppercase">
+                                       {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                 </div>
+                                 <h4 className="text-sm font-black italic mb-2 tracking-tight">
+                                    {item.feedType === 'sos' ? "Rescue Request" : item.title}
+                                 </h4>
+                                 <p className="text-xs text-zinc-400 font-medium leading-relaxed">
+                                    {item.feedType === 'sos' ? item.additional_info : item.description}
+                                 </p>
+                                 <button 
+                                    onClick={() => setIsSupportModalOpen(true)}
+                                    className="mt-4 w-full py-3 bg-white text-zinc-900 rounded-xl text-[10px] font-black uppercase italic tracking-widest hover:bg-blue-600 hover:text-white transition-all"
+                                  >
+                                     Digital Support
+                                  </button>
                               </div>
-                              <h4 className="text-sm font-black italic mb-2 tracking-tight">{sos.title}</h4>
-                              <p className="text-xs text-zinc-400 font-medium leading-relaxed">{sos.desc}</p>
-                              <button className="mt-4 w-full py-3 bg-white text-zinc-900 rounded-xl text-[10px] font-black uppercase italic tracking-widest hover:bg-orange-500 hover:text-white transition-all">
-                                 Dispatch Team
-                              </button>
-                           </div>
-                        ))}
+                           ))
+                        )}
                      </div>
 
-                     <div className="mt-8 pt-8 border-t border-white/10">
-                        <Link href="/sos" className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
+                     <div className="mt-10 pt-8 border-t border-white/10 flex justify-between items-center">
+                        <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Real-time SOS Monitoring Active</div>
+                        <Link href="/sos" className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors">
                            View Global SOS Map
                            <ChevronRight className="w-5 h-5" />
                         </Link>
                      </div>
                   </div>
                </div>
-            </div>
-         </main>
+            </main>
 
          <Footer />
 
          {/* AI Specialized Modals */}
          <NLPDeepDiveModal isOpen={isNLPModalOpen} onClose={() => setIsNLPModalOpen(false)} />
-         <DispatchModal isOpen={isDispatchModalOpen} onClose={() => setIsDispatchModalOpen(false)} />
+         <DigitalSupportModal isOpen={isSupportModalOpen} onClose={() => setIsSupportModalOpen(false)} />
          <WaterLevelAnalyticsModal isOpen={isWaterAnalyticsOpen} onClose={() => setIsWaterAnalyticsOpen(false)} />
       </div>
    );
