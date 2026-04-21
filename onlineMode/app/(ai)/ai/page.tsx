@@ -626,19 +626,19 @@ export default function AIDashboard() {
                         <div className="text-center p-3 rounded-xl bg-sky-50/50">
                            <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Next 1h</div>
                            <div className="text-lg font-black italic tracking-tighter text-sky-600">
-                              {latestReport.forecast_1h ? `${latestReport.forecast_1h.toFixed(2)}m` : '—'}
+                              {latestReport.forecast_1h != null ? `${latestReport.forecast_1h.toFixed(2)}m` : '—'}
                            </div>
                         </div>
                         <div className="text-center p-3 rounded-xl bg-orange-50/50">
                            <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Next 12h</div>
                            <div className="text-lg font-black italic tracking-tighter text-orange-600">
-                              {latestReport.forecast_12h ? `${latestReport.forecast_12h.toFixed(2)}m` : '—'}
+                              {latestReport.forecast_12h != null ? `${latestReport.forecast_12h.toFixed(2)}m` : '—'}
                            </div>
                         </div>
                         <div className="text-center p-3 rounded-xl bg-amber-50/50">
                            <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Strategic 24h</div>
                            <div className="text-lg font-black italic tracking-tighter text-amber-600">
-                              {latestReport.forecast_24h ? `${latestReport.forecast_24h.toFixed(2)}m` : '—'}
+                              {latestReport.forecast_24h != null ? `${latestReport.forecast_24h.toFixed(2)}m` : '—'}
                            </div>
                         </div>
                      </div>

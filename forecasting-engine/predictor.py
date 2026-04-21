@@ -85,7 +85,7 @@ class ForecastingEngine:
             for col in ['station_id', 'river_id']:
                 if col in latest.columns:
                     latest[col] = pd.to_numeric(latest[col], errors='coerce').fillna(0).astype(np.int64)
-            return float(self.xgb_model.predict(latest[self.base_features])[0])
+            return max(0.0, float(self.xgb_model.predict(latest[self.base_features])[0]))
         return 0.0
 
     def predict_lstm_recursive(self, history_df: pd.DataFrame, steps: int = 4):
@@ -105,7 +105,7 @@ class ForecastingEngine:
             
             with torch.no_grad():
                 out = self.lstm_model(input_tensor)
-                pred_val = float(out.numpy().flatten()[0])
+                pred_val = max(0.0, float(out.numpy().flatten()[0]))
                 predictions.append(pred_val)
                 
             new_row = current_history.iloc[-1].copy()
@@ -143,7 +143,7 @@ class ForecastingEngine:
         for _ in range(steps):
             with torch.no_grad():
                 preds = self.tft_model.predict(current_history, mode="prediction")
-                pred_val = float(preds.numpy().flatten()[0])
+                pred_val = max(0.0, float(preds.numpy().flatten()[0]))
                 predictions.append(pred_val)
 
             new_row = current_history.iloc[-1].copy()

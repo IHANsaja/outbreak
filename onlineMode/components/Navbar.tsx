@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { 
   ArrowLeft, Wifi, MapPin, User, AlertCircle, Menu, X, Brain, 
-  Home, Newspaper, HeartHandshake, ShieldAlert, Zap
+  Home, Newspaper, HeartHandshake, ShieldAlert, Zap, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage, Language } from "@/context/LanguageContext";
@@ -41,18 +41,35 @@ export default function Navbar({
   const isDashboard = type === "dashboard";
   const { language, setLanguage, t } = useLanguage();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const supabase = createClient();
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      if (user) {
+        const { data: profile } = await supabase.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        setUser({ ...user, profileRole: profile?.role });
+      } else {
+        setUser(null);
+      }
     };
     getUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const { data: profile } = await supabase.from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        setUser({ ...session.user, profileRole: profile?.role });
+      } else {
+        setUser(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -60,6 +77,7 @@ export default function Navbar({
 
   const handleLogout = async () => {
     await logout();
+    setIsProfileMenuOpen(false);
   };
 
   return (
@@ -139,21 +157,81 @@ export default function Navbar({
           </div>
 
           {/* User / Login / Logout */}
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2 relative">
             {user ? (
-               <div className="flex items-center gap-2">
-                 <button
-                   onClick={handleLogout}
-                   className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-brand-red transition-colors"
-                 >
-                   Logout
-                 </button>
-                 <Link
-                   href="/profile"
-                   className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 hover:bg-gray-100 hover:border-gray-200 transition-all text-gray-500 hover:text-brand-red group"
-                 >
-                   <User className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                 </Link>
+               <div className="relative">
+                  <button
+                    onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                    className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center border transition-all group",
+                      isProfileMenuOpen 
+                        ? "bg-zinc-900 border-zinc-900 text-white" 
+                        : "bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100 hover:border-gray-200 hover:text-brand-red"
+                    )}
+                  >
+                    <User className={cn("w-5 h-5 transition-transform", isProfileMenuOpen ? "scale-110" : "group-hover:scale-110")} />
+                  </button>
+
+                  {/* Profile Dropdown Modal */}
+                  <AnimatePresence>
+                    {isProfileMenuOpen && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-40" 
+                          onClick={() => setIsProfileMenuOpen(false)} 
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute right-0 mt-3 w-56 bg-white rounded-2xl border border-gray-100 shadow-2xl shadow-zinc-900/10 z-50 overflow-hidden"
+                        >
+                          <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Logged in as</p>
+                            <p className="text-[11px] font-bold text-zinc-900 truncate">{user.email}</p>
+                            <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-brand-red/10 rounded-full">
+                               <span className="w-1 h-1 bg-brand-red rounded-full" />
+                               <span className="text-[8px] font-black uppercase text-brand-red tracking-tight">{user.profileRole || 'citizen'}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="p-2">
+                            {(user.profileRole === 'authority' || user.profileRole === 'community supporter') && (
+                              <Link
+                                href="/authority/dashboard"
+                                onClick={() => setIsProfileMenuOpen(false)}
+                                className="flex items-center gap-3 w-full p-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-zinc-600 hover:bg-gray-50 hover:text-zinc-900 transition-all border border-transparent hover:border-gray-100"
+                              >
+                                <Zap className="w-4 h-4 text-orange-500" />
+                                Dashboard
+                              </Link>
+                            )}
+                            
+                            <Link
+                              href="/profile"
+                              onClick={() => setIsProfileMenuOpen(false)}
+                              className="flex items-center gap-3 w-full p-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-zinc-600 hover:bg-gray-50 hover:text-zinc-900 transition-all border border-transparent hover:border-gray-100"
+                            >
+                              <User className="w-4 h-4 text-emerald-500" />
+                              My Profile
+                            </Link>
+                            
+                            <div className="my-1 border-t border-gray-50" />
+                            
+                            <button
+                              onClick={handleLogout}
+                              className="flex items-center gap-3 w-full p-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 transition-all text-left group/logout"
+                            >
+                              <div className="w-4 h-4 flex items-center justify-center">
+                                 <ArrowLeft className="w-4 h-4 group-hover/logout:-translate-x-0.5 transition-transform" />
+                              </div>
+                              Logout
+                            </button>
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                </div>
             ) : (
               <Link
@@ -219,23 +297,38 @@ export default function Navbar({
                   <X className="w-4 h-4 rotate-180 opacity-0" />
                 </Link>
 
-                <div className="grid grid-cols-2 gap-3">
                   {user ? (
-                    <>
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center justify-center p-4 border border-gray-100 rounded-2xl font-black uppercase text-xs text-zinc-600 hover:bg-gray-50"
-                      >
-                        Logout
-                      </button>
-                      <Link
-                        href="/profile"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center justify-center p-4 bg-brand-red text-white rounded-2xl font-black uppercase text-xs hover:bg-red-600 shadow-lg shadow-red-100"
-                      >
-                        Profile
-                      </Link>
-                    </>
+                    <div className="flex flex-col gap-3">
+                      {(user.profileRole === 'authority' || user.profileRole === 'community supporter') && (
+                        <Link
+                          href="/authority/dashboard"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center justify-between p-5 bg-orange-500 text-white rounded-2xl italic font-black uppercase text-xs hover:bg-orange-600 shadow-lg shadow-orange-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <Zap className="w-5 h-5 text-white" />
+                            Admin Dashboard
+                          </div>
+                          <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center justify-center p-4 border border-gray-100 rounded-2xl font-black uppercase text-xs text-zinc-600 hover:bg-gray-50"
+                        >
+                          Logout
+                        </button>
+                        <Link
+                          href="/profile"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center justify-center p-4 bg-brand-red text-white rounded-2xl font-black uppercase text-xs hover:bg-red-600 shadow-lg shadow-red-100"
+                        >
+                          Profile
+                        </Link>
+                      </div>
+                    </div>
                   ) : (
                     <>
                       <Link
@@ -255,7 +348,6 @@ export default function Navbar({
                     </>
                   )}
                 </div>
-              </div>
 
               {/* Footer Info */}
               <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
