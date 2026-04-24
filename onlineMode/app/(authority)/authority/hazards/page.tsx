@@ -136,7 +136,7 @@ export default function HazardsPage() {
 }
 
 function HazardCard({ hazard, onResolve, onDelete }: { hazard: any, onResolve: () => void, onDelete: () => void }) {
-  const isResolved = hazard.status === 'resolved';
+  const isResolved = hazard.status === 'cleared';
 
   return (
     <div className={cn("bg-white p-6 rounded-[32px] border border-auth-border auth-card-shadow group transition-all duration-300", 

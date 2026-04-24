@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/utils/supabase/middleware'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabase, supabaseResponse } = createClient(request)
 
   const {
@@ -9,8 +9,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup')
+  const isPublicAIPage = request.nextUrl.pathname.startsWith('/ai/report')
   
-  if (!user && !isAuthPage && (request.nextUrl.pathname.startsWith('/authority') || request.nextUrl.pathname.startsWith('/ai'))) {
+  if (!user && !isAuthPage && !isPublicAIPage && (request.nextUrl.pathname.startsWith('/authority') || request.nextUrl.pathname.startsWith('/ai'))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

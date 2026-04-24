@@ -96,6 +96,65 @@ export async function getGlobalAIInsights() {
  * 2. Station metadata
  * 3. Latest report for ALL stations
  */
+/**
+ * Fetches a summary of the latest DMC pipeline data for the home page.
+ * Returns the latest report per station with station name/river metadata,
+ * plus aggregate stats for the national water level overview.
+ */
+export async function getLatestDMCBrief() {
+  const { data, error } = await supabase
+    .from("river_reports")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (error) {
+    console.error("Error fetching DMC brief:", error);
+    return { stations: [], stats: { totalMonitored: 0, atAlert: 0, flooding: 0, anomalies: 0, lastUpdated: null } };
+  }
+
+  // Deduplicate to get the latest report per station
+  const latestPerStation = new Map<number, any>();
+  data.forEach(report => {
+    if (!latestPerStation.has(report.station_id)) {
+      latestPerStation.set(report.station_id, report);
+    }
+  });
+
+  const stationReports = Array.from(latestPerStation.values()).map(report => {
+    const stationMeta = stationsData.find(s => s.id === report.station_id);
+    const status = 
+      report.water_level_now >= (report.major_flood || 999) ? "flood" :
+      report.water_level_now >= (report.minor_flood || 999) ? "minor_flood" :
+      report.water_level_now >= (report.alert_level || 999) ? "alert" : "safe";
+    
+    return {
+      ...report,
+      station_name: stationMeta?.name || `Station ${report.station_id}`,
+      river_name: stationMeta?.river || "Unknown River",
+      status,
+      delta: report.water_level_lag1 ? +(report.water_level_now - report.water_level_lag1).toFixed(2) : 0,
+    };
+  });
+
+  // Sort: critical first, then by water level descending
+  stationReports.sort((a, b) => {
+    const order: Record<string, number> = { flood: 0, minor_flood: 1, alert: 2, safe: 3 };
+    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    return b.water_level_now - a.water_level_now;
+  });
+
+  const stats = {
+    totalMonitored: stationReports.length,
+    atAlert: stationReports.filter(r => r.status === "alert" || r.status === "minor_flood" || r.status === "flood").length,
+    flooding: stationReports.filter(r => r.status === "flood" || r.status === "minor_flood").length,
+    anomalies: stationReports.filter(r => r.is_anomaly).length,
+    lastUpdated: stationReports[0]?.created_at || null,
+  };
+
+  return { stations: stationReports, stats };
+}
+
 export async function getDetailedReportData(stationId: number) {
   // Fetch detailed history for selected station
   const stationPromise = supabase

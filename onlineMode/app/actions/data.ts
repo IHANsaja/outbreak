@@ -128,6 +128,33 @@ export async function getRecentSos() {
   return data
 }
 
+export async function getActiveSosRequests() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('sos_requests')
+    .select('*')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching SOS requests:', error)
+    return []
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('last_location_lat, last_location_lng').eq('id', user.id).single()
+    if (profile?.last_location_lat && profile?.last_location_lng) {
+      return data.map((item: any) => ({
+        ...item,
+        distance_km: calculateDistance(profile.last_location_lat, profile.last_location_lng, item.latitude, item.longitude)
+      }))
+    }
+  }
+
+  return data
+}
+
 export async function getAllIncidents() {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -337,7 +364,7 @@ export async function addHazard(formData: FormData) {
 
 export async function resolveHazard(id: string) {
   const supabase = await createClient()
-  const { error } = await supabase.from('hazards').update({ status: 'resolved' }).eq('id', id)
+  const { error } = await supabase.from('hazards').update({ status: 'cleared' }).eq('id', id)
   if (error) throw new Error(error.message)
   revalidatePath('/')
   revalidatePath('/authority/hazards')
