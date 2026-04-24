@@ -3,6 +3,10 @@
 
 This document provides a comprehensive technical walkthrough of the Outbreak platform's automated forecasting system. It is designed for engineers and developers who are new to AI pipeline orchestration but familiar with software development and the IT industry.
 
+> [!TIP]
+> For a detailed breakdown of the internal data flow, state management, and deduplication logic, see the [Data Pipeline Flow & Behavior](./DATA_PIPELINE_FLOW.md) guide.
+
+
 ---
 
 ## 1. Technical Glossary (The "Jargon" Guide)
