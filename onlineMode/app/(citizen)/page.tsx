@@ -63,23 +63,26 @@ export default function Home() {
   const [mapHazards, setMapHazards] = useState<HomeHazard[]>([]);
   const [mapIncidents, setMapIncidents] = useState<HomeIncident[]>([]);
   const [mapNeeds, setMapNeeds] = useState<HomeSos[]>([]);
+  const [mapNews, setMapNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { t } = useLanguage();
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const { getStats, getActiveHazards, getAllIncidents, getActiveSosRequests } = await import('@/app/actions/data');
-        const [statsData, hazardsData, incidentsData, sosData] = await Promise.all([
+        const { getStats, getActiveHazards, getAllIncidents, getActiveSosRequests, getOfficialUpdates } = await import('@/app/actions/data');
+        const [statsData, hazardsData, incidentsData, sosData, newsData] = await Promise.all([
           getStats(),
           getActiveHazards(),
           getAllIncidents(),
-          getActiveSosRequests()
+          getActiveSosRequests(),
+          getOfficialUpdates()
         ]);
         setStats(statsData);
         setMapHazards(hazardsData);
         setMapIncidents(incidentsData);
         setMapNeeds(sosData);
+        setMapNews(newsData);
         if (hazardsData && hazardsData.length > 0) {
           setUrgentHazard(hazardsData[0]); // Take the most recent active hazard
         }
@@ -174,6 +177,7 @@ export default function Home() {
               hazards={mapHazards}
               incidents={mapIncidents}
               needs={mapNeeds}
+              news={mapNews}
               userLocation={[6.9271, 79.8612]}
             />
           </div>

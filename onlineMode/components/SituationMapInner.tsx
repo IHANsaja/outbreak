@@ -4,10 +4,11 @@ import { useEffect, useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { AlertTriangle, Camera, LifeBuoy, Navigation, LocateFixed } from "lucide-react";
+import { AlertTriangle, Camera, LifeBuoy, Navigation, LocateFixed, Megaphone } from "lucide-react";
 import { renderToString } from "react-dom/server";
 import { updateUserLocation } from "@/app/actions/data";
 import { useToast } from "@/context/ToastContext";
+import { useLiveLocation } from "@/hooks/useLiveLocation";
 
 // Fix for default marker icons in Leaflet with Next.js
 const defaultIcon = L.icon({
@@ -26,6 +27,7 @@ type MapItem = {
   longitude?: number | string | null;
   title?: string | null;
   description?: string | null;
+  content?: string | null;
   severity?: string | null;
   stype?: string | null;
   itype?: string | null;
@@ -37,6 +39,7 @@ interface MapInnerProps {
   hazards: MapItem[];
   incidents: MapItem[];
   needs: MapItem[];
+  news: MapItem[];
   userLocation: Coordinates;
 }
 
@@ -85,10 +88,18 @@ function RecenterMap({ coords }: { coords: Coordinates }) {
   return null;
 }
 
-export default function SituationMapInner({ hazards, incidents, needs, userLocation: initialLocation }: MapInnerProps) {
+export default function SituationMapInner({ hazards, incidents, needs, news, userLocation: initialLocation }: MapInnerProps) {
+  const { location: liveLocation, error: locationError } = useLiveLocation(true);
   const [userLocation, setUserLocation] = useState<Coordinates>(initialLocation);
   const [isLocating, setIsLocating] = useState(false);
   const { showToast } = useToast();
+
+  // Sync manual userLocation state with liveLocation hook
+  useEffect(() => {
+    if (liveLocation) {
+      setUserLocation(liveLocation);
+    }
+  }, [liveLocation]);
 
   const handleLocateMe = () => {
     if (!navigator.geolocation) {
@@ -123,6 +134,36 @@ export default function SituationMapInner({ hazards, incidents, needs, userLocat
   const hazardIcon = useMemo(() => createCustomIcon('#ef4444', AlertTriangle), []);
   const incidentIcon = useMemo(() => createCustomIcon('#f97316', Camera), []);
   const needIcon = useMemo(() => createCustomIcon('#8b5cf6', LifeBuoy), []);
+  
+  // Striking News Icon with Animation
+  const newsIcon = useMemo(() => {
+    const iconHtml = renderToString(
+      <div className="relative">
+        <div className="absolute inset-0 bg-yellow-400 rounded-full animate-ping opacity-75"></div>
+        <div style={{
+          backgroundColor: '#fbbf24', // Amber/Yellow
+          padding: '8px',
+          borderRadius: '50%',
+          border: '2px solid white',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          position: 'relative'
+        }}>
+          <Megaphone size={16} strokeWidth={3} />
+        </div>
+      </div>
+    );
+
+    return L.divIcon({
+      html: iconHtml,
+      className: '',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+  }, []);
 
   const asCoord = (item: MapItem): [number, number] | null => {
     const lat = typeof item.latitude === 'string' ? parseFloat(item.latitude) : item.latitude;
@@ -204,6 +245,26 @@ export default function SituationMapInner({ hazards, incidents, needs, userLocat
                   <h4 className="font-bold text-purple-600">{n.stype || 'Need'}</h4>
                   <p className="text-xs">{n.additional_info}</p>
                   {n.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{n.distance_km}km away</p>}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+
+        {/* News / Official Updates */}
+        {news.map((nw) => {
+          const pos = asCoord(nw);
+          if (!pos) return null;
+          return (
+            <Marker key={`news-${nw.id}`} position={pos} icon={newsIcon}>
+              <Popup>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="bg-yellow-100 text-yellow-700 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full">Official Update</span>
+                  </div>
+                  <h4 className="font-bold text-yellow-600">{nw.title}</h4>
+                  <p className="text-xs line-clamp-3">{nw.content}</p>
+                  {nw.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{nw.distance_km}km away</p>}
                 </div>
               </Popup>
             </Marker>

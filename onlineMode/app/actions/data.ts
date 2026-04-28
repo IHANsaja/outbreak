@@ -78,6 +78,18 @@ export async function getOfficialUpdates() {
     console.error('Error fetching updates:', error)
     return []
   }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('last_location_lat, last_location_lng').eq('id', user.id).single()
+    if (profile?.last_location_lat && profile?.last_location_lng) {
+      return data.map((item: any) => ({
+        ...item,
+        distance_km: item.latitude && item.longitude ? calculateDistance(profile.last_location_lat, profile.last_location_lng, item.latitude, item.longitude) : null
+      }))
+    }
+  }
+
   return data
 }
 

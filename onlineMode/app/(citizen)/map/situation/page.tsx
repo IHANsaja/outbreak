@@ -39,20 +39,23 @@ export default function SituationMapPage() {
   const [hazards, setHazards] = useState<Hazard[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [needs, setNeeds] = useState<Need[]>([]);
+  const [news, setNews] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchMapData() {
       try {
-        const { getActiveHazards, getAllIncidents, getActiveSosRequests } = await import("@/app/actions/data");
-        const [hazardData, incidentData, needData] = await Promise.all([
+        const { getActiveHazards, getAllIncidents, getActiveSosRequests, getOfficialUpdates } = await import("@/app/actions/data");
+        const [hazardData, incidentData, needData, newsData] = await Promise.all([
           getActiveHazards(),
           getAllIncidents(),
           getActiveSosRequests(),
+          getOfficialUpdates(),
         ]);
 
         setHazards(hazardData);
         setIncidents(incidentData);
         setNeeds(needData);
+        setNews(newsData);
       } catch (error) {
         console.error("Situation map data error:", error);
       }
@@ -85,7 +88,13 @@ export default function SituationMapPage() {
 
       <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-8">
         <div className="h-[calc(100vh-152px)] min-h-[540px] overflow-hidden rounded-[28px] border border-gray-100 shadow-sm">
-          <SituationMap hazards={hazards} incidents={incidents} needs={needs} userLocation={[6.9271, 79.8612]} />
+          <SituationMap 
+            hazards={hazards} 
+            incidents={incidents} 
+            needs={needs} 
+            news={news}
+            userLocation={[6.9271, 79.8612]} 
+          />
         </div>
       </main>
     </div>

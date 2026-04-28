@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import AuthorityLayout from "@/components/AuthorityLayout";
 import { Search, Map as MapIcon, Layers, Maximize2, ZoomIn, ZoomOut, AlertTriangle, ShieldCheck, Truck, ChevronRight, Zap, Radio, Globe, MapPin } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
-import { getAllIncidents, getActiveSosRequests, getActiveHazards } from "@/app/actions/data";
+import { getAllIncidents, getActiveSosRequests, getActiveHazards, getOfficialUpdates } from "@/app/actions/data";
 import { cn } from "@/lib/utils";
 import SituationMap from "@/components/SituationMap";
 
@@ -12,19 +12,22 @@ export default function MapViewPage() {
   const [incidents, setIncidents] = useState<any[]>([]);
   const [sosRequests, setSosRequests] = useState<any[]>([]);
   const [hazards, setHazards] = useState<any[]>([]);
+  const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [inc, sos, haz] = await Promise.all([
+        const [inc, sos, haz, nws] = await Promise.all([
           getAllIncidents(), 
           getActiveSosRequests(),
-          getActiveHazards()
+          getActiveHazards(),
+          getOfficialUpdates()
         ]);
         setIncidents(inc);
         setSosRequests(sos);
         setHazards(haz);
+        setNews(nws);
       } catch (err) {
         showToast("Error syncing map data", "error");
       } finally {
@@ -44,6 +47,7 @@ export default function MapViewPage() {
             hazards={hazards} 
             incidents={incidents} 
             needs={sosRequests} 
+            news={news}
             userLocation={[6.9271, 79.8612]} 
           />
         </div>
@@ -56,7 +60,7 @@ export default function MapViewPage() {
               <h3 className="text-xl font-bold tracking-tight">National Situation Map</h3>
               <div className="flex items-center gap-2 mt-2">
                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                 <span className="text-xs text-slate-400 font-medium truncate">Live Feed Active • {incidents.length + sosRequests.length + hazards.length} Events</span>
+                 <span className="text-xs text-slate-400 font-medium truncate">Live Feed Active • {incidents.length + sosRequests.length + hazards.length + news.length} Events</span>
               </div>
            </div>
         </div>
