@@ -596,5 +596,5 @@ This project is part of the Outbreak Disaster Management Initiative. All code, m
 ---
 
 **Last Updated**: May 4, 2026  
-**Maintainer**: Outbreak-AI Team  
+**Maintainer**: J A D IHAN HANSAJA
 **Status**: Production (v0.1.0)
