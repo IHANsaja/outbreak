@@ -591,10 +591,22 @@ GROUP BY station_id;
 
 ## 📄 License
 
-This project is part of the Outbreak Disaster Management Initiative. All code, models, and documentation are provided as-is for humanitarian purposes.
+This project is licensed under the **MIT License**. You are free to use, modify, and distribute this software for any purpose, including commercial applications, provided you include a copy of the license and acknowledge the original authors.
+
+### MIT License Summary
+- ✅ **Permitted**: Commercial use, modification, distribution, private use
+- ⚠️ **Conditions**: Include license and copyright notice
+- ❌ **Limitations**: No liability or warranty
+
+### Full License Text
+For the complete MIT License terms, see the [LICENSE](LICENSE) file in this repository or visit [opensource.org/licenses/MIT](https://opensource.org/licenses/MIT).
+
+### Contributing
+By contributing to this project, you agree to license your contributions under the same MIT License terms.
 
 ---
 
 **Last Updated**: May 4, 2026  
-**Maintainer**: J A D IHAN HANSAJA
-**Status**: Production (v0.1.0)
+**Maintainer**: J A D IHAN HANSAJA  
+**Status**: Production (v0.1.0)  
+**License**: MIT
