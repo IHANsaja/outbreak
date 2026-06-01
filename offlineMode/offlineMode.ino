@@ -1,9 +1,23 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
+#include <HTTPClient.h>
 
 // --- Configuration ---
 const char* ssid = "Outbreak-WIFI-AP";
+
+// --- Backhaul WiFi (AP+STA mode — connects to router for internet) ---
+const char* STA_SSID     = "Galaxy M33 5G 720F";
+const char* STA_PASSWORD = "ihan1111";
+
+// --- Supabase Configuration ---
+// Supabase REST API base URL
+const char* SUPABASE_URL = "https://cemupemxchhgtqtsgats.supabase.co";
+// anon/publishable key — safe for INSERT-only RLS policies
+const char* SUPABASE_KEY = "sb_publishable_4dwwLlhgfRhaWGFPPLfbmg_3JR5dff2";
+// Anonymous sentinel UUID used as node identity for FK-required columns
+// This must exist as a row in public.profiles — see SQL setup instructions
+const char* NODE_USER_ID = "00000000-0000-0000-0000-000000000001";
 const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 4, 1);
 DNSServer dnsServer;
@@ -1750,7 +1764,8 @@ void setup() {
   messageCount = 0;
   syncCount    = 0;
 
-  WiFi.mode(WIFI_AP);
+  // AP+STA: broadcast local portal AND connect to router for internet backhaul
+  WiFi.mode(WIFI_AP_STA);
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
   WiFi.softAP(ssid);
 
@@ -1758,6 +1773,12 @@ void setup() {
   Serial.println(ssid);
   Serial.print("Local node Web Server running at: http://");
   Serial.println(WiFi.softAPIP());
+
+  // Begin STA connection (non-blocking — portal starts immediately regardless)
+  Serial.print("Connecting to backhaul WiFi: ");
+  Serial.println(STA_SSID);
+  WiFi.begin(STA_SSID, STA_PASSWORD);
+  // Do NOT block here — checkBackgroundSyncJob() handles upload once WL_CONNECTED
 
   dnsServer.start(DNS_PORT, "*", apIP);
   Serial.println("Captive Portal DNS Server started.");
@@ -1905,22 +1926,142 @@ void setup() {
   Serial.println("Edge Server started listening on Port 80.");
 }
 
+// --- Supabase HTTP POST helper ---
+// Posts a JSON body to a Supabase REST endpoint.
+// Returns the HTTP response code, or -1 on connection failure.
+int supabasePost(const String& endpoint, const String& jsonBody) {
+  HTTPClient http;
+  String url = String(SUPABASE_URL) + endpoint;
+
+  if (!http.begin(url)) {
+    Serial.println("[Supabase] HTTPClient begin() failed for: " + url);
+    return -1;
+  }
+
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("apikey", SUPABASE_KEY);
+  http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
+  http.addHeader("Prefer", "return=minimal"); // Don't return full row — saves memory
+
+  int httpCode = http.POST(jsonBody);
+
+  if (httpCode > 0) {
+    Serial.printf("[Supabase] POST %s -> HTTP %d
+", endpoint.c_str(), httpCode);
+    if (httpCode >= 400) {
+      // Log error body for debugging (truncated to 256 chars to avoid heap issues)
+      String resp = http.getString();
+      if (resp.length() > 256) resp = resp.substring(0, 256) + "...";
+      Serial.println("[Supabase] Error body: " + resp);
+    }
+  } else {
+    Serial.printf("[Supabase] POST %s failed, HTTPClient error: %s
+",
+                  endpoint.c_str(), http.errorToString(httpCode).c_str());
+  }
+
+  http.end();
+  return httpCode;
+}
+
+// Upload all queued messages to Supabase edge_messages table.
+// Sends them one by one to avoid building a giant JSON array in heap.
+// Returns true if ALL items uploaded successfully.
+bool uploadMessagesToSupabase() {
+  bool allOk = true;
+  String macAddr = WiFi.macAddress();
+
+  for (int i = 0; i < syncCount; i++) {
+    if (syncQueue[i].type != "MESSAGE") continue;
+
+    // Build row JSON matching edge_messages schema
+    String body = "{";
+    body += ""node_id":""        + jsonEscape(macAddr)                   + "",";
+    body += ""peer_nick":""      + jsonEscape(syncQueue[i].content)      + "",";
+    body += ""message_text":""   + jsonEscape(syncQueue[i].content)      + "",";
+    body += ""priority":""       + jsonEscape(syncQueue[i].priority)     + "",";
+    body += ""captured_at_sl":"" + jsonEscape(syncQueue[i].timestamp_sl) + "",";
+    body += ""timestamp_ms":"     + String(syncQueue[i].timestamp_ms)     + ",";
+    body += ""synced_from_queue":true";
+    body += "}";
+
+    int code = supabasePost("/rest/v1/edge_messages", body);
+    if (code < 200 || code > 299) {
+      allOk = false;
+      Serial.printf("[Supabase] Message item %d failed (HTTP %d), will retry next cycle.
+", i, code);
+    }
+  }
+  return allOk;
+}
+
+// Upload all queued SOS alerts to Supabase sos_requests table.
+// Maps to existing schema: stype='medical' (closest generic), lat/lng from location field.
+// Uses NODE_USER_ID sentinel — ensure that UUID row exists in public.profiles.
+bool uploadSOSToSupabase() {
+  bool allOk = true;
+
+  for (int i = 0; i < syncCount; i++) {
+    if (syncQueue[i].type != "SOS_BROADCAST") continue;
+
+    // Parse lat/lng from "lat,lng" string if available
+    String latStr = "0.0";
+    String lngStr = "0.0";
+    String loc = syncQueue[i].location;
+    int commaIdx = loc.indexOf(',');
+    if (commaIdx > 0) {
+      latStr = loc.substring(0, commaIdx);
+      lngStr = loc.substring(commaIdx + 1);
+    }
+
+    // Build row JSON matching public.sos_requests schema
+    String body = "{";
+    body += ""user_id":""        + String(NODE_USER_ID)                  + "",";
+    body += ""stype":"other",";  // 'other' — matches stype enum safely
+    body += ""latitude":"         + latStr                                 + ",";
+    body += ""longitude":"        + lngStr                                 + ",";
+    body += ""additional_info":"" + jsonEscape(syncQueue[i].content)     + " | node=" + jsonEscape(WiFi.macAddress()) + " | captured=" + jsonEscape(syncQueue[i].timestamp_sl) + "",";
+    body += ""status":"active"";
+    body += "}";
+
+    int code = supabasePost("/rest/v1/sos_requests", body);
+    if (code < 200 || code > 299) {
+      allOk = false;
+      Serial.printf("[Supabase] SOS item %d failed (HTTP %d), will retry next cycle.
+", i, code);
+    }
+  }
+  return allOk;
+}
+
 void checkBackgroundSyncJob() {
   if (!isSyncJobPending) return;
 
   if (millis() - lastInternetCheckTime < internetCheckInterval) return;
   lastInternetCheckTime = millis();
 
-  Serial.println("[Sync Job] Checking internet backhaul connection...");
+  Serial.println("[Sync Job] Checking internet backhaul (STA) connection...");
+  Serial.printf("[Sync Job] WiFi STA status: %d | Items in queue: %d
+", WiFi.status(), syncCount);
 
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("[Sync Job] Internet detected! Uploading bundle...");
-    // In a fully configured deployment, use HTTPClient to POST getSyncQueueJSON()
-    Serial.println("[Sync Job] Chat data synchronized to Outbreak cloud platform.");
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[Sync Job] Not connected to backhaul WiFi. Queue retained.");
+    return;
+  }
+
+  Serial.println("[Sync Job] Internet connectivity confirmed. Starting Supabase upload...");
+  Serial.print("[Sync Job] STA IP: ");
+  Serial.println(WiFi.localIP());
+
+  bool msgOk = uploadMessagesToSupabase();
+  bool sosOk = uploadSOSToSupabase();
+
+  if (msgOk && sosOk) {
+    Serial.println("[Sync Job] All items uploaded successfully. Clearing queue.");
     isSyncJobPending = false;
     syncCount = 0;
   } else {
-    Serial.println("[Sync Job] Offline. Queue retained in local memory.");
+    Serial.println("[Sync Job] Some items failed. Queue retained — will retry in next interval.");
   }
 }
 
