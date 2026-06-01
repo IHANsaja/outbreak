@@ -3,30 +3,49 @@ import React, { useState, useEffect } from "react";
 import AuthorityLayout from "@/components/AuthorityLayout";
 import { Radio, ChevronRight, Bell, Loader2, AlertTriangle, Package, Activity, MapPin, CheckCircle } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
-import { getStats, getRegions, getRecentSos, getAllIncidents, getResources, getHourlyActivityStats, resolveSOS } from "@/app/actions/data";
+import { getStats, getRegions, getRecentSos, getAllIncidents, getResources, getHourlyActivityStats, resolveSOS, getActiveHazards, getOfficialUpdates } from "@/app/actions/data";
+import { getGlobalAIInsights } from "@/app/actions/forecasting";
 import { cn } from "@/lib/utils";
+import SituationMap from "@/components/SituationMap";
 
 export default function AuthorityDashboard() {
   const [stats, setStats] = useState({ activeIncidents: 0, criticalNeeds: 0, activeHazards: 0, activeSos: 0 });
   const [incidents, setIncidents] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
   const [recentSos, setRecentSos] = useState<any[]>([]);
+  const [globalReports, setGlobalReports] = useState<any[]>([]);
+  const [mapData, setMapData] = useState<{ hazards: any[], news: any[] }>({ hazards: [], news: [] });
   const [loading, setLoading] = useState(true);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([6.9271, 79.8612]);
 
   async function fetchData() {
     setLoading(true);
     try {
-      const [statsData, regionsData, sosData, incidentsData, resourcesData] = await Promise.all([
+      const [statsData, regionsData, sosData, incidentsData, resourcesData, aiData, hazardsData, newsData] = await Promise.all([
         getStats(),
         getRegions(),
         getRecentSos(),
         getAllIncidents(),
-        getResources()
+        getResources(),
+        getGlobalAIInsights(),
+        getActiveHazards(),
+        getOfficialUpdates()
       ]);
       setStats(statsData);
       setRecentSos(sosData);
       setIncidents(incidentsData);
       setResources(resourcesData);
+      setGlobalReports(aiData);
+      setMapData({ hazards: hazardsData, news: newsData });
+
+      // Determine most endangered location for map focus
+      const highRiskStation = aiData.find((s: any) => s.water_level_now >= s.major_flood) || 
+                             aiData.find((s: any) => s.water_level_now >= s.minor_flood) ||
+                             aiData.sort((a: any, b: any) => (b.water_level_now / b.major_flood) - (a.water_level_now / a.major_flood))[0];
+      
+      if (highRiskStation?.latitude && highRiskStation?.longitude) {
+         setMapCenter([highRiskStation.latitude, highRiskStation.longitude]);
+      }
     } catch (err) {
       console.error('Dashboard Data Error:', err);
     } finally {
@@ -83,7 +102,14 @@ export default function AuthorityDashboard() {
           </div>
 
           <div className="space-y-8">
-            <LiveOperationsMap incidents={incidents} sos={recentSos} />
+            <LiveOperationsMap 
+               incidents={incidents} 
+               sos={recentSos} 
+               stations={globalReports} 
+               hazards={mapData.hazards} 
+               news={mapData.news}
+               center={mapCenter}
+            />
             <RecentActivityCard activities={recentSos} onResolve={fetchData} />
           </div>
         </div>
@@ -250,34 +276,27 @@ function RegionalSeverityCard() {
   );
 }
 
-function LiveOperationsMap({ incidents, sos }: { incidents: any[], sos: any[] }) {
+function LiveOperationsMap({ incidents, sos, stations, hazards, news, center }: { incidents: any[], sos: any[], stations: any[], hazards: any[], news: any[], center: [number, number] }) {
   return (
-    <div className="bg-white rounded-[32px] border border-auth-border auth-card-shadow overflow-hidden">
-      <div className="p-6 border-b border-auth-border">
+    <div className="bg-white rounded-[32px] border border-auth-border auth-card-shadow overflow-hidden group">
+      <div className="p-6 border-b border-auth-border flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          Operations Map
+          Situation Map
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
         </h3>
+        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded">High Risk Focus</span>
       </div>
-      <div className="h-64 bg-slate-50 relative flex items-center justify-center">
-        <div className="absolute inset-0 grayscale opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#9ca3af 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-        <div className="relative w-full h-full">
-           {/* Render markers for real incidents */}
-           {incidents.slice(0, 5).map((inc, i) => (
-             <div key={inc.id} className="absolute" style={{ top: `${20 + i*15}%`, left: `${30 + i*10}%` }}>
-               <div className="w-3 h-3 bg-red-500 rounded-full animate-ping absolute" />
-               <div className="w-3 h-3 bg-red-500 rounded-full" />
-             </div>
-           ))}
-           {sos.map((s, i) => (
-             <div key={s.id} className="absolute" style={{ top: `${40 + i*20}%`, right: `${20 + i*10}%` }}>
-                <MapPin className="w-4 h-4 text-orange-500" />
-             </div>
-           ))}
-        </div>
-        <div className="absolute z-10 text-[10px] font-black text-slate-200 uppercase tracking-widest p-4 text-center">
-          Active Incident Simulation View
-        </div>
+      <div className="h-[400px] bg-slate-50 relative">
+         <SituationMap 
+            hazards={hazards}
+            incidents={incidents}
+            news={news}
+            needs={sos}
+            userLocation={center}
+         />
+      </div>
+      <div className="p-4 bg-zinc-900 text-[10px] font-black text-white/40 uppercase tracking-widest text-center">
+        National Disaster Intelligence Grid
       </div>
     </div>
   );

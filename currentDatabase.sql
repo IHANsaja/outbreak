@@ -34,6 +34,8 @@ CREATE TABLE public.official_updates (
   content text NOT NULL,
   severity USER-DEFINED DEFAULT 'info'::update_severity,
   created_at timestamp with time zone DEFAULT now(),
+  latitude numeric,
+  longitude numeric,
   CONSTRAINT official_updates_pkey PRIMARY KEY (id),
   CONSTRAINT official_updates_authority_id_fkey FOREIGN KEY (authority_id) REFERENCES public.profiles(id)
 );

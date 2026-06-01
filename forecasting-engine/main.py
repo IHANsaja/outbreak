@@ -86,8 +86,23 @@ def predict(history: List[RiverReport]):
 
     try:
         forecasts = engine.get_specialized_forecasts(df)
+        
+        # Anomaly Detection: Mark as anomaly if results are physically impossible
+        # or show extreme divergence from the current reading.
+        last_val = float(df.iloc[-1]['water_level_now'])
+        is_anomaly = False
+        
+        # Check for extreme levels or jumps (>15m in 12h/24h)
+        if (forecasts["trend_monitor_12h"] > 25.0 or forecasts["trend_monitor_12h"] < 0.0 or
+            forecasts["strategic_path_24h"] > 25.0 or forecasts["strategic_path_24h"] < 0.0):
+            is_anomaly = True
+            
+        if abs(forecasts["trend_monitor_12h"] - last_val) > 15.0:
+            is_anomaly = True
+
         return {
             "success": True,
+            "is_anomaly": is_anomaly,
             "forecasts": {
                 "early_warning_1h": forecasts["early_warning_1h"],
                 "trend_monitor_12h": forecasts["trend_monitor_12h"],
@@ -96,7 +111,7 @@ def predict(history: List[RiverReport]):
             "units": "meters",
             "metadata": {
                 "window_size": len(df),
-                "last_reading": float(df.iloc[-1]['water_level_now'])
+                "last_reading": last_val
             }
         }
     except Exception as e:

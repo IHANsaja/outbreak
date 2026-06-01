@@ -589,6 +589,22 @@
         });
       }
 
+      // --- Peer Identity Management ---
+      if (!localStorage.getItem("offline_nick")) {
+        const randId = Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem("offline_nick", `Peer-${randId}`);
+      }
+      const myNick = localStorage.getItem("offline_nick");
+
+      function getMySentIds() {
+        return JSON.parse(localStorage.getItem("my_sent_ids") || "[]");
+      }
+      function addMySentId(id) {
+        const ids = getMySentIds();
+        ids.push(id);
+        localStorage.setItem("my_sent_ids", JSON.stringify(ids));
+      }
+
       // --- State Management ---
       const state = {
         messages: [
@@ -634,6 +650,8 @@
         isPowerSaver: false,
       };
 
+      let isOfflineBackend = false;
+
       const feedEl = document.getElementById("feed");
       const queueCountEl = document.getElementById("queueCount");
       const modalQueueCountEl = document.getElementById("modalQueueCount");
@@ -661,21 +679,66 @@
         feedEl.scrollTop = feedEl.scrollHeight;
       }
 
-      function sendMessage() {
+      async function loadDataFromServer() {
+        try {
+          const resMsg = await fetch("/api/messages");
+          if (resMsg.ok) {
+            isOfflineBackend = true;
+            const dataMsg = await resMsg.json();
+            const sentIds = getMySentIds();
+            state.messages = dataMsg.map(msg => ({
+              ...msg,
+              isSelf: sentIds.includes(msg.id) || msg.user === myNick
+            }));
+            renderFeed();
+          }
+
+          const resSync = await fetch("/api/sync_queue");
+          if (resSync.ok) {
+            state.syncQueue = await resSync.json();
+            updateSyncUI();
+          }
+        } catch (err) {
+          console.log("Running in standalone/mock mode", err);
+          isOfflineBackend = false;
+        }
+      }
+
+      async function sendMessage() {
         const input = document.getElementById("messageInput");
         const text = input.value.trim();
         if (!text) return;
 
         const slTime = getSLTime();
+        const msgId = Date.now();
         const newMsg = {
-          id: Date.now(),
-          user: "Me",
+          id: msgId,
+          user: myNick,
           text: text,
           time: formatSLTime(slTime),
-          isSelf: true,
-          queued: true,
+          queued: true
         };
 
+        if (isOfflineBackend) {
+          try {
+            const res = await fetch("/api/messages", {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: `id=${msgId}&user=${encodeURIComponent(myNick)}&text=${encodeURIComponent(text)}&time=${encodeURIComponent(newMsg.time)}`
+            });
+            if (res.ok) {
+              addMySentId(msgId);
+              input.value = "";
+              await loadDataFromServer();
+              return;
+            }
+          } catch (err) {
+            console.error("Failed to POST message, falling back to local", err);
+          }
+        }
+
+        // Standalone fallback
+        newMsg.isSelf = true;
         state.messages.push(newMsg);
         state.syncQueue.push({
           id: "MSG-" + newMsg.id,
@@ -694,9 +757,9 @@
       async function triggerSOS() {
         const slTime = getSLTime();
         const location = await getGPSLocation();
-        
+        const sosId = Date.now();
         const sosData = {
-          id: "SOS-" + Date.now(),
+          id: "SOS-" + sosId,
           type: "SOS_BROADCAST",
           content: "EMERGENCY SOS TRIGGERED FROM EDGE NODE #8392-A",
           priority: "CRITICAL",
@@ -706,6 +769,24 @@
           timestamp_ms: slTime.getTime()
         };
 
+        if (isOfflineBackend) {
+          try {
+            const res = await fetch("/api/sos", {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: `id=${sosId}&location=${encodeURIComponent(location)}&time=${encodeURIComponent(formatSLTime(slTime))}`
+            });
+            if (res.ok) {
+              closeModal("sosModal");
+              await loadDataFromServer();
+              return;
+            }
+          } catch (err) {
+            console.error("Failed to POST SOS, falling back to local", err);
+          }
+        }
+
+        // Standalone fallback
         state.syncQueue.push(sosData);
         state.messages.push({
           id: Date.now(),
@@ -721,20 +802,36 @@
         renderFeed();
       }
 
-      function syncNow() {
+      async function syncNow() {
         const slTime = getSLTime();
-        // Add priority indicator to all items as requested
-        const finalData = state.syncQueue.map((item) => ({
-          ...item,
-          metadata: {
-            node_id: "8392-A",
-            is_prio_critical: true, // Special indicator for main platform
-            delivery_priority: "CRITICAL",
-            captured_at_sl: slTime.toISOString()
-          },
-        }));
+        let finalData = [];
+        let syncPayload = {};
 
-        const syncPayload = {
+        if (isOfflineBackend) {
+          try {
+            const res = await fetch("/api/sync_queue");
+            if (res.ok) {
+              finalData = await res.json();
+            }
+          } catch (err) {
+            console.error("Failed to fetch server sync queue, using local", err);
+          }
+        }
+
+        // Fallback or local
+        if (finalData.length === 0) {
+          finalData = state.syncQueue.map((item) => ({
+            ...item,
+            metadata: {
+              node_id: "8392-A",
+              is_prio_critical: true,
+              delivery_priority: "CRITICAL",
+              captured_at_sl: slTime.toISOString()
+            },
+          }));
+        }
+
+        syncPayload = {
           package_id: "SYNC-" + Math.random().toString(36).substr(2, 9),
           timestamp_iso: slTime.toISOString(),
           timestamp_sl: new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeStyle: 'long', timeZone: 'Asia/Colombo' }).format(slTime),
@@ -759,11 +856,20 @@
 
         alert("Sync Bundle Generated with Sri Lanka Time & Location Data.");
 
-        // Clear queue simulation
-        state.syncQueue = [];
-        state.messages = state.messages.map((m) => ({ ...m, queued: false }));
-        updateSyncUI();
-        renderFeed();
+        if (isOfflineBackend) {
+          try {
+            await fetch("/api/sync_clear", { method: "POST" });
+            await loadDataFromServer();
+          } catch (err) {
+            console.error("Failed to clear server sync queue", err);
+          }
+        } else {
+          // Clear queue simulation
+          state.syncQueue = [];
+          state.messages = state.messages.map((m) => ({ ...m, queued: false }));
+          updateSyncUI();
+          renderFeed();
+        }
         closeModal("syncModal");
       }
 
@@ -797,8 +903,16 @@
       }
 
       // Initial Setup
+      loadDataFromServer();
       updateSyncUI();
       renderFeed();
+
+      // Background Polling
+      setInterval(() => {
+        if (isOfflineBackend) {
+          loadDataFromServer();
+        }
+      }, 3000);
 
       // Simulate mesh connection fluctuation
       setInterval(() => {

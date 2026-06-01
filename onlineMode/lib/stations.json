@@ -2,451 +2,631 @@
   {
     "id": 0,
     "name": "Agra Oya",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 6.8996,
+    "longitude": 80.710197
   },
   {
     "id": 1,
     "name": "Attanagalu Oya",
-    "river": "Attanagalu Oya (RB 103)"
+    "river": "Attanagalu Oya (RB 103)",
+    "latitude": 7.115556,
+    "longitude": 80.080556
   },
   {
     "id": 2,
     "name": "AttanagaluOya",
-    "river": "AttanagaluOya (RB103)"
+    "river": "AttanagaluOya (RB103)",
+    "latitude": 7.115556,
+    "longitude": 80.080556
   },
   {
     "id": 3,
     "name": "Badalgama",
-    "river": "Maha Oya (RB 102)"
+    "river": "Maha Oya (RB 102)",
+    "latitude": 7.3,
+    "longitude": 79.979722
   },
   {
     "id": 4,
     "name": "Baddegama",
-    "river": "Gin Ganga (RB 09)"
+    "river": "Gin Ganga (RB 09)",
+    "latitude": 6.175833,
+    "longitude": 80.174167
   },
   {
     "id": 5,
     "name": "Badulu Oya",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 7.090833,
+    "longitude": 81.048056
   },
   {
     "id": 6,
     "name": "BaduluOya",
-    "river": "Mahaweli Ganga (RB60)"
+    "river": "Mahaweli Ganga (RB60)",
+    "latitude": 7.090833,
+    "longitude": 81.048056
   },
   {
     "id": 7,
     "name": "Bolana",
-    "river": "Walawe Ganga (RB 18)"
+    "river": "Walawe Ganga (RB 18)",
+    "latitude": 6.165556,
+    "longitude": 81.006389
   },
   {
     "id": 8,
     "name": "Calidonia",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 6.901944,
+    "longitude": 80.697778
   },
   {
     "id": 9,
     "name": "Deduru Oya",
-    "river": "Deduru Oya (RB 99)"
+    "river": "Deduru Oya (RB 99)",
+    "latitude": 7.7275,
+    "longitude": 80.096111
   },
   {
     "id": 10,
     "name": "DeduruOya",
-    "river": "DeduruOya (RB99)"
+    "river": "DeduruOya (RB99)",
+    "latitude": 7.7275,
+    "longitude": 80.096111
   },
   {
     "id": 11,
     "name": "Deraniyagala",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.924444,
+    "longitude": 80.337778
   },
   {
     "id": 12,
     "name": "Dunamale",
-    "river": "Attanagalu Oya (RB 103)"
+    "river": "Attanagalu Oya (RB 103)",
+    "latitude": 7.115556,
+    "longitude": 80.080556
   },
   {
     "id": 13,
     "name": "Ellagawa",
-    "river": "Kalu Ganga (RB 03)"
+    "river": "Kalu Ganga (RB 03)",
+    "latitude": 6.731944,
+    "longitude": 80.21
   },
   {
     "id": 14,
     "name": "Galgamuwa",
-    "river": "Mee Oya (RB 95)"
+    "river": "Mee Oya (RB 95)",
+    "latitude": 7.968611,
+    "longitude": 80.259444
   },
   {
     "id": 15,
     "name": "Gin Ganga",
-    "river": "Gin Ganga (RB 09)"
+    "river": "Gin Ganga (RB 09)",
+    "latitude": 6.341944,
+    "longitude": 80.330278
   },
   {
     "id": 16,
     "name": "GinGanga",
-    "river": "GinGanga (RB09)"
+    "river": "GinGanga (RB09)",
+    "latitude": 6.341944,
+    "longitude": 80.330278
   },
   {
     "id": 17,
     "name": "Giriulla",
-    "river": "Maha Oya (RB 102)"
+    "river": "Maha Oya (RB 102)",
+    "latitude": 7.325,
+    "longitude": 80.114722
   },
   {
     "id": 18,
     "name": "Glencourse",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.974444,
+    "longitude": 80.182778
   },
   {
     "id": 19,
     "name": "Gurugoda Oya",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 7.0457,
+    "longitude": 80.2542
   },
   {
     "id": 20,
     "name": "GurugodaOya",
-    "river": "KelaniGanga (RB01)"
+    "river": "KelaniGanga (RB01)",
+    "latitude": 7.0457,
+    "longitude": 80.2542
   },
   {
     "id": 21,
     "name": "Hanwella",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.909444,
+    "longitude": 80.079444
   },
   {
     "id": 22,
     "name": "Heda Oya",
-    "river": "Heda Oya (RB 36)"
+    "river": "Heda Oya (RB 36)",
+    "latitude": 6.905,
+    "longitude": 81.543333
   },
   {
     "id": 23,
     "name": "HedaOya",
-    "river": "HedaOya (RB36)"
+    "river": "HedaOya (RB36)",
+    "latitude": 6.905,
+    "longitude": 81.543333
   },
   {
     "id": 24,
     "name": "Holombuwa",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 7.185278,
+    "longitude": 80.264722
   },
   {
     "id": 25,
     "name": "Horowpatana",
-    "river": "Yan Oya (RB 67)"
+    "river": "Yan Oya (RB 67)",
+    "latitude": 8.5775,
+    "longitude": 80.878611
   },
   {
     "id": 26,
     "name": "Kalu Ganga",
-    "river": "Kalu Ganga (RB 03)"
+    "river": "Kalu Ganga (RB 03)",
+    "latitude": 6.678333,
+    "longitude": 80.394167
   },
   {
     "id": 27,
     "name": "KaluGanga",
-    "river": "KaluGanga (RB03)"
+    "river": "KaluGanga (RB03)",
+    "latitude": 6.678333,
+    "longitude": 80.394167
   },
   {
     "id": 28,
     "name": "Kehelgamu Oya",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.858333,
+    "longitude": 80.580833
   },
   {
     "id": 29,
     "name": "KehelgamuOya",
-    "river": "KelaniGanga (RB01)"
+    "river": "KelaniGanga (RB01)",
+    "latitude": 6.858333,
+    "longitude": 80.580833
   },
   {
     "id": 30,
     "name": "Kelani Ganga",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.909444,
+    "longitude": 80.079444
   },
   {
     "id": 31,
     "name": "KelaniGanga",
-    "river": "KelaniGanga (RB01)"
+    "river": "KelaniGanga (RB01)",
+    "latitude": 6.909444,
+    "longitude": 80.079444
   },
   {
     "id": 32,
     "name": "Kirindi Oya",
-    "river": "Kirindi Oya (RB 22)"
+    "river": "Kirindi Oya (RB 22)",
+    "latitude": 6.709722,
+    "longitude": 81.111111
   },
   {
     "id": 33,
     "name": "KirindiOya",
-    "river": "KirindiOya (RB22)"
+    "river": "KirindiOya (RB22)",
+    "latitude": 6.709722,
+    "longitude": 81.111111
   },
   {
     "id": 34,
     "name": "Kitulgala",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.990556,
+    "longitude": 80.412222
   },
   {
     "id": 35,
     "name": "Kuda Ganga",
-    "river": "Kalu Ganga (RB 03)"
+    "river": "Kalu Ganga (RB 03)",
+    "latitude": 6.632222,
+    "longitude": 80.189722
   },
   {
     "id": 36,
     "name": "Kuda Oya",
-    "river": "Kirindi Oya (RB 22)"
+    "river": "Kirindi Oya (RB 22)",
+    "latitude": 6.524722,
+    "longitude": 81.123333
   },
   {
     "id": 37,
     "name": "KudaGanga",
-    "river": "KaluGanga (RB03)"
+    "river": "KaluGanga (RB03)",
+    "latitude": 6.632222,
+    "longitude": 80.189722
   },
   {
     "id": 38,
     "name": "KudaOya",
-    "river": "KirindiOya (RB22)"
+    "river": "KirindiOya (RB22)",
+    "latitude": 6.524722,
+    "longitude": 81.123333
   },
   {
     "id": 39,
     "name": "Kumbukkan Oya",
-    "river": "Kumbukkan Oya (RB 31)"
+    "river": "Kumbukkan Oya (RB 31)",
+    "latitude": 6.895,
+    "longitude": 81.296944
   },
   {
     "id": 40,
     "name": "KumbukkanOya",
-    "river": "KumbukkanOya (RB31)"
+    "river": "KumbukkanOya (RB31)",
+    "latitude": 6.895,
+    "longitude": 81.296944
   },
   {
     "id": 41,
     "name": "Maduru Oya",
-    "river": "Maduru Oya (RB 54)"
+    "river": "Maduru Oya (RB 54)",
+    "latitude": 7.383611,
+    "longitude": 81.191944
   },
   {
     "id": 42,
     "name": "MaduruOya",
-    "river": "MaduruOya (RB54)"
+    "river": "MaduruOya (RB54)",
+    "latitude": 7.383611,
+    "longitude": 81.191944
   },
   {
     "id": 44,
     "name": "Maguru Ganga",
-    "river": "Kalu Ganga (RB 03)"
+    "river": "Kalu Ganga (RB 03)",
+    "latitude": 6.341944,
+    "longitude": 80.330278
   },
   {
     "id": 45,
     "name": "MaguruGanga",
-    "river": "KaluGanga (RB03)"
+    "river": "KaluGanga (RB03)",
+    "latitude": 6.341944,
+    "longitude": 80.330278
   },
   {
     "id": 46,
     "name": "Maha Oya",
-    "river": "Maha Oya (RB 102)"
+    "river": "Maha Oya (RB 102)",
+    "latitude": 7.325,
+    "longitude": 80.114722
   },
   {
     "id": 47,
     "name": "MahaOya",
-    "river": "MahaOya (RB102)"
+    "river": "MahaOya (RB102)",
+    "latitude": 7.325,
+    "longitude": 80.114722
   },
   {
     "id": 48,
     "name": "Mahaweli Ganga",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 7.2675,
+    "longitude": 80.608333
   },
   {
     "id": 49,
     "name": "MahaweliGanga",
-    "river": "Mahaweli Ganga (RB60)"
+    "river": "Mahaweli Ganga (RB60)",
+    "latitude": 7.2675,
+    "longitude": 80.608333
   },
   {
     "id": 50,
     "name": "Malwathu Oya",
-    "river": "Malwathu Oya (RB 90)"
+    "river": "Malwathu Oya (RB 90)",
+    "latitude": 8.587222,
+    "longitude": 80.275278
   },
   {
     "id": 51,
     "name": "MalwathuOya",
-    "river": "MalwathuOya (RB90)"
+    "river": "MalwathuOya (RB90)",
+    "latitude": 8.587222,
+    "longitude": 80.275278
   },
   {
     "id": 52,
     "name": "Manampitiya",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 7.914722,
+    "longitude": 81.086111
   },
   {
     "id": 53,
     "name": "Mee Oya",
-    "river": "Mee Oya (RB 95)"
+    "river": "Mee Oya (RB 95)",
+    "latitude": 7.968611,
+    "longitude": 80.259444
   },
   {
     "id": 54,
     "name": "MeeOya",
-    "river": "MeeOya (RB95)"
+    "river": "MeeOya (RB95)",
+    "latitude": 7.968611,
+    "longitude": 80.259444
   },
   {
     "id": 55,
     "name": "Menik Ganga",
-    "river": "Menik Ganga (RB 26) Kumbukkan Oya (RB 31)"
+    "river": "Menik Ganga (RB 26) Kumbukkan Oya (RB 31)",
+    "latitude": 6.415556,
+    "longitude": 81.330833
   },
   {
     "id": 56,
     "name": "MenikGanga",
-    "river": "MenikGanga (RB26)"
+    "river": "MenikGanga (RB26)",
+    "latitude": 6.415556,
+    "longitude": 81.330833
   },
   {
     "id": 57,
     "name": "Millakanda",
-    "river": "Kalu Ganga (RB 03)"
+    "river": "Kalu Ganga (RB 03)",
+    "latitude": 6.632222,
+    "longitude": 80.189722
   },
   {
     "id": 58,
     "name": "Mukunu Oya",
-    "river": "Maa Oya (RB 69)"
+    "river": "Maa Oya (RB 69)",
+    "latitude": 8.719722,
+    "longitude": 80.680278
   },
   {
     "id": 59,
     "name": "MukunuOya",
-    "river": "MaaOya(RB 69)"
+    "river": "MaaOya(RB 69)",
+    "latitude": 8.719722,
+    "longitude": 80.680278
   },
   {
     "id": 60,
     "name": "N' Street",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.959722,
+    "longitude": 79.876944
   },
   {
     "id": 61,
     "name": "Nakkala",
-    "river": "Kumbukkan Oya (RB 31)"
+    "river": "Kumbukkan Oya (RB 31)",
+    "latitude": 6.895,
+    "longitude": 81.296944
   },
   {
     "id": 62,
     "name": "Nawalapitiya",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 7.0475,
+    "longitude": 80.534444
   },
   {
     "id": 63,
     "name": "Nilwala Ganga",
-    "river": "Nilwala Ganga (RB 12)"
+    "river": "Nilwala Ganga (RB 12)",
+    "latitude": 6.213056,
+    "longitude": 80.475278
   },
   {
     "id": 64,
     "name": "NilwalaGanga",
-    "river": "NilwalaGanga (RB12)"
+    "river": "NilwalaGanga (RB12)",
+    "latitude": 6.213056,
+    "longitude": 80.475278
   },
   {
     "id": 65,
     "name": "Norwood",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.839444,
+    "longitude": 80.611667
   },
   {
     "id": 66,
     "name": "P anadugama",
-    "river": "Nilwala Ganga (RB 12)"
+    "river": "Nilwala Ganga (RB 12)",
+    "latitude": 6.1,
+    "longitude": 80.48
   },
   {
     "id": 67,
     "name": "Padiyatalawa",
-    "river": "Maduru Oya (RB 54)"
+    "river": "Maduru Oya (RB 54)",
+    "latitude": 7.383611,
+    "longitude": 81.191944
   },
   {
     "id": 68,
     "name": "Panadugama",
-    "river": "Nilwala Ganga (RB 12)"
+    "river": "Nilwala Ganga (RB 12)",
+    "latitude": 6.1,
+    "longitude": 80.48
   },
   {
     "id": 69,
     "name": "Peradeniya",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 7.2675,
+    "longitude": 80.608333
   },
   {
     "id": 70,
     "name": "Pitabeddara",
-    "river": "Nilwala Ganga (RB 12)"
+    "river": "Nilwala Ganga (RB 12)",
+    "latitude": 6.213056,
+    "longitude": 80.475278
   },
   {
     "id": 71,
     "name": "Putupaula",
-    "river": "Kalu Ganga (RB 03)"
+    "river": "Kalu Ganga (RB 03)",
+    "latitude": 6.601667,
+    "longitude": 80.057222
   },
   {
     "id": 72,
     "name": "Ratnapura",
-    "river": "Kalu Ganga (RB 03)"
+    "river": "Kalu Ganga (RB 03)",
+    "latitude": 6.678333,
+    "longitude": 80.394167
   },
   {
     "id": 73,
     "name": "Ridi bendi Ella (Dam)",
-    "river": "Deduru Oya (RB 99)"
+    "river": "Deduru Oya (RB 99)",
+    "latitude": 7.7275,
+    "longitude": 80.096111
   },
   {
     "id": 74,
     "name": "Seethawaka Ganga",
-    "river": "Kelani Ganga (RB 01)"
+    "river": "Kelani Ganga (RB 01)",
+    "latitude": 6.909444,
+    "longitude": 80.079444
   },
   {
     "id": 75,
     "name": "SeethawakaGanga",
-    "river": "KelaniGanga (RB01)"
+    "river": "KelaniGanga (RB01)",
+    "latitude": 6.909444,
+    "longitude": 80.079444
   },
   {
     "id": 76,
     "name": "Siyambalanduwa",
-    "river": "Heda Oya (RB 36)"
+    "river": "Heda Oya (RB 36)",
+    "latitude": 6.905,
+    "longitude": 81.543333
   },
   {
     "id": 77,
     "name": "Taldena",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 7.090833,
+    "longitude": 81.048056
   },
   {
     "id": 78,
     "name": "Tanamalwila",
-    "river": "Kirindi Oya (RB 22)"
+    "river": "Kirindi Oya (RB 22)",
+    "latitude": 6.468333,
+    "longitude": 81.134167
   },
   {
     "id": 79,
     "name": "Tantirimale",
-    "river": "Malwathu Oya (RB 90)"
+    "river": "Malwathu Oya (RB 90)",
+    "latitude": 8.587222,
+    "longitude": 80.275278
   },
   {
     "id": 80,
     "name": "Tawalama",
-    "river": "Gin Ganga (RB 09)"
+    "river": "Gin Ganga (RB 09)",
+    "latitude": 6.341944,
+    "longitude": 80.330278
   },
   {
     "id": 81,
     "name": "Urawa",
-    "river": "Nilwala Ganga (RB 12)"
+    "river": "Nilwala Ganga (RB 12)",
+    "latitude": 6.236667,
+    "longitude": 80.571667
   },
   {
     "id": 82,
     "name": "Urubokka Ganga",
-    "river": "Nilwala Ganga (RB 12)"
+    "river": "Nilwala Ganga (RB 12)",
+    "latitude": 6.213056,
+    "longitude": 80.475278
   },
   {
     "id": 83,
     "name": "UrubokkaGanga",
-    "river": "NilwalaGanga (RB12)"
+    "river": "NilwalaGanga (RB12)",
+    "latitude": 6.213056,
+    "longitude": 80.475278
   },
   {
     "id": 84,
     "name": "Walawe Ganga",
-    "river": "Walawe Ganga (RB 18)"
+    "river": "Walawe Ganga (RB 18)",
+    "latitude": 6.345278,
+    "longitude": 80.901389
   },
   {
     "id": 85,
     "name": "WalaweGanga",
-    "river": "WalaweGanga (RB18)"
+    "river": "WalaweGanga (RB18)",
+    "latitude": 6.345278,
+    "longitude": 80.901389
   },
   {
     "id": 86,
     "name": "Wellawaya",
-    "river": "Kirindi Oya (RB 22)"
+    "river": "Kirindi Oya (RB 22)",
+    "latitude": 6.709722,
+    "longitude": 81.111111
   },
   {
     "id": 87,
     "name": "Weragantota",
-    "river": "Mahaweli Ganga (RB 60)"
+    "river": "Mahaweli Ganga (RB 60)",
+    "latitude": 7.318056,
+    "longitude": 80.989167
   },
   {
     "id": 88,
     "name": "Yakawewa",
-    "river": "Maa Oya (RB 69) Mukunu Oya"
+    "river": "Maa Oya (RB 69) Mukunu Oya",
+    "latitude": 8.719722,
+    "longitude": 80.680278
   },
   {
     "id": 89,
     "name": "Yan Oya",
-    "river": "Yan Oya (RB 67)"
+    "river": "Yan Oya (RB 67)",
+    "latitude": 8.5775,
+    "longitude": 80.878611
   },
   {
     "id": 90,
     "name": "YanOya",
-    "river": "YanOya (RB67)"
+    "river": "YanOya (RB67)",
+    "latitude": 8.5775,
+    "longitude": 80.878611
   }
 ]

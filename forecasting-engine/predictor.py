@@ -11,6 +11,10 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings("ignore")
 
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class FloodLSTM(nn.Module):
     """LSTM architecture matching the trained checkpoint.
@@ -46,7 +50,38 @@ class ForecastingEngine:
         # TFT additionally requires 'rainfall' as a time_varying_known_real
         self.features = self.base_features + ['rainfall']
         
+        # Physical limits for scaling (0-25m for water, 0-200mm for rain)
+        self.water_max = 25.0
+        self.rain_max = 200.0
+        
         self._load_models()
+
+    def _dampen_prediction(self, current_val, pred_val, max_delta=1.5):
+        """Prevents physically impossible surges/drops by capping the change per step (3-hour interval)."""
+        delta = pred_val - current_val
+        if abs(delta) > max_delta:
+            # Cap the change to max_delta in the direction of the prediction
+            sign = 1 if delta > 0 else -1
+            return current_val + (sign * max_delta)
+        return pred_val
+
+
+    def _scale_data(self, df):
+        """Normalizes water levels and rainfall to a 0-1 range for model stability."""
+        df = df.copy()
+        water_cols = ['water_level_now', 'water_level_lag1', 'water_level_lag2', 'alert_level', 'minor_flood', 'major_flood']
+        for col in water_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0) / self.water_max
+        
+        for col in ['rainfall', 'rainfall_roll3']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0) / self.rain_max
+        return df
+
+    def _unscale_val(self, val):
+        """Converts a normalized 0-1 prediction back to meters."""
+        return val * self.water_max
 
     def _load_models(self):
         try:
@@ -81,22 +116,34 @@ class ForecastingEngine:
     def predict_xgb_1h(self, history_df: pd.DataFrame):
         if self.xgb_model:
             latest = history_df.iloc[-1:].copy()
+            # Scale features for model consistency
+            latest = self._scale_data(latest)
+            
             # XGBoost requires numeric types for all columns
             for col in ['station_id', 'river_id']:
                 if col in latest.columns:
                     latest[col] = pd.to_numeric(latest[col], errors='coerce').fillna(0).astype(np.int64)
-            return max(0.0, float(self.xgb_model.predict(latest[self.base_features])[0]))
+            
+            raw_pred = float(self.xgb_model.predict(latest[self.base_features])[0])
+            # Unscale the prediction back to meters
+            return max(0.0, self._unscale_val(raw_pred))
         return 0.0
 
-    def predict_lstm_recursive(self, history_df: pd.DataFrame, steps: int = 4):
+    def predict_lstm_recursive(self, history_df: pd.DataFrame, steps: int = 4, final_target: float = None):
         if not self.lstm_model: return 0.0
         
-        current_history = history_df.copy()
+        current_history = history_df.tail(12).copy()
         predictions = []
+        start_val = current_history.iloc[-1]['water_level_now']
         
-        for _ in range(steps):
-            # LSTM uses base_features (10 features), must be numeric
+        logger.info(f"--- Starting LSTM 12h Recursive (Start: {start_val:.2f}m) ---")
+        
+        for i in range(steps):
+            # 1. Scale input
             lstm_subset = current_history.iloc[-12:][self.base_features].copy()
+            lstm_subset = self._scale_data(lstm_subset)
+            
+            # Ensure numeric types
             for col in ['station_id', 'river_id']:
                 lstm_subset[col] = pd.to_numeric(lstm_subset[col], errors='coerce').fillna(0)
                 
@@ -105,68 +152,79 @@ class ForecastingEngine:
             
             with torch.no_grad():
                 out = self.lstm_model(input_tensor)
-                pred_val = max(0.0, float(out.numpy().flatten()[0]))
+                raw_pred = float(out.numpy().flatten()[0])
+                
+                # 3. Unscale and Dampen
+                unscaled_pred = self._unscale_val(raw_pred)
+                current_val = current_history.iloc[-1]['water_level_now']
+                
+                # --- Trend Enforcement ---
+                if final_target is not None and final_target > start_val:
+                    floor = max(start_val * 0.8, final_target * 0.5)
+                    if unscaled_pred < floor:
+                        unscaled_pred = floor
+                
+                pred_val = self._dampen_prediction(current_val, max(0.0, unscaled_pred))
                 predictions.append(pred_val)
+                logger.info(f"  Step {i+1} (3h): Raw={raw_pred:.4f}, Result={pred_val:.2f}m")
                 
             new_row = current_history.iloc[-1].copy()
             new_row['water_level_lag2'] = current_history.iloc[-1]['water_level_lag1']
             new_row['water_level_lag1'] = current_history.iloc[-1]['water_level_now']
             new_row['water_level_now'] = pred_val
             new_row['hour'] = (new_row['hour'] + 3) % 24
+            new_row['time_idx'] = int(new_row['time_idx']) + 1
             
-            current_history = pd.concat([current_history, pd.DataFrame([new_row])], ignore_index=True)
+            current_history = pd.concat([current_history.iloc[1:], pd.DataFrame([new_row])], ignore_index=True)
             
         return predictions[-1]
 
     def predict_tft_recursive(self, history_df: pd.DataFrame, steps: int = 8):
         if not self.tft_model: return 0.0
         
-        current_history = history_df.copy()
-        
-        # Ensure 'rainfall' column exists
-        if 'rainfall' not in current_history.columns:
-            current_history['rainfall'] = current_history.get('rainfall_roll3', 0.0)
-        
-        # Ensure time_idx exists and is valid
-        if 'time_idx' not in current_history.columns or current_history['time_idx'].isnull().any():
-            current_history['time_idx'] = np.arange(len(current_history), dtype=np.int64)
-            
-        # Enforce types: time_idx/hour/month = int64, station_id/river_id = str
-        current_history['time_idx'] = current_history['time_idx'].astype(np.int64)
-        current_history['hour'] = current_history['hour'].astype(np.int64)
-        current_history['month'] = current_history['month'].astype(np.int64)
-        current_history['station_id'] = current_history['station_id'].astype(str)
-        current_history['river_id'] = current_history['river_id'].astype(str)
-
+        current_history = history_df.tail(12).copy()
         predictions = []
+        start_val = current_history.iloc[-1]['water_level_now']
 
-        for _ in range(steps):
+        logger.info(f"--- Starting TFT 24h Recursive (Start: {start_val:.2f}m) ---")
+
+        for i in range(steps):
+            # Scale window for TFT prediction
+            scaled_window = self._scale_data(current_history)
+            
             with torch.no_grad():
-                preds = self.tft_model.predict(current_history, mode="prediction")
-                pred_val = max(0.0, float(preds.numpy().flatten()[0]))
+                preds = self.tft_model.predict(scaled_window, mode="prediction")
+                raw_pred = float(preds.numpy().flatten()[0])
+                
+                unscaled_pred = self._unscale_val(raw_pred)
+                current_val = current_history.iloc[-1]['water_level_now']
+                pred_val = self._dampen_prediction(current_val, max(0.0, unscaled_pred))
                 predictions.append(pred_val)
+                logger.info(f"  Step {i+1} (3h): Raw={raw_pred:.4f}, Result={pred_val:.2f}m")
 
             new_row = current_history.iloc[-1].copy()
-            new_row['hour'] = (new_row['hour'] + 3) % 24
             new_row['water_level_lag2'] = current_history.iloc[-1]['water_level_lag1']
             new_row['water_level_lag1'] = current_history.iloc[-1]['water_level_now']
             new_row['water_level_now'] = pred_val
-            new_row['time_idx'] = int(current_history.iloc[-1]['time_idx']) + 1
+            new_row['hour'] = (new_row['hour'] + 3) % 24
+            new_row['time_idx'] = int(new_row['time_idx']) + 1
             
             current_history = pd.concat([current_history.iloc[1:], pd.DataFrame([new_row])], ignore_index=True)
             
-            # Re-enforce types after concat
-            current_history['time_idx'] = current_history['time_idx'].astype(np.int64)
-            current_history['hour'] = current_history['hour'].astype(np.int64)
-            current_history['month'] = current_history['month'].astype(np.int64)
-            current_history['station_id'] = current_history['station_id'].astype(str)
-            current_history['river_id'] = current_history['river_id'].astype(str)
+            # Re-enforce types
+            for col in ['time_idx', 'hour', 'month']:
+                current_history[col] = current_history[col].astype(np.int64)
+            for col in ['station_id', 'river_id']:
+                current_history[col] = current_history[col].astype(str)
 
         return predictions[-1]
 
     def get_specialized_forecasts(self, history_df: pd.DataFrame):
+        # Calculate 24h first to use as a trend guide for 12h
+        tft_24h = self.predict_tft_recursive(history_df, steps=8)
+        
         return {
             "early_warning_1h": self.predict_xgb_1h(history_df),
-            "trend_monitor_12h": self.predict_lstm_recursive(history_df, steps=4),
-            "strategic_path_24h": self.predict_tft_recursive(history_df, steps=8)
+            "trend_monitor_12h": self.predict_lstm_recursive(history_df, steps=4, final_target=tft_24h),
+            "strategic_path_24h": tft_24h
         }

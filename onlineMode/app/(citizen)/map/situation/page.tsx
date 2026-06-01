@@ -40,22 +40,26 @@ export default function SituationMapPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [needs, setNeeds] = useState<Need[]>([]);
   const [news, setNews] = useState<any[]>([]);
+  const [stations, setStations] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchMapData() {
       try {
         const { getActiveHazards, getAllIncidents, getActiveSosRequests, getOfficialUpdates } = await import("@/app/actions/data");
-        const [hazardData, incidentData, needData, newsData] = await Promise.all([
+        const { getGlobalAIInsights } = await import("@/app/actions/forecasting");
+        const [hazardData, incidentData, needData, newsData, aiData] = await Promise.all([
           getActiveHazards(),
           getAllIncidents(),
           getActiveSosRequests(),
           getOfficialUpdates(),
+          getGlobalAIInsights(),
         ]);
 
         setHazards(hazardData);
         setIncidents(incidentData);
         setNeeds(needData);
         setNews(newsData);
+        setStations(aiData);
       } catch (error) {
         console.error("Situation map data error:", error);
       }

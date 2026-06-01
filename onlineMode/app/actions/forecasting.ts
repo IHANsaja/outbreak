@@ -41,6 +41,59 @@ export async function getLatestRiverReports(stationId: number) {
 import stationsData from "../../lib/stations.json";
 
 /**
+ * Returns ALL stations from stations.json enriched with their latest river_reports data.
+ * Every station always appears on the map. Stations with live data include forecasts/water levels.
+ * This is designed for the SituationMap component — self-contained, no parent plumbing needed.
+ */
+export async function getMapStations() {
+  // Fetch recent reports to find the latest per station
+  const { data, error } = await supabase
+    .from("river_reports")
+    .select("*")
+    .order("timestamp", { ascending: false })
+    .limit(2000);
+
+  if (error) {
+    console.error("Error fetching map station data:", error);
+  }
+
+  // Build a map of station_id → latest report
+  const latestByStation = new Map<number, any>();
+  if (data) {
+    for (const row of data) {
+      if (!latestByStation.has(row.station_id)) {
+        latestByStation.set(row.station_id, row);
+      }
+    }
+  }
+
+  // Merge every station from stations.json with its latest report (if any)
+  return stationsData.map(station => {
+    const report = latestByStation.get(station.id);
+    return {
+      station_id: station.id,
+      name: station.name,
+      river: station.river,
+      latitude: station.latitude,
+      longitude: station.longitude,
+      // Live data (null if no report exists)
+      hasData: !!report,
+      water_level_now: report?.water_level_now ?? null,
+      water_level_lag1: report?.water_level_lag1 ?? null,
+      rainfall_roll3: report?.rainfall_roll3 ?? null,
+      alert_level: report?.alert_level ?? null,
+      minor_flood: report?.minor_flood ?? null,
+      major_flood: report?.major_flood ?? null,
+      forecast_1h: report?.forecast_1h ?? null,
+      forecast_12h: report?.forecast_12h ?? null,
+      forecast_24h: report?.forecast_24h ?? null,
+      is_anomaly: report?.is_anomaly ?? false,
+      timestamp: report?.timestamp ?? null,
+    };
+  });
+}
+
+/**
  * Returns available stations based on current active monitoring,
  * decorated with a boolean indicating if AI data is available.
  */
@@ -87,7 +140,17 @@ export async function getGlobalAIInsights() {
     }
   });
 
-  return Array.from(latestPerStation.values());
+  // Enrich with station metadata (lat, lng, name, river) from stations.json
+  return Array.from(latestPerStation.values()).map(report => {
+    const station = stationsData.find(s => s.id === report.station_id);
+    return {
+      ...report,
+      latitude: station?.latitude ?? null,
+      longitude: station?.longitude ?? null,
+      name: station?.name ?? `Station ${report.station_id}`,
+      river: station?.river ?? "Unknown River",
+    };
+  });
 }
 
 /**
@@ -206,4 +269,67 @@ export async function getDetailedReportData(stationId: number) {
     station,
     globalInsights: Array.from(latestPerStation.values())
   };
+}
+
+export async function getCriticalAlerts() {
+  // Fetch latest reports for all stations (scanning 1000 to be safe for coverage)
+  const { data, error } = await supabase
+    .from("river_reports")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+
+  if (error) {
+    console.error("Error fetching alerts:", error);
+    return [];
+  }
+
+  // Deduplicate to get the latest per station
+  const latestPerStation = new Map<number, any>();
+  data.forEach(report => {
+    if (!latestPerStation.has(report.station_id)) {
+      latestPerStation.set(report.station_id, report);
+    }
+  });
+
+  const alerts: any[] = [];
+  
+  latestPerStation.forEach((report) => {
+    const stationMeta = stationsData.find(s => s.id === report.station_id);
+    const river = stationMeta?.river || "Unknown River";
+    const station = stationMeta?.name || "Unknown Station";
+    
+    // Check Current Status
+    let currentLevel = "safe";
+    if (report.water_level_now >= (report.major_flood || 999)) currentLevel = "major";
+    else if (report.water_level_now >= (report.minor_flood || 999)) currentLevel = "minor";
+    else if (report.water_level_now >= (report.alert_level || 999)) currentLevel = "alert";
+
+    // Check Forecast Status (max of 1h, 12h, 24h)
+    const maxForecast = Math.max(
+      report.forecast_1h || 0, 
+      report.forecast_12h || 0, 
+      report.forecast_24h || 0
+    );
+    
+    let forecastLevel = "safe";
+    if (maxForecast >= (report.major_flood || 999)) forecastLevel = "major";
+    else if (maxForecast >= (report.minor_flood || 999)) forecastLevel = "minor";
+    else if (maxForecast >= (report.alert_level || 999)) forecastLevel = "alert";
+
+    // Only alert if either current or forecast is at least "alert" level
+    if (currentLevel !== "safe" || forecastLevel !== "safe") {
+      alerts.push({
+        station_id: report.station_id,
+        river,
+        station,
+        currentLevel,
+        forecastLevel,
+        isAnomaly: report.is_anomaly,
+        timestamp: report.timestamp
+      });
+    }
+  });
+
+  return alerts;
 }

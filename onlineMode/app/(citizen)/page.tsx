@@ -64,6 +64,7 @@ export default function Home() {
   const [mapIncidents, setMapIncidents] = useState<HomeIncident[]>([]);
   const [mapNeeds, setMapNeeds] = useState<HomeSos[]>([]);
   const [mapNews, setMapNews] = useState<any[]>([]);
+  const [stations, setStations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { t } = useLanguage();
 
@@ -71,18 +72,21 @@ export default function Home() {
     async function fetchData() {
       try {
         const { getStats, getActiveHazards, getAllIncidents, getActiveSosRequests, getOfficialUpdates } = await import('@/app/actions/data');
-        const [statsData, hazardsData, incidentsData, sosData, newsData] = await Promise.all([
+        const { getGlobalAIInsights } = await import('@/app/actions/forecasting');
+        const [statsData, hazardsData, incidentsData, sosData, newsData, aiData] = await Promise.all([
           getStats(),
           getActiveHazards(),
           getAllIncidents(),
           getActiveSosRequests(),
-          getOfficialUpdates()
+          getOfficialUpdates(),
+          getGlobalAIInsights()
         ]);
         setStats(statsData);
         setMapHazards(hazardsData);
         setMapIncidents(incidentsData);
         setMapNeeds(sosData);
         setMapNews(newsData);
+        setStations(aiData);
         if (hazardsData && hazardsData.length > 0) {
           setUrgentHazard(hazardsData[0]); // Take the most recent active hazard
         }

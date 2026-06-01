@@ -36,6 +36,7 @@ interface MapProps {
   needs?: MapItem[];
   news?: MapItem[];
   userLocation?: [number, number];
+  selectedStationId?: number;
 }
 
 export default function SituationMap({ 
@@ -43,11 +44,9 @@ export default function SituationMap({
   incidents = [], 
   needs = [], 
   news = [], 
-  userLocation = [6.9271, 79.8612] 
+  userLocation = [6.9271, 79.8612],
+  selectedStationId
 }: MapProps) {
-  // Leaflet expects [lat, lng] whereas we were using [lng, lat] in react-simple-maps
-  // Let's ensure we pass [lat, lng] to SituationMapInner
-  
   return (
     <SituationMapInner
       hazards={hazards}
@@ -55,6 +54,7 @@ export default function SituationMap({
       needs={needs}
       news={news}
       userLocation={userLocation}
+      selectedStationId={selectedStationId}
     />
   );
 }
