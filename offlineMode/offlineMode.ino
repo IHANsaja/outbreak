@@ -11,12 +11,8 @@ const char* STA_SSID     = "Galaxy M33 5G 720F";
 const char* STA_PASSWORD = "ihan1111";
 
 // --- Supabase Configuration ---
-// Supabase REST API base URL
 const char* SUPABASE_URL = "https://cemupemxchhgtqtsgats.supabase.co";
-// anon/publishable key — safe for INSERT-only RLS policies
 const char* SUPABASE_KEY = "sb_publishable_4dwwLlhgfRhaWGFPPLfbmg_3JR5dff2";
-// Anonymous sentinel UUID used as node identity for FK-required columns
-// This must exist as a row in public.profiles — see SQL setup instructions
 const char* NODE_USER_ID = "00000000-0000-0000-0000-000000000001";
 const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 4, 1);
@@ -42,7 +38,6 @@ struct SyncItem {
   long long timestamp_ms;
 };
 
-// Circular Buffers to prevent memory leaks/heap fragmentation
 const int MAX_MESSAGES = 50;
 Message messages[MAX_MESSAGES];
 int messageCount = 0;
@@ -53,8 +48,14 @@ int syncCount = 0;
 
 // --- Background Sync Job State ---
 bool isSyncJobPending = false;
+bool forceSyncCheck = false;
 unsigned long lastInternetCheckTime = 0;
-const unsigned long internetCheckInterval = 10000; // Check connectivity every 10 seconds
+const unsigned long internetCheckInterval = 10000;
+
+// --- WiFi Reconnection State ---
+unsigned long lastReconnectAttempt = 0;
+const unsigned long RECONNECT_INTERVAL = 15000; // 15 seconds between auto attempts
+bool isReconnecting = false;
 
 // --- Embedded Web Portal (index.html) ---
 const char* index_html = R"rawliteral(<!doctype html>
@@ -661,6 +662,15 @@ const char* index_html = R"rawliteral(<!doctype html>
         </div>
       </div>
       <div class="header-actions">
+        <!-- Backhaul status indicator -->
+        <div id="connIndicator" class="node-tag" style="display:flex;align-items:center;gap:6px;padding:6px 12px;font-weight:600;font-size:12px;">
+          <span style="color:#94a3b8;font-size:16px;line-height:1">●</span>
+          <span>Checking...</span>
+        </div>
+        <!-- ADDED: manual reconnect button -->
+        <button class="btn btn-ghost" id="reconnectBtn" onclick="manualReconnect()" title="Force backhaul reconnect">
+          🔄 Reconnect
+        </button>
         <button class="btn btn-ghost" onclick="togglePowerSaver()">
           ⚡ Power Saver
         </button>
@@ -748,13 +758,18 @@ const char* index_html = R"rawliteral(<!doctype html>
         </div>
         <span style="font-weight: bold" id="queueCount">5 Items</span>
       </div>
-      <button
-        class="btn btn-ghost"
-        onclick="openSync()"
-        style="color: var(--accent-red); border-color: var(--accent-red)"
-      >
-        Sync Manager
-      </button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" id="manualSyncBtn" onclick="manualCloudSync()" style="color:#0f172a;border-color:#0f172a;">
+          ☁️ Sync to Cloud
+        </button>
+        <button
+          class="btn btn-ghost"
+          onclick="openSync()"
+          style="color: var(--accent-red); border-color: var(--accent-red)"
+        >
+          Sync Manager
+        </button>
+      </div>
     </div>
 
     <!-- SOS Modal -->
@@ -789,11 +804,18 @@ const char* index_html = R"rawliteral(<!doctype html>
         <div class="modal-actions">
           <button
             class="btn btn-sos btn-lg"
+            id="modalManualSyncBtn"
+            style="background:var(--accent-green);color:#fff;box-shadow:0 4px 12px rgba(34,197,94,0.3);"
+            onclick="manualCloudSync()"
+          >
+            ☁️ SYNC TO CLOUD NOW
+          </button>
+          <button
+            class="btn btn-ghost btn-lg"
             id="syncNowBtn"
-            style="background: #0f172a"
             onclick="syncNow()"
           >
-            GENERATE SYNC JSON
+            GENERATE OFFLINE JSON
           </button>
           <button
             class="btn btn-ghost btn-lg"
@@ -809,8 +831,6 @@ const char* index_html = R"rawliteral(<!doctype html>
 
       // ================================================================
       // TOAST NOTIFICATION SYSTEM
-      // Pure JS/CSS — zero dependencies, works fully offline on ESP32
-      // captive portal WebKit and any modern mobile browser.
       // ================================================================
       const toastContainer = document.getElementById('toast-container');
       const TOAST_ICONS = {
@@ -842,7 +862,6 @@ const char* index_html = R"rawliteral(<!doctype html>
 
           toastContainer.appendChild(toast);
 
-          // Trigger enter animation on next paint
           requestAnimationFrame(function() {
             requestAnimationFrame(function() {
               toast.classList.add('show');
@@ -852,7 +871,6 @@ const char* index_html = R"rawliteral(<!doctype html>
           var ms = duration || TOAST_DURATION[type] || 4000;
           var timer = setTimeout(function() { dismissToast(toast); }, ms);
 
-          // Cancel auto-dismiss on hover so user can read it
           toast.addEventListener('mouseenter', function() { clearTimeout(timer); });
           toast.addEventListener('mouseleave', function() {
             timer = setTimeout(function() { dismissToast(toast); }, 1500);
@@ -883,7 +901,6 @@ const char* index_html = R"rawliteral(<!doctype html>
           .replace(/"/g, '&quot;');
       }
 
-      // Convenience wrappers
       function toastSuccess(title, msg) { showToast('success', title, msg); }
       function toastError(title, msg)   { showToast('error',   title, msg); }
       function toastWarning(title, msg) { showToast('warning', title, msg); }
@@ -940,7 +957,6 @@ const char* index_html = R"rawliteral(<!doctype html>
         });
       }
 
-      // Simple fetch wrapper with timeout support
       function fetchWithTimeout(url, options, timeoutMs) {
         timeoutMs = timeoutMs || 8000;
         return new Promise(function(resolve, reject) {
@@ -998,8 +1014,8 @@ const char* index_html = R"rawliteral(<!doctype html>
       };
 
       var isOfflineBackend = false;
-      var isSending = false;       // debounce flag for sendMessage
-      var isSosBroadcasting = false; // debounce flag for SOS
+      var isSending = false;
+      var isSosBroadcasting = false;
 
       var feedEl           = document.getElementById('feed');
       var queueCountEl     = document.getElementById('queueCount');
@@ -1051,12 +1067,16 @@ const char* index_html = R"rawliteral(<!doctype html>
       // LOAD DATA FROM SERVER
       // ================================================================
       async function loadDataFromServer() {
+        var wasConnected = isOfflineBackend;
         try {
           var resMsg = await fetchWithTimeout('/api/messages', {}, 5000);
           if (!resMsg.ok) {
             throw new Error('Server returned HTTP ' + resMsg.status);
           }
           isOfflineBackend = true;
+          if (!wasConnected) {
+            toastSuccess('Node Connected', 'Real-time mesh feed active.');
+          }
 
           var dataMsg;
           try {
@@ -1070,11 +1090,24 @@ const char* index_html = R"rawliteral(<!doctype html>
           }
 
           var sentIds = getMySentIds();
-          state.messages = dataMsg.map(function(msg) {
+          var serverIds = new Set();
+          var serverMessages = dataMsg.map(function(msg) {
+            serverIds.add(msg.id);
             return Object.assign({}, msg, {
               isSelf: sentIds.indexOf(msg.id) !== -1 || msg.user === myNick
             });
           });
+
+          if (Array.isArray(state.messages)) {
+            state.messages.forEach(function(localMsg) {
+              if (localMsg && localMsg.id && !serverIds.has(localMsg.id)) {
+                serverMessages.push(localMsg);
+              }
+            });
+          }
+
+          serverMessages.sort(function(a, b) { return (a.id || 0) - (b.id || 0); });
+          state.messages = serverMessages;
           renderFeed();
 
           var resSync = await fetchWithTimeout('/api/sync_queue', {}, 5000);
@@ -1090,13 +1123,87 @@ const char* index_html = R"rawliteral(<!doctype html>
 
         } catch (err) {
           if (isOfflineBackend) {
-            // Only show toast if we previously had a connection (unexpected loss)
             console.warn('loadDataFromServer failed:', err.message);
             toastWarning('Connection Lost', 'Could not reach edge node. Retrying...');
           } else {
             console.log('Running in standalone/mock mode:', err.message);
           }
           isOfflineBackend = false;
+        }
+      }
+
+      // ADDED: poll node status for backhaul indicator
+      async function loadNodeStatus() {
+        try {
+          var res = await fetchWithTimeout('/api/status', {}, 4000);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          var status = await res.json();
+          updateConnectionIndicator(status);
+        } catch (err) {
+          updateConnectionIndicator(null);
+        }
+      }
+
+      function updateConnectionIndicator(status) {
+        var el = document.getElementById('connIndicator');
+        if (!el) return;
+        if (!status) {
+          el.innerHTML = '<span style="color:#ef4444;font-size:16px;line-height:1">●</span> <span>Node Offline</span>';
+          el.style.borderColor = '#fca5a5';
+          el.style.color = '#ef4444';
+          el.style.background = '#fef2f2';
+          return;
+        }
+        if (status.reconnecting) {
+          el.innerHTML = '<span style="color:#f59e0b;font-size:16px;line-height:1">⟳</span> <span>Reconnecting...</span>';
+          el.style.borderColor = '#fcd34d';
+          el.style.color = '#92400e';
+          el.style.background = '#fffbeb';
+          return;
+        }
+        if (status.sta_connected) {
+          el.innerHTML = '<span style="color:#22c55e;font-size:16px;line-height:1">●</span> <span>Backhaul: ' + escapeHtml(status.sta_ssid) + '</span>';
+          el.style.borderColor = '#86efac';
+          el.style.color = '#166534';
+          el.style.background = '#f0fdf4';
+        } else {
+          el.innerHTML = '<span style="color:#f59e0b;font-size:16px;line-height:1">●</span> <span>AP Only (No Internet)</span>';
+          el.style.borderColor = '#fcd34d';
+          el.style.color = '#92400e';
+          el.style.background = '#fffbeb';
+        }
+      }
+
+      // ADDED: manual reconnect handler
+      async function manualReconnect() {
+        var btn = document.getElementById('reconnectBtn');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Reconnecting...';
+        }
+        try {
+          var res = await fetchWithTimeout('/api/reconnect', { method: 'POST' }, 8000);
+          var data = await res.json();
+          if (res.ok) {
+            toastInfo('Reconnecting', data.message || 'Backhaul reconnect initiated...');
+            // Poll status faster for a few seconds to show live feedback
+            var checks = 0;
+            var interval = setInterval(async function() {
+              checks++;
+              if (checks > 6) clearInterval(interval);
+              await loadNodeStatus();
+            }, 1500);
+          } else {
+            toastError('Reconnect Failed', data.error || 'Could not trigger reconnect.');
+          }
+        } catch (e) {
+          console.error('manualReconnect error:', e);
+          toastError('Reconnect Failed', 'Could not reach node. ' + (e.message || ''));
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '🔄 Reconnect';
+          }
         }
       }
 
@@ -1175,7 +1282,6 @@ const char* index_html = R"rawliteral(<!doctype html>
             }
           }
 
-          // Standalone fallback
           newMsg.isSelf = true;
           state.messages.push(newMsg);
           state.syncQueue.push({
@@ -1203,7 +1309,7 @@ const char* index_html = R"rawliteral(<!doctype html>
 
 
       // ================================================================
-      // QUICK SOS (header button — no modal confirm)
+      // QUICK SOS
       // ================================================================
       async function quickSOS() {
         if (isSosBroadcasting) {
@@ -1220,13 +1326,11 @@ const char* index_html = R"rawliteral(<!doctype html>
           var slTime = getSLTime();
           var sosId  = Date.now();
 
-          // Flash screen red
           try {
             document.body.style.background = '#7f1d1d';
             setTimeout(function() { document.body.style.background = ''; }, 1200);
           } catch (_) {}
 
-          // Vibrate supported devices
           try {
             if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 600]);
           } catch (_) {}
@@ -1278,7 +1382,6 @@ const char* index_html = R"rawliteral(<!doctype html>
           console.error('quickSOS unexpected error:', e);
           toastError('SOS Error', 'Unexpected error: ' + (e.message || 'unknown'));
         } finally {
-          // Re-enable after 5s cooldown to prevent SOS spam
           setTimeout(function() {
             isSosBroadcasting = false;
             if (sosBtn) sosBtn.disabled = false;
@@ -1340,7 +1443,6 @@ const char* index_html = R"rawliteral(<!doctype html>
             }
           }
 
-          // Standalone fallback
           state.syncQueue.push(sosData);
           state.messages.push({
             id: Date.now(),
@@ -1369,7 +1471,7 @@ const char* index_html = R"rawliteral(<!doctype html>
 
 
       // ================================================================
-      // SYNC NOW
+      // SYNC NOW  (offline JSON fallback)
       // ================================================================
       async function syncNow() {
         var syncBtn = document.getElementById('syncNowBtn');
@@ -1398,7 +1500,6 @@ const char* index_html = R"rawliteral(<!doctype html>
             }
           }
 
-          // Standalone fallback: download JSON locally
           if (state.syncQueue.length === 0) {
             toastInfo('Nothing to Sync', 'Sync queue is empty.');
             closeModal('syncModal');
@@ -1439,7 +1540,6 @@ const char* index_html = R"rawliteral(<!doctype html>
             anchor.click();
             anchor.remove();
 
-            // Clear queue
             state.syncQueue = [];
             state.messages = state.messages.map(function(m) {
               return Object.assign({}, m, { queued: false });
@@ -1460,8 +1560,34 @@ const char* index_html = R"rawliteral(<!doctype html>
         } finally {
           if (syncBtn) {
             syncBtn.disabled = false;
-            syncBtn.textContent = 'GENERATE SYNC JSON';
+            syncBtn.textContent = 'GENERATE OFFLINE JSON';
           }
+        }
+      }
+
+      // ADDED: manual cloud sync handler
+      async function manualCloudSync() {
+        var btn = document.getElementById('manualSyncBtn');
+        var modalBtn = document.getElementById('modalManualSyncBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Syncing...'; }
+        if (modalBtn) { modalBtn.disabled = true; modalBtn.textContent = 'Syncing...'; }
+
+        try {
+          var res = await fetchWithTimeout('/api/manual_sync', { method: 'POST' }, 10000);
+          var data = await res.json();
+          if (res.ok) {
+            toastSuccess('Cloud Sync Started', data.message || 'Upload job active. Data will be sent to Supabase shortly.');
+            await loadNodeStatus();
+            updateSyncUI();
+          } else {
+            toastError('Sync Failed', data.error || 'Server could not start sync job.');
+          }
+        } catch (e) {
+          console.error('manualCloudSync error:', e);
+          toastError('Sync Failed', 'Could not reach edge node. ' + (e.message || ''));
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = '☁️ Sync to Cloud'; }
+          if (modalBtn) { modalBtn.disabled = false; modalBtn.textContent = '☁️ SYNC TO CLOUD NOW'; }
         }
       }
 
@@ -1481,15 +1607,19 @@ const char* index_html = R"rawliteral(<!doctype html>
 
           if (isOfflineBackend) {
             try {
-              var res = await fetchWithTimeout('/api/sync_job_status', {}, 4000);
+              var res = await fetchWithTimeout('/api/status', {}, 4000);
               if (res.ok) {
                 var statusData;
                 try {
                   statusData = await res.json();
                 } catch (parseErr) {
-                  throw new Error('Invalid JSON from /api/sync_job_status');
+                  throw new Error('Invalid JSON from /api/status');
                 }
-                isJobPending = !!statusData.pending;
+                isJobPending = !!statusData.sync_job_pending;
+                count = (typeof statusData.queue_count === 'number') ? statusData.queue_count : count;
+                queueCountEl.innerText = count + ' Items';
+                modalQueueCountEl.innerText = count;
+
                 var syncStatusLabel = document.querySelector('.sync-status span');
                 if (syncStatusLabel) {
                   if (isJobPending) {
@@ -1504,7 +1634,7 @@ const char* index_html = R"rawliteral(<!doctype html>
                 }
               }
             } catch (e) {
-              console.log('Sync job status check failed:', e.message);
+              console.log('Sync status check failed:', e.message);
             }
           }
         } catch (e) {
@@ -1544,7 +1674,6 @@ const char* index_html = R"rawliteral(<!doctype html>
         }
       }
 
-      // Close modals on overlay click
       document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
         overlay.addEventListener('click', function(e) {
           if (e.target === overlay) {
@@ -1553,7 +1682,6 @@ const char* index_html = R"rawliteral(<!doctype html>
         });
       });
 
-      // Send message on Enter key
       var msgInput = document.getElementById('messageInput');
       if (msgInput) {
         msgInput.addEventListener('keydown', function(e) {
@@ -1570,6 +1698,7 @@ const char* index_html = R"rawliteral(<!doctype html>
       // ================================================================
       try {
         loadDataFromServer();
+        loadNodeStatus();
         updateSyncUI();
         renderFeed();
       } catch (e) {
@@ -1577,14 +1706,18 @@ const char* index_html = R"rawliteral(<!doctype html>
         toastError('Init Failed', 'Could not start edge node UI.');
       }
 
-      // Background polling — only hits server if connection was confirmed
       setInterval(function() {
         try {
-          if (isOfflineBackend) loadDataFromServer();
+          loadDataFromServer();
         } catch (e) { console.error('Poll error:', e); }
       }, 1200);
 
-      // Simulate mesh peer count fluctuation
+      setInterval(function() {
+        try {
+          loadNodeStatus();
+        } catch (e) { console.error('Status poll error:', e); }
+      }, 3000);
+
       setInterval(function() {
         try {
           var peers = Math.floor(Math.random() * 5) + 10;
@@ -1614,7 +1747,6 @@ void addMessage(long long id, const String& user, const String& text, const Stri
   if (messageCount < MAX_MESSAGES) {
     messages[messageCount++] = newMsg;
   } else {
-    // Shift oldest left (circular overwrite)
     for (int i = 1; i < MAX_MESSAGES; i++) {
       messages[i - 1] = messages[i];
     }
@@ -1662,7 +1794,6 @@ String jsonEscape(const String& input) {
       case '\r': out += "\\r";  break;
       case '\t': out += "\\t";  break;
       default:
-        // Strip control characters that would break JSON
         if ((unsigned char)c >= 0x20) out += c;
         break;
     }
@@ -1755,6 +1886,26 @@ long estimateDistance(int rssi) {
   return 50;
 }
 
+// --- WiFi Reconnection Logic ---
+void handleWiFiReconnect() {
+  if (WiFi.status() == WL_CONNECTED) {
+    if (isReconnecting) {
+      isReconnecting = false;
+      Serial.println("[WiFi] Backhaul restored.");
+    }
+    return;
+  }
+
+  unsigned long now = millis();
+  if (now - lastReconnectAttempt < RECONNECT_INTERVAL) return;
+
+  lastReconnectAttempt = now;
+  isReconnecting = true;
+
+  Serial.println("[WiFi] Backhaul disconnected. Triggering reconnect...");
+  WiFi.reconnect();
+}
+
 // --- Setup and Loop ---
 void setup() {
   Serial.begin(115200);
@@ -1774,11 +1925,12 @@ void setup() {
   Serial.print("Local node Web Server running at: http://");
   Serial.println(WiFi.softAPIP());
 
-  // Begin STA connection (non-blocking — portal starts immediately regardless)
+  // Enable auto-reconnect so the ESP32 tries to rejoin automatically
+  WiFi.setAutoReconnect(true);
+
   Serial.print("Connecting to backhaul WiFi: ");
   Serial.println(STA_SSID);
   WiFi.begin(STA_SSID, STA_PASSWORD);
-  // Do NOT block here — checkBackgroundSyncJob() handles upload once WL_CONNECTED
 
   dnsServer.start(DNS_PORT, "*", apIP);
   Serial.println("Captive Portal DNS Server started.");
@@ -1801,6 +1953,26 @@ void setup() {
     server.send(200, "application/json", getSyncQueueJSON());
   });
 
+  server.on("/api/status", HTTP_GET, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    String staIpStr = "null";
+    if (WiFi.status() == WL_CONNECTED) {
+      staIpStr = "\"" + WiFi.localIP().toString() + "\"";
+    }
+    String json = "{";
+    json += "\"sta_connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",";
+    json += "\"sta_ssid\":\"" + jsonEscape(String(STA_SSID)) + "\",";
+    json += "\"sta_ip\":" + staIpStr + ",";
+    json += "\"ap_ip\":\"" + WiFi.softAPIP().toString() + "\",";
+    json += "\"mac\":\"" + WiFi.macAddress() + "\",";
+    json += "\"queue_count\":" + String(syncCount) + ",";
+    json += "\"sync_job_pending\":" + String(isSyncJobPending ? "true" : "false") + ",";
+    json += "\"reconnecting\":" + String(isReconnecting ? "true" : "false") + ",";
+    json += "\"uptime_ms\":" + String(millis());
+    json += "}";
+    server.send(200, "application/json", json);
+  });
+
   server.on("/api/messages", HTTP_POST, []() {
     server.sendHeader("Access-Control-Allow-Origin", "*");
 
@@ -1816,14 +1988,12 @@ void setup() {
     String text  = server.arg("text");
     String time  = server.arg("time");
 
-    // Validate non-empty fields
     if (idStr.length() == 0 || user.length() == 0 || text.length() == 0) {
       Serial.println("[POST /api/messages] Bad request: empty required fields.");
       server.send(400, "application/json", "{\"error\":\"Fields id, user, and text must not be empty\"}");
       return;
     }
 
-    // Guard against excessively long inputs
     if (user.length() > 64 || text.length() > 1000) {
       Serial.println("[POST /api/messages] Bad request: field too long.");
       server.send(400, "application/json", "{\"error\":\"user max 64 chars, text max 1000 chars\"}");
@@ -1907,6 +2077,30 @@ void setup() {
     server.send(200, "application/json", "{\"status\":\"JOB_CREATED\",\"pending\":true}");
   });
 
+  server.on("/api/manual_sync", HTTP_POST, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    if (WiFi.status() != WL_CONNECTED) {
+      server.send(503, "application/json", "{\"error\":\"No internet backhaul. STA not connected to " + jsonEscape(String(STA_SSID)) + ".\"}");
+      return;
+    }
+    isSyncJobPending = true;
+    forceSyncCheck = true;
+    Serial.println("[Manual Sync] Triggered by user via web UI.");
+    server.send(200, "application/json", "{\"status\":\"SYNC_TRIGGERED\",\"message\":\"Upload job started. Check queue status for results.\"}");
+  });
+
+  // ADDED: manual reconnect endpoint
+  server.on("/api/reconnect", HTTP_POST, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    Serial.println("[WiFi] Manual reconnect triggered via web UI.");
+    
+    lastReconnectAttempt = 0; // Reset throttle so handleWiFiReconnect runs immediately
+    isReconnecting = true;
+    WiFi.reconnect();
+    
+    server.send(200, "application/json", "{\"status\":\"RECONNECTING\",\"message\":\"Backhaul reconnect initiated.\"}");
+  });
+
   server.on("/api/sync_job_status", HTTP_GET, []() {
     server.sendHeader("Access-Control-Allow-Origin", "*");
     String json = "{\"pending\":" + String(isSyncJobPending ? "true" : "false") + "}";
@@ -1927,46 +2121,32 @@ void setup() {
 }
 
 // --- Supabase HTTP POST helper ---
-// Posts a JSON body to a Supabase REST endpoint.
-// Returns the HTTP response code, or -1 on connection failure.
 int supabasePost(const String& endpoint, const String& jsonBody) {
+  if (WiFi.status() != WL_CONNECTED) return -1;
+
   HTTPClient http;
   String url = String(SUPABASE_URL) + endpoint;
-
-  if (!http.begin(url)) {
-    Serial.println("[Supabase] HTTPClient begin() failed for: " + url);
-    return -1;
-  }
-
+  http.begin(url);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("apikey", SUPABASE_KEY);
-  http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
-  http.addHeader("Prefer", "return=minimal"); // Don't return full row — saves memory
+  http.addHeader("Authorization", "Bearer " + String(SUPABASE_KEY));
 
   int httpCode = http.POST(jsonBody);
 
   if (httpCode > 0) {
-    Serial.printf("[Supabase] POST %s -> HTTP %d
-", endpoint.c_str(), httpCode);
+    Serial.printf("[Supabase] POST %s -> HTTP %d\n", endpoint.c_str(), httpCode);
     if (httpCode >= 400) {
-      // Log error body for debugging (truncated to 256 chars to avoid heap issues)
-      String resp = http.getString();
-      if (resp.length() > 256) resp = resp.substring(0, 256) + "...";
-      Serial.println("[Supabase] Error body: " + resp);
+      String response = http.getString();
+      Serial.println("[Supabase] Error Response: " + response);
     }
   } else {
-    Serial.printf("[Supabase] POST %s failed, HTTPClient error: %s
-",
-                  endpoint.c_str(), http.errorToString(httpCode).c_str());
+    Serial.printf("[Supabase] POST %s failed, HTTPClient error: %s\n", endpoint.c_str(), http.errorToString(httpCode).c_str());
   }
 
   http.end();
   return httpCode;
 }
 
-// Upload all queued messages to Supabase edge_messages table.
-// Sends them one by one to avoid building a giant JSON array in heap.
-// Returns true if ALL items uploaded successfully.
 bool uploadMessagesToSupabase() {
   bool allOk = true;
   String macAddr = WiFi.macAddress();
@@ -1974,37 +2154,31 @@ bool uploadMessagesToSupabase() {
   for (int i = 0; i < syncCount; i++) {
     if (syncQueue[i].type != "MESSAGE") continue;
 
-    // Build row JSON matching edge_messages schema
     String body = "{";
-    body += ""node_id":""        + jsonEscape(macAddr)                   + "",";
-    body += ""peer_nick":""      + jsonEscape(syncQueue[i].content)      + "",";
-    body += ""message_text":""   + jsonEscape(syncQueue[i].content)      + "",";
-    body += ""priority":""       + jsonEscape(syncQueue[i].priority)     + "",";
-    body += ""captured_at_sl":"" + jsonEscape(syncQueue[i].timestamp_sl) + "",";
-    body += ""timestamp_ms":"     + String(syncQueue[i].timestamp_ms)     + ",";
-    body += ""synced_from_queue":true";
+    body += "\"node_id\":\""        + jsonEscape(macAddr)                   + "\",";
+    body += "\"peer_nick\":\""      + jsonEscape(syncQueue[i].content)      + "\",";
+    body += "\"message_text\":\""   + jsonEscape(syncQueue[i].content)      + "\",";
+    body += "\"priority\":\""       + jsonEscape(syncQueue[i].priority)     + "\",";
+    body += "\"captured_at_sl\":\"" + jsonEscape(syncQueue[i].timestamp_sl) + "\",";
+    body += "\"timestamp_ms\":"     + String(syncQueue[i].timestamp_ms)     + ",";
+    body += "\"synced_from_queue\":true";
     body += "}";
 
     int code = supabasePost("/rest/v1/edge_messages", body);
     if (code < 200 || code > 299) {
       allOk = false;
-      Serial.printf("[Supabase] Message item %d failed (HTTP %d), will retry next cycle.
-", i, code);
+      Serial.printf("[Supabase] Message item %d failed (HTTP %d), will retry next cycle.\n", i, code);
     }
   }
   return allOk;
 }
 
-// Upload all queued SOS alerts to Supabase sos_requests table.
-// Maps to existing schema: stype='medical' (closest generic), lat/lng from location field.
-// Uses NODE_USER_ID sentinel — ensure that UUID row exists in public.profiles.
 bool uploadSOSToSupabase() {
   bool allOk = true;
 
   for (int i = 0; i < syncCount; i++) {
     if (syncQueue[i].type != "SOS_BROADCAST") continue;
 
-    // Parse lat/lng from "lat,lng" string if available
     String latStr = "0.0";
     String lngStr = "0.0";
     String loc = syncQueue[i].location;
@@ -2014,21 +2188,19 @@ bool uploadSOSToSupabase() {
       lngStr = loc.substring(commaIdx + 1);
     }
 
-    // Build row JSON matching public.sos_requests schema
     String body = "{";
-    body += ""user_id":""        + String(NODE_USER_ID)                  + "",";
-    body += ""stype":"other",";  // 'other' — matches stype enum safely
-    body += ""latitude":"         + latStr                                 + ",";
-    body += ""longitude":"        + lngStr                                 + ",";
-    body += ""additional_info":"" + jsonEscape(syncQueue[i].content)     + " | node=" + jsonEscape(WiFi.macAddress()) + " | captured=" + jsonEscape(syncQueue[i].timestamp_sl) + "",";
-    body += ""status":"active"";
+    body += "\"user_id\":\""        + String(NODE_USER_ID)                  + "\",";
+    body += "\"stype\":\"other\",";
+    body += "\"latitude\":"         + latStr                                 + ",";
+    body += "\"longitude\":"        + lngStr                                 + ",";
+    body += "\"additional_info\":\"" + jsonEscape(syncQueue[i].content)     + " | node=" + jsonEscape(WiFi.macAddress()) + " | captured=" + jsonEscape(syncQueue[i].timestamp_sl) + "\",";
+    body += "\"status\":\"active\"";
     body += "}";
 
     int code = supabasePost("/rest/v1/sos_requests", body);
     if (code < 200 || code > 299) {
       allOk = false;
-      Serial.printf("[Supabase] SOS item %d failed (HTTP %d), will retry next cycle.
-", i, code);
+      Serial.printf("[Supabase] SOS item %d failed (HTTP %d), will retry next cycle.\n", i, code);
     }
   }
   return allOk;
@@ -2037,12 +2209,12 @@ bool uploadSOSToSupabase() {
 void checkBackgroundSyncJob() {
   if (!isSyncJobPending) return;
 
-  if (millis() - lastInternetCheckTime < internetCheckInterval) return;
+  if (!forceSyncCheck && (millis() - lastInternetCheckTime < internetCheckInterval)) return;
+  forceSyncCheck = false;
   lastInternetCheckTime = millis();
 
   Serial.println("[Sync Job] Checking internet backhaul (STA) connection...");
-  Serial.printf("[Sync Job] WiFi STA status: %d | Items in queue: %d
-", WiFi.status(), syncCount);
+  Serial.printf("[Sync Job] WiFi STA status: %d | Items in queue: %d\n", WiFi.status(), syncCount);
 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[Sync Job] Not connected to backhaul WiFi. Queue retained.");
@@ -2068,5 +2240,6 @@ void checkBackgroundSyncJob() {
 void loop() {
   dnsServer.processNextRequest();
   server.handleClient();
+  handleWiFiReconnect();   // ADDED: auto-reconnect logic
   checkBackgroundSyncJob();
 }
