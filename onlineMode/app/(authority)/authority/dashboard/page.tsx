@@ -7,6 +7,7 @@ import { getStats, getRegions, getRecentSos, getAllIncidents, getResources, getH
 import { getGlobalAIInsights } from "@/app/actions/forecasting";
 import { cn } from "@/lib/utils";
 import SituationMap from "@/components/SituationMap";
+import EdgeMessagesFeed from "@/components/EdgeMessagesFeed";
 
 export default function AuthorityDashboard() {
   const [stats, setStats] = useState({ activeIncidents: 0, criticalNeeds: 0, activeHazards: 0, activeSos: 0 });
@@ -111,6 +112,7 @@ export default function AuthorityDashboard() {
                center={mapCenter}
             />
             <RecentActivityCard activities={recentSos} onResolve={fetchData} />
+            <EdgeMessagesFeed />
           </div>
         </div>
       </div>

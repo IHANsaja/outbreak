@@ -1,33 +1,104 @@
 "use client";
 
-import { 
-  ArrowLeft, 
-  ShieldCheck, 
-  Clock, 
-  AlertTriangle, 
-  MapPin, 
-  Printer, 
-  Copy, 
-  Activity, 
-  AlertCircle,
+import {
+  ArrowLeft,
+  ShieldCheck,
+  Clock,
+  AlertTriangle,
+  Printer,
+  Copy,
+  Activity,
   Building2,
-  Users2,
   Zap,
-  Info,
   FileText
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useLanguage } from "@/context/LanguageContext";
+import { getGlobalAIInsights, getCriticalAlerts, getLatestDMCBrief } from "@/app/actions/forecasting";
+
+// "unknown" ranks below "safe" so it never outranks a real risk signal, and
+// is rendered distinctly rather than being conflated with a confirmed-safe
+// reading (a missing forecast is not itself a safety guarantee).
+const SEVERITY_RANK: Record<string, number> = { major: 3, minor: 2, alert: 1, safe: 0, unknown: -1 };
+const SEVERITY_LABEL: Record<string, string> = { major: "CRITICAL", minor: "HIGH", alert: "ADVISORY", safe: "STABLE", unknown: "NO DATA" };
+const SEVERITY_COLOR: Record<string, string> = {
+  major: "bg-red-500 text-white",
+  minor: "bg-orange-500 text-white",
+  alert: "bg-yellow-500 text-white",
+  safe: "bg-green-500 text-white",
+  unknown: "bg-gray-300 text-gray-700",
+};
+
+interface StationReport {
+  station_id: number;
+  water_level_now?: number;
+  major_flood?: number;
+  forecast_24h?: number;
+}
+
+interface CriticalAlert {
+  station_id: number;
+  river: string;
+  station: string;
+  currentLevel: string;
+  forecastLevel: string;
+  isAnomaly: boolean;
+  timestamp: string;
+}
+
+interface RiskStation extends CriticalAlert {
+  report?: StationReport;
+  rank: number;
+}
 
 export default function IntelligenceBriefingPage() {
   const { t } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
+  const [stats, setStats] = useState({ totalMonitored: 0, atAlert: 0, flooding: 0, anomalies: 0, lastUpdated: null as string | null });
+  const [riskStations, setRiskStations] = useState<RiskStation[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const [insights, alerts, brief] = await Promise.all([
+        getGlobalAIInsights(),
+        getCriticalAlerts(),
+        getLatestDMCBrief(),
+      ]);
+
+      const insightsByStation = new Map<number, StationReport>(
+        insights.map((r: StationReport) => [r.station_id, r])
+      );
+
+      const merged: RiskStation[] = (alerts as CriticalAlert[])
+        .map((a) => {
+          const report = insightsByStation.get(a.station_id);
+          const rank = Math.max(SEVERITY_RANK[a.currentLevel] ?? 0, SEVERITY_RANK[a.forecastLevel] ?? 0);
+          return { ...a, report, rank };
+        })
+        .sort((a, b) => b.rank - a.rank);
+
+      setStats(brief.stats);
+      setRiskStations(merged);
+      setGeneratedAt(new Date());
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const topRisks = riskStations.slice(0, 2);
+  const tableRows = riskStations.slice(0, 6);
+  const hasCritical = riskStations.some(r => r.rank >= 3);
+  const hasElevated = riskStations.length > 0;
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
        <Navbar type="briefing" backHref="/ai" />
-       
+
        <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-12">
           {/* Top Actions */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
@@ -35,13 +106,16 @@ export default function IntelligenceBriefingPage() {
                 <ArrowLeft className="w-4 h-4" />
                 {t("back_to_dashboard")}
              </Link>
-             
+
              <div className="flex items-center gap-3">
-                <button className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-zinc-900 shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
+                <button onClick={() => window.print()} className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-zinc-900 shadow-sm hover:bg-gray-50 flex items-center gap-2 transition-all">
                    <Printer className="w-3.5 h-3.5" />
                    {t("print_pdf")}
                 </button>
-                <button className="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-900/10 flex items-center gap-2 transition-all active:scale-95">
+                <button
+                   onClick={() => navigator.clipboard?.writeText(window.location.href)}
+                   className="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-900/10 flex items-center gap-2 transition-all active:scale-95"
+                >
                    <Copy className="w-3.5 h-3.5" />
                    {t("copy_clipboard")}
                 </button>
@@ -65,18 +139,20 @@ export default function IntelligenceBriefingPage() {
                       <div className="flex flex-col uppercase">
                          <h1 className="text-3xl font-black text-zinc-900 italic tracking-tighter leading-none mb-2">{t("intelligence_briefing")}</h1>
                          <div className="flex items-center gap-3">
-                            <span className="text-[9px] font-black px-1.5 py-0.5 bg-red-100 text-red-600 rounded">{t("restricted")}</span>
-                            <span className="text-[9px] font-bold text-gray-400">REF: AI-BRF-2024-892</span>
+                            <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded", hasCritical ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500")}>
+                               {hasCritical ? t("restricted") : "ROUTINE"}
+                            </span>
+                            <span className="text-[9px] font-bold text-gray-400">REF: AI-BRF-{stats.totalMonitored}-{riskStations.length}</span>
                          </div>
                       </div>
                    </div>
-                   
+
                    <div className="flex flex-col items-start md:items-end text-right">
                       <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{t("generated_by")}</span>
-                      <span className="text-xs font-black text-zinc-900 italic">Central AI Core (Level 5)</span>
+                      <span className="text-xs font-black text-zinc-900 italic">Outbreak Forecasting Engine (XGBoost / LSTM / TFT)</span>
                       <div className="flex items-center gap-2 mt-2 text-[9px] font-bold text-gray-400 uppercase">
                          <Clock className="w-3 h-3" />
-                         24 OCT 2024 - 14:32:05 UTC
+                         {generatedAt ? generatedAt.toUTCString() : "..."}
                       </div>
                    </div>
                 </div>
@@ -90,11 +166,20 @@ export default function IntelligenceBriefingPage() {
                       <h2 className="text-sm font-black text-zinc-900 italic uppercase underline decoration-orange-500 decoration-2 underline-offset-4">{t("executive_summary")}</h2>
                    </div>
                    <p className="text-sm font-medium text-gray-600 leading-relaxed max-w-4xl">
-                      High-confidence analysis indicates a critical escalation in the <span className="font-black text-zinc-900">Ratnapura District</span> following prolonged heavy rainfall. AI models (Confidence: 94%) predict a severe landslide event within the next 4-6 hours targeting the eastern slopes. Immediate evacuation protocols are advised for Sector 7. Secondary risks involve flash flooding downstream affecting critical supply routes.
+                      {loading ? "Compiling latest telemetry from the forecasting engine..." : hasElevated ? (
+                        <>
+                          Of <span className="font-black text-zinc-900">{stats.totalMonitored}</span> monitored river stations, <span className="font-black text-zinc-900">{stats.atAlert}</span> are at or approaching alert thresholds and <span className="font-black text-zinc-900">{stats.flooding}</span> are showing flood-level readings.
+                          {topRisks[0] && <> The highest-priority station is <span className="font-black text-zinc-900">{topRisks[0].station}</span> on the <span className="font-black text-zinc-900">{topRisks[0].river}</span>, currently at {SEVERITY_LABEL[topRisks[0].currentLevel].toLowerCase()} level with a {SEVERITY_LABEL[topRisks[0].forecastLevel].toLowerCase()} forecast trajectory.</>}
+                          {stats.anomalies > 0 && <> {stats.anomalies} station reading(s) have been flagged as anomalous and warrant manual verification.</>}
+                        </>
+                      ) : (
+                        <>All {stats.totalMonitored} monitored river stations are currently reporting water levels within safe thresholds, with no flood-level or forecasted major-flood readings across the network.</>
+                      )}
                    </p>
                 </section>
 
                 {/* Immediate Threats Grid */}
+                {topRisks.length > 0 && (
                 <section className="space-y-6">
                    <div className="flex items-center gap-3 border-b-2 border-red-500/10 pb-4">
                       <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
@@ -102,74 +187,67 @@ export default function IntelligenceBriefingPage() {
                       </div>
                       <h2 className="text-sm font-black text-zinc-900 italic uppercase">{t("immediate_threats")}</h2>
                    </div>
-                   
+
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="p-6 rounded-2xl bg-red-50/30 border-l-4 border-l-red-500 border border-gray-100 flex flex-col gap-4">
-                         <div className="flex justify-between items-center">
-                            <h3 className="text-sm font-black text-zinc-900 italic">Major Landslide Risk</h3>
-                            <span className="text-[8px] font-black px-1.5 py-0.5 bg-red-500 text-white rounded tracking-widest">CRITICAL</span>
-                         </div>
-                         <p className="text-xs font-medium text-gray-500 leading-relaxed capitalize">
-                           Soil saturation levels at 98% in Eheliyagoda region. Seismic sensors detect micro-tremors consistent with pre-slip conditions.
-                         </p>
-                         <div className="flex items-center gap-2 text-[9px] font-black text-red-500 uppercase italic">
-                            <Clock className="w-3 h-3" />
-                            Impact Window: T-minus 4 hours
-                         </div>
-                      </div>
-                      
-                      <div className="p-6 rounded-2xl bg-orange-50/30 border-l-4 border-l-orange-500 border border-gray-100 flex flex-col gap-4">
-                         <div className="flex justify-between items-center">
-                            <h3 className="text-sm font-black text-zinc-900 italic">River Bank Breach</h3>
-                            <span className="text-[8px] font-black px-1.5 py-0.5 bg-orange-500 text-white rounded tracking-widest">HIGH</span>
-                         </div>
-                         <p className="text-xs font-medium text-gray-500 leading-relaxed capitalize">
-                           Kalu Ganga water levels rising at 0.5m/hour. Potential breach at Embilipitiya embankment point B-4.
-                         </p>
-                         <div className="flex items-center gap-2 text-[9px] font-black text-orange-500 uppercase italic">
-                            <Activity className="w-3 h-3" />
-                            Current Level: 14.2m (Threshold: 15m)
-                         </div>
-                      </div>
+                      {topRisks.map((risk) => (
+                        <div key={risk.station_id} className={cn(
+                          "p-6 rounded-2xl border-l-4 border border-gray-100 flex flex-col gap-4",
+                          risk.rank >= 3 ? "bg-red-50/30 border-l-red-500" : "bg-orange-50/30 border-l-orange-500"
+                        )}>
+                           <div className="flex justify-between items-center">
+                              <h3 className="text-sm font-black text-zinc-900 italic">{risk.station}</h3>
+                              <span className={cn("text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest", SEVERITY_COLOR[risk.currentLevel])}>
+                                 {SEVERITY_LABEL[risk.currentLevel]}
+                              </span>
+                           </div>
+                           <p className="text-xs font-medium text-gray-500 leading-relaxed capitalize">
+                             {risk.river} — current level {risk.report?.water_level_now?.toFixed(2) ?? "--"}m against a major flood threshold of {risk.report?.major_flood?.toFixed(2) ?? "--"}m.
+                             {risk.isAnomaly && " Reading flagged as anomalous."}
+                           </p>
+                           <div className="flex items-center gap-2 text-[9px] font-black uppercase italic text-orange-500">
+                              <Activity className="w-3 h-3" />
+                              24h Forecast: {risk.report?.forecast_24h != null ? `${risk.report.forecast_24h.toFixed(2)}m` : "—"} ({SEVERITY_LABEL[risk.forecastLevel]})
+                           </div>
+                        </div>
+                      ))}
                    </div>
                 </section>
+                )}
 
-                {/* Affected Infrastructure */}
+                {/* Stations at Risk */}
                 <section className="space-y-6">
                    <div className="flex items-center gap-3 border-b-2 border-slate-500/10 pb-4">
                       <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
                          <Building2 className="w-4 h-4 text-slate-500" />
                       </div>
-                      <h2 className="text-sm font-black text-zinc-900 italic uppercase">{t("affected_infrastructure")}</h2>
+                      <h2 className="text-sm font-black text-zinc-900 italic uppercase">Stations At Risk</h2>
                    </div>
-                   
+
                    <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                          <thead>
                             <tr className="border-b border-gray-100">
-                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Asset Name</th>
-                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
-                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status Prediction</th>
-                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Population Impact</th>
+                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Station</th>
+                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">River</th>
+                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Current Status</th>
+                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">24h Forecast</th>
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-gray-50">
-                            {[
-                               { name: "A4 Highway (km 45-48)", type: "Transport", status: "Blocked (High Prob)", color: "text-red-500 bg-red-50", impact: "~15,000 Commuters" },
-                               { name: "Ratnapura Base Hospital", type: "Healthcare", status: "Access Compromised", color: "text-orange-500 bg-orange-50", impact: "450 Patients" },
-                               { name: "Substation #9", type: "Power Grid", status: "Stable", color: "text-green-500 bg-green-50", impact: "N/A" }
-                            ].map((row, i) => (
-                               <tr key={i} className="group hover:bg-gray-50/50 transition-colors">
-                                  <td className="py-5 font-black text-xs text-zinc-900 italic uppercase tracking-tight">{row.name}</td>
-                                  <td className="py-5 text-xs font-bold text-gray-400 uppercase">{row.type}</td>
+                            {tableRows.length > 0 ? tableRows.map((row) => (
+                               <tr key={row.station_id} className="group hover:bg-gray-50/50 transition-colors">
+                                  <td className="py-5 font-black text-xs text-zinc-900 italic uppercase tracking-tight">{row.station}</td>
+                                  <td className="py-5 text-xs font-bold text-gray-400 uppercase">{row.river}</td>
                                   <td className="py-5 text-center px-4">
-                                     <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter whitespace-nowrap", row.color)}>
-                                        {row.status}
+                                     <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter whitespace-nowrap", SEVERITY_COLOR[row.currentLevel])}>
+                                        {SEVERITY_LABEL[row.currentLevel]}
                                      </span>
                                   </td>
-                                  <td className="py-5 text-right font-black text-xs text-gray-500 italic uppercase">{row.impact}</td>
+                                  <td className="py-5 text-right font-black text-xs text-gray-500 italic uppercase">{SEVERITY_LABEL[row.forecastLevel]}</td>
                                </tr>
-                            ))}
+                            )) : (
+                               <tr><td colSpan={4} className="py-8 text-center text-xs font-bold text-gray-300 uppercase tracking-widest">{loading ? "Loading telemetry..." : "No stations currently at risk"}</td></tr>
+                            )}
                          </tbody>
                       </table>
                    </div>
@@ -183,16 +261,18 @@ export default function IntelligenceBriefingPage() {
                       </div>
                       <h2 className="text-sm font-black text-zinc-900 italic uppercase">{t("recommended_actions")}</h2>
                    </div>
-                   
+
                    <div className="space-y-4">
-                      {[
-                        { title: "Initiate Level 3 Evacuation", desc: "Deploy emergency transport units to Sector 7 immediately. Utilize alternative route B12 due to A4 blockage risk.", num: "1" },
-                        { title: "Alert Downstream Communities", desc: "Broadcast SMS warning via Cell Broadcast Service (CBS) to Kalutara District regarding river overflow.", num: "2" },
-                        { title: "Prepare Medical Triage", desc: "Put Ratnapura Base Hospital on standby for potential trauma cases. Ensure backup power generators are fueled.", num: "3" }
-                      ].map((action, i) => (
+                      {(hasElevated ? [
+                        { title: "Escalate Monitoring", desc: `Increase observation frequency for ${riskStations.length} at-risk station(s), prioritizing ${topRisks[0]?.station ?? "the highest-ranked station"} on the ${topRisks[0]?.river ?? "affected river"}.` },
+                        ...(hasCritical ? [{ title: "Prepare Evacuation Readiness", desc: `Alert authorities in catchment areas of stations currently at major-flood level for potential evacuation of downstream communities.` }] : []),
+                        { title: "Verify Anomalous Readings", desc: stats.anomalies > 0 ? `${stats.anomalies} station reading(s) flagged as anomalous — dispatch field verification before issuing public alerts.` : "No anomalous readings detected; continue routine sensor integrity checks." },
+                      ] : [
+                        { title: "Maintain Routine Monitoring", desc: "All stations within safe thresholds. Continue standard 3-hourly DMC data ingestion and forecasting cycle." },
+                      ]).map((action, i) => (
                         <div key={i} className="flex gap-6 p-6 rounded-2xl bg-gray-50/50 border border-gray-100 group hover:border-green-200 transition-all">
                            <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center text-[10px] font-black shrink-0">
-                              {action.num}
+                              {i + 1}
                            </div>
                            <div className="space-y-1">
                               <h4 className="text-xs font-black text-zinc-900 italic uppercase italic tracking-wider">{action.title}</h4>
@@ -208,16 +288,16 @@ export default function IntelligenceBriefingPage() {
                 {/* Footer Disclaimer */}
                 <div className="pt-12 border-t border-gray-50">
                     <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em] text-center italic">
-                       THIS DOCUMENT CONTAINS CONFIDENTIAL INTELLIGENCE DERIVED FROM AI PREDICTIVE MODELS.
+                       THIS DOCUMENT CONTAINS AUTOMATED INTELLIGENCE DERIVED FROM AI PREDICTIVE MODELS.
                     </p>
                     <p className="text-[8px] font-bold text-gray-400 mt-2 text-center uppercase">
-                       Outbreak Platform © 2024 National Disaster Management Center
+                       Outbreak Platform — Disaster Management Support System
                     </p>
                 </div>
              </div>
           </div>
        </main>
-       
+
        <Footer />
     </div>
   );

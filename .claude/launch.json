@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "onlineMode",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "onlineMode", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

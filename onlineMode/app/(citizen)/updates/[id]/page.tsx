@@ -1,31 +1,46 @@
-"use client";
-
-import { 
-  ArrowLeft, 
-  ChevronRight, 
-  ShieldCheck, 
-  Clock, 
-  MapPin, 
-  Share2, 
-  MessageSquare, 
-  Facebook, 
-  Printer, 
-  Phone, 
-  Map as MapIcon, 
-  Info,
-  Building2,
-  Users2
+import {
+  ArrowLeft,
+  ChevronRight,
+  ShieldCheck,
+  Share2,
+  MessageSquare,
+  Facebook,
+  Printer,
+  Phone,
+  Map as MapIcon,
+  AlertTriangle,
+  Info
 } from "lucide-react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { cn } from "@/lib/utils";
+import { getOfficialUpdateById } from "@/app/actions/data";
 
-export default function UpdateDetailPage() {
+const SEVERITY_STYLE: Record<string, { badge: string; icon: typeof Info; label: string }> = {
+  urgent: { badge: "bg-red-50 text-red-600 border-red-100", icon: AlertTriangle, label: "Urgent" },
+  warning: { badge: "bg-orange-50 text-orange-600 border-orange-100", icon: AlertTriangle, label: "Warning" },
+  info: { badge: "bg-blue-50 text-blue-600 border-blue-100", icon: Info, label: "Information" },
+};
+
+export default async function UpdateDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const update = await getOfficialUpdateById(id);
+
+  if (!update) notFound();
+
+  const severity = SEVERITY_STYLE[update.severity] ?? SEVERITY_STYLE.info;
+  const SeverityIcon = severity.icon;
+  const releasedAt = new Date(update.created_at).toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
-      
+
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12">
         {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-8">
@@ -54,87 +69,44 @@ export default function UpdateDetailPage() {
                     </div>
                     <div className="flex flex-col items-start md:items-end">
                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Released</span>
-                       <span className="text-sm font-black text-zinc-900 italic tracking-tight mt-1">Oct 24, 2024 • 08:30 AM</span>
+                       <span className="text-sm font-black text-zinc-900 italic tracking-tight mt-1">{releasedAt}</span>
                     </div>
                  </div>
 
                  {/* Content Area */}
                  <article className="space-y-8">
                     <div className="space-y-4">
-                       <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[9px] font-black tracking-widest uppercase border border-blue-100">
-                         Press Release #DMC-2024-882
+                       <span className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase border", severity.badge)}>
+                         <SeverityIcon className="w-3 h-3" />
+                         {severity.label}
                        </span>
                        <h1 className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight italic leading-tight">
-                         Relief centers opened in Panadura North following flash floods
+                         {update.title}
                        </h1>
-                       <p className="text-base font-bold text-gray-500 leading-relaxed italic">
-                         Immediate evacuation orders have been issued for low-lying areas. Three new secure locations are now operational for displaced persons.
-                       </p>
                     </div>
 
                     <div className="prose prose-slate max-w-none">
-                       <p className="text-sm font-medium text-gray-600 leading-relaxed mb-6">
-                         <span className="font-black text-zinc-900 uppercase italic">COLOMBO, SRI LANKA —</span> The Disaster Management Center (DMC), in coordination with the Divisional Secretariat, has authorized the opening of three new emergency relief centers in the Panadura North division. This action comes in response to rising water levels in the Bolgoda Lake basin, which has rendered several residential zones unsafe.
+                       <p className="text-sm font-medium text-gray-600 leading-relaxed whitespace-pre-line">
+                         {update.content}
                        </p>
-                       
-                       <div className="bg-gray-50/50 rounded-2xl p-6 md:p-8 space-y-6 border border-gray-100 mb-8">
-                          <h3 className="text-sm font-black text-zinc-900 italic uppercase flex items-center gap-2">
-                             <Building2 className="w-4 h-4 text-brand-red" />
-                             Authorized Relief Centers
-                          </h3>
-                          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                             {[
-                               { name: "Sri Sumangala College (Main Hall)", loc: "Wekada, Panadura.", cap: "500 persons." },
-                               { name: "Panadura Town Hall", loc: "Galle Road, Panadura.", cap: "350 persons." },
-                               { name: "Methsarana Community Center", loc: "Nalluruwa.", cap: "200 persons." }
-                             ].map((center, i) => (
-                               <div key={i} className="flex gap-4 p-4 bg-white rounded-xl border border-gray-50 shadow-sm">
-                                  <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                                    <MapPin className="w-4 h-4 text-brand-red" />
-                                  </div>
-                                  <div className="flex flex-col">
-                                     <span className="text-xs font-black text-zinc-900 italic">{center.name}</span>
-                                     <span className="text-[10px] font-bold text-gray-400 mt-0.5">{center.loc} <span className="text-zinc-400">Capacity: {center.cap}</span></span>
-                                  </div>
-                               </div>
-                             ))}
-                          </div>
-                       </div>
-
-                       <h3 className="text-sm font-black text-zinc-900 italic uppercase mb-4">Instructions for Citizens</h3>
-                       <p className="text-sm font-medium text-gray-600 leading-relaxed italic mb-4">
-                         Residents in Zone A and Zone B (indicated in previous hazard maps) are advised to evacuate immediately. Do not wait until water enters your home.
-                       </p>
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Please bring the following essential items if possible:</p>
-                       <ul className="grid grid-cols-1 md:grid-cols-1 gap-2 border-l-2 border-gray-100 pl-6 mb-8">
-                          {[
-                            "National Identity Cards (NIC) or other identification documents.",
-                            "Essential medication for at least 3 days.",
-                            "Infant supplies (milk powder, diapers) if applicable.",
-                            "A torch and spare batteries."
-                          ].map((item, i) => (
-                             <li key={i} className="text-xs font-bold text-gray-500 italic flex items-center gap-2">
-                                <div className="w-1 h-1 bg-gray-300 rounded-full" />
-                                {item}
-                             </li>
-                          ))}
-                       </ul>
-
-                       <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-xl">
-                          <p className="text-[11px] font-bold text-yellow-800 italic leading-relaxed">
-                            <span className="font-black text-zinc-900 uppercase">Note:</span> Transport services for the elderly and disabled are available. Call 117 to request assistance.
-                          </p>
-                       </div>
                     </div>
+
+                    {(update.latitude && update.longitude) && (
+                       <Link
+                          href={`/map/situation?lat=${update.latitude}&lng=${update.longitude}`}
+                          className="inline-flex items-center gap-2 p-4 bg-gray-50/50 rounded-xl border border-gray-100 text-xs font-black text-zinc-900 italic uppercase hover:bg-gray-100 transition-colors"
+                       >
+                          <MapIcon className="w-4 h-4 text-brand-red" />
+                          View affected location on map
+                       </Link>
+                    )}
                  </article>
 
                  <div className="pt-12 border-t border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
                     <div className="space-y-1">
-                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic leading-none">Signed,</span>
-                       <span className="block text-sm font-black text-zinc-900 italic tracking-tight">Director General,</span>
-                       <span className="block text-xs font-bold text-gray-400 italic mt-1">Disaster Management Center</span>
+                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic leading-none">Issued by,</span>
+                       <span className="block text-sm font-black text-zinc-900 italic tracking-tight">Disaster Management Center</span>
                     </div>
-                    {/* Mock Seal */}
                     <div className="w-20 h-20 rounded-full bg-gray-50 border-2 border-gray-100 flex items-center justify-center p-2 opacity-50 grayscale transition-all hover:grayscale-0 hover:opacity-100">
                        <ShieldCheck className="w-10 h-10 text-brand-red/40" />
                     </div>
@@ -151,7 +123,7 @@ export default function UpdateDetailPage() {
                        Share Information
                     </h3>
                     <p className="text-[11px] font-medium text-gray-400 leading-relaxed uppercase tracking-wider">Help your community by sharing this official update. Prioritize SMS for low-bandwidth areas.</p>
-                    
+
                     <div className="space-y-3">
                        <button className="w-full bg-[#0F172A] hover:bg-black text-white py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-xs transition-all active:scale-[0.98]">
                           <MessageSquare className="w-4 h-4" />
@@ -171,20 +143,20 @@ export default function UpdateDetailPage() {
                  <div className="pt-8 border-t border-gray-50 space-y-4">
                     <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest block">Related Actions</span>
                     <div className="space-y-3">
-                       <button className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                       <Link href="/map/situation" className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
                           <div className="flex items-center gap-3 text-xs font-black text-zinc-900 italic uppercase">
                              <MapIcon className="w-4 h-4 text-brand-red" />
-                             View Relief Map
+                             View Situation Map
                           </div>
                           <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-zinc-600 transition-colors" />
-                       </button>
-                       <button className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                       </Link>
+                       <a href="tel:117" className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
                           <div className="flex items-center gap-3 text-xs font-black text-zinc-900 italic uppercase">
                              <Phone className="w-4 h-4 text-blue-500" />
                              Contact DMC
                           </div>
                           <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-zinc-600 transition-colors" />
-                       </button>
+                       </a>
                        <button className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
                           <div className="flex items-center gap-3 text-xs font-black text-zinc-900 italic uppercase">
                              <Printer className="w-4 h-4 text-gray-400" />
@@ -198,7 +170,7 @@ export default function UpdateDetailPage() {
            </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

@@ -2,9 +2,33 @@
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <HTTPClient.h>
+#include <SPI.h>
+#include <LoRa.h>
+#include <math.h>
 
 // --- Configuration ---
 const char* ssid = "Outbreak-WIFI-AP";
+
+// --- LoRa Ra-02 (SX1278, 433 MHz) SPI wiring ---
+// ESP32-S3-DevKitC-1 safe GPIOs: avoids strapping pins (0/3/45/46), the
+// native USB D+/D- (19/20), flash SPI (26-32) and octal-PSRAM (33-37).
+// Rewiring to a different board only requires editing these six defines.
+#define LORA_SCK            12
+#define LORA_MISO           13
+#define LORA_MOSI           11
+#define LORA_NSS            10
+#define LORA_RST             9
+#define LORA_DIO0           14
+#define LORA_FREQ           433E6
+#define LORA_SYNC_WORD      0x4F   // 'O' - isolates the Outbreak LoRa network
+#define LORA_TX_POWER_DBM   10     // benchtop-safe; raise toward 17 for range tests
+#define BEACON_INTERVAL_MS  15000UL
+#define PEER_TIMEOUT_MS     45000UL
+#define LORA_MIN_TX_GAP_MS  2000UL
+// Hardware note: the Ra-02/SX1278 module is 3.3V-ONLY on VCC and every logic
+// pin - never power it from 5V. TX bursts draw ~120mA; add a 100uF capacitor
+// across VCC/GND if the board resets while transmitting. NEVER key the
+// transmitter with the antenna disconnected (it will damage the PA).
 
 // --- Backhaul WiFi (AP+STA mode — connects to router for internet) ---
 const char* STA_SSID     = "Galaxy M33 5G 720F";
@@ -26,6 +50,9 @@ struct Message {
   String text;
   String time;
   bool isAlert;
+  int rssi;       // 0 = posted locally (not received via LoRa)
+  long distM;      // 0 = posted locally
+  String origin;  // "" = local, else the LoRa node4 of the sender
 };
 
 struct SyncItem {
@@ -36,6 +63,10 @@ struct SyncItem {
   String location;
   String timestamp_sl;
   long long timestamp_ms;
+  String user;        // nickname of the sender (edge_messages.peer_nick)
+  String originNode;  // LoRa origin node4 if relayed, else "" for local
+  int rssi;
+  long distM;
 };
 
 const int MAX_MESSAGES = 50;
@@ -45,6 +76,26 @@ int messageCount = 0;
 const int MAX_SYNC = 100;
 SyncItem syncQueue[MAX_SYNC];
 int syncCount = 0;
+
+// --- LoRa Peer & Dedup State ---
+struct Peer {
+  String node4;
+  int rssi;
+  long distM;
+  unsigned long lastSeenMs;
+};
+const int MAX_PEERS = 8;
+Peer peers[MAX_PEERS];
+int peerRecordCount = 0;
+
+const int MAX_SEEN_IDS = 16;
+String seenFrameIds[MAX_SEEN_IDS];
+int seenFrameIdx = 0;
+
+bool loraOk = false;
+unsigned long lastBeaconMs = 0;
+unsigned long lastLoraTxMs = 0;
+unsigned int beaconSeq = 0;
 
 // --- Background Sync Job State ---
 bool isSyncJobPending = false;
@@ -709,20 +760,20 @@ const char* index_html = R"rawliteral(<!doctype html>
 
         <div class="metric-card">
           <div class="metric-label">Signal Strength</div>
-          <div class="metric-value">Unknown</div>
-          <div class="metric-sub">Waiting for data</div>
+          <div class="metric-value" id="signalStrengthValue">Unknown</div>
+          <div class="metric-sub" id="signalStrengthSub">Waiting for data</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Broadcast Range</div>
-          <div class="metric-value">Unknown</div>
-          <div class="metric-sub">No LoRa data</div>
+          <div class="metric-value" id="broadcastRangeValue">Unknown</div>
+          <div class="metric-sub" id="broadcastRangeSub">No LoRa data</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Peers Connected</div>
           <div class="metric-value" id="peerCount">0 Devices</div>
-          <div class="metric-sub">Secure Channel #1</div>
+          <div class="metric-sub">LoRa Mesh Channel</div>
         </div>
       </aside>
 
@@ -1139,8 +1190,52 @@ const char* index_html = R"rawliteral(<!doctype html>
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var status = await res.json();
           updateConnectionIndicator(status);
+          updateLoraMetrics(status);
         } catch (err) {
           updateConnectionIndicator(null);
+          updateLoraMetrics(null);
+        }
+      }
+
+      // Estimated distance from RSSI using the same log-distance path-loss
+      // model as the firmware's estimateDistance() (see offlineMode.ino).
+      function estimateDistanceJs(rssi) {
+        var exponent = (10 - rssi - 31) / (10 * 2.7);
+        var d = Math.pow(10, exponent);
+        return Math.max(1, Math.min(5000, Math.round(d)));
+      }
+
+      function updateLoraMetrics(status) {
+        var sigVal = document.getElementById('signalStrengthValue');
+        var sigSub = document.getElementById('signalStrengthSub');
+        var rangeVal = document.getElementById('broadcastRangeValue');
+        var rangeSub = document.getElementById('broadcastRangeSub');
+        var peerVal = document.getElementById('peerCount');
+
+        if (!status || !status.lora_ok) {
+          if (sigVal) sigVal.innerText = 'Offline';
+          if (sigSub) sigSub.innerText = 'LoRa module not detected';
+          if (rangeVal) rangeVal.innerText = 'Unknown';
+          if (rangeSub) rangeSub.innerText = 'No LoRa data';
+          if (peerVal) peerVal.innerText = '0 Devices';
+          return;
+        }
+
+        var peerCount = status.lora_peers || 0;
+        var rssi = status.lora_best_rssi || 0;
+
+        if (peerVal) peerVal.innerText = peerCount + (peerCount === 1 ? ' Device' : ' Devices');
+
+        if (peerCount === 0) {
+          if (sigVal) sigVal.innerText = 'No Peers';
+          if (sigSub) sigSub.innerText = 'Listening for beacons...';
+          if (rangeVal) rangeVal.innerText = '--';
+          if (rangeSub) rangeSub.innerText = 'No peers in range';
+        } else {
+          if (sigVal) sigVal.innerText = rssi + ' dBm';
+          if (sigSub) sigSub.innerText = 'Strongest of ' + peerCount + ' peer(s)';
+          if (rangeVal) rangeVal.innerText = '~' + estimateDistanceJs(rssi) + 'm';
+          if (rangeSub) rangeSub.innerText = 'Estimated via RSSI';
         }
       }
 
@@ -1718,20 +1813,19 @@ const char* index_html = R"rawliteral(<!doctype html>
         } catch (e) { console.error('Status poll error:', e); }
       }, 3000);
 
-      setInterval(function() {
-        try {
-          var peers = Math.floor(Math.random() * 5) + 10;
-          var el = document.getElementById('peerCount');
-          if (el) el.innerText = peers + ' Devices';
-        } catch (e) { console.error('Peer count error:', e); }
-      }, 5000);
-
     </script>
   </body>
 </html>)rawliteral";
 
 // --- Database Operations ---
-void addMessage(long long id, const String& user, const String& text, const String& time, bool isAlert) {
+// Note: default arguments are deliberately NOT used here. Arduino's
+// auto-prototype generator emits a forward declaration copied from this
+// signature; if defaults were specified here, the compiler sees them twice
+// (once in the generated prototype, once here) and errors with "default
+// argument given for parameter N ... after previous specification".
+// Every call site below passes all arguments explicitly instead.
+void addMessage(long long id, const String& user, const String& text, const String& time, bool isAlert,
+                int rssi, long distM, const String& origin) {
   if (user.length() == 0 || text.length() == 0) {
     Serial.println("[addMessage] Skipping: empty user or text.");
     return;
@@ -1743,6 +1837,9 @@ void addMessage(long long id, const String& user, const String& text, const Stri
   newMsg.text    = text;
   newMsg.time    = time;
   newMsg.isAlert = isAlert;
+  newMsg.rssi    = rssi;
+  newMsg.distM   = distM;
+  newMsg.origin  = origin;
 
   if (messageCount < MAX_MESSAGES) {
     messages[messageCount++] = newMsg;
@@ -1754,9 +1851,13 @@ void addMessage(long long id, const String& user, const String& text, const Stri
   }
 }
 
+// Same rationale as addMessage() above: no default arguments, all call
+// sites pass every parameter explicitly.
 void addSyncItem(const String& id, const String& type, const String& content,
                  const String& priority, const String& location,
-                 const String& timestamp_sl, long long timestamp_ms) {
+                 const String& timestamp_sl, long long timestamp_ms,
+                 const String& user, const String& originNode,
+                 int rssi, long distM) {
   if (id.length() == 0 || type.length() == 0) {
     Serial.println("[addSyncItem] Skipping: empty id or type.");
     return;
@@ -1770,6 +1871,10 @@ void addSyncItem(const String& id, const String& type, const String& content,
   item.location     = location;
   item.timestamp_sl = timestamp_sl;
   item.timestamp_ms = timestamp_ms;
+  item.user         = user;
+  item.originNode   = originNode;
+  item.rssi         = rssi;
+  item.distM        = distM;
 
   if (syncCount < MAX_SYNC) {
     syncQueue[syncCount++] = item;
@@ -1809,17 +1914,21 @@ String getMessagesJSON() {
     if (!first) json += ",";
     first = false;
 
-    int fakeRSSI = 0;
-    long estimatedDistance = 0;
-
     json += "{";
     json += "\"id\":" + String(messages[i].id) + ",";
     json += "\"user\":\"" + jsonEscape(messages[i].user) + "\",";
     json += "\"text\":\"" + jsonEscape(messages[i].text) + "\",";
     json += "\"time\":\"" + jsonEscape(messages[i].time) + "\",";
     json += "\"alert\":"  + String(messages[i].isAlert ? "true" : "false") + ",";
-    json += "\"dist\":\""  + String(estimatedDistance) + "m\",";
-    json += "\"rssi\":\""  + String(fakeRSSI) + " dBm\"";
+    // "" (falsy in JS) for messages posted locally on this node; real
+    // RSSI/distance for messages received over LoRa from another node.
+    if (messages[i].origin.length() > 0) {
+      json += "\"dist\":\"~" + String(messages[i].distM) + "m via LoRa\",";
+      json += "\"rssi\":\"" + String(messages[i].rssi) + " dBm\"";
+    } else {
+      json += "\"dist\":\"\",";
+      json += "\"rssi\":\"\"";
+    }
     json += "}";
   }
   json += "]";
@@ -1878,12 +1987,195 @@ void handleCaptivePortalRedirect() {
   }
 }
 
+// Log-distance path-loss estimate for 433MHz LoRa: d = 10^((Tx + Gant - RSSI - PL0) / (10*n))
+// PL0 ~= 31dB @ 1m for 433MHz, n = 2.7 (semi-rural/mixed terrain). This is an
+// order-of-magnitude estimate, not a precise measurement - cite the model
+// (not the module) when reporting distances.
 long estimateDistance(int rssi) {
-  if (rssi >= -45) return 3;
-  if (rssi >= -55) return 8;
-  if (rssi >= -65) return 15;
-  if (rssi >= -75) return 30;
-  return 50;
+  float exponent = (LORA_TX_POWER_DBM - rssi - 31.0) / (10.0 * 2.7);
+  float distance = pow(10.0, exponent);
+  if (distance < 1) distance = 1;
+  if (distance > 5000) distance = 5000;
+  return (long)distance;
+}
+
+// --- LoRa Identity, Peers & Dedup ---
+String nodeId4() {
+  String mac = WiFi.macAddress();
+  mac.replace(":", "");
+  return mac.substring(mac.length() - 4);
+}
+
+bool seenFrameBefore(const String& key) {
+  for (int i = 0; i < MAX_SEEN_IDS; i++) {
+    if (seenFrameIds[i] == key) return true;
+  }
+  return false;
+}
+
+void markFrameSeen(const String& key) {
+  seenFrameIds[seenFrameIdx] = key;
+  seenFrameIdx = (seenFrameIdx + 1) % MAX_SEEN_IDS;
+}
+
+void upsertPeer(const String& node4, int rssi, long distM) {
+  unsigned long now = millis();
+  for (int i = 0; i < peerRecordCount; i++) {
+    if (peers[i].node4 == node4) {
+      peers[i].rssi = rssi;
+      peers[i].distM = distM;
+      peers[i].lastSeenMs = now;
+      return;
+    }
+  }
+  if (peerRecordCount < MAX_PEERS) {
+    peers[peerRecordCount].node4 = node4;
+    peers[peerRecordCount].rssi = rssi;
+    peers[peerRecordCount].distM = distM;
+    peers[peerRecordCount].lastSeenMs = now;
+    peerRecordCount++;
+  } else {
+    int oldestIdx = 0;
+    unsigned long oldest = peers[0].lastSeenMs;
+    for (int i = 1; i < MAX_PEERS; i++) {
+      if (peers[i].lastSeenMs < oldest) { oldest = peers[i].lastSeenMs; oldestIdx = i; }
+    }
+    peers[oldestIdx].node4 = node4;
+    peers[oldestIdx].rssi = rssi;
+    peers[oldestIdx].distM = distM;
+    peers[oldestIdx].lastSeenMs = now;
+  }
+}
+
+int countActivePeers() {
+  int count = 0;
+  unsigned long now = millis();
+  for (int i = 0; i < peerRecordCount; i++) {
+    if (now - peers[i].lastSeenMs < PEER_TIMEOUT_MS) count++;
+  }
+  return count;
+}
+
+// Returns the strongest RSSI among currently-active peers, or 0 if none
+// (0 dBm is not a valid LoRa reading, so it doubles as a "no peers" flag).
+int bestPeerRssi() {
+  int best = -999;
+  bool found = false;
+  unsigned long now = millis();
+  for (int i = 0; i < peerRecordCount; i++) {
+    if (now - peers[i].lastSeenMs < PEER_TIMEOUT_MS && peers[i].rssi > best) {
+      best = peers[i].rssi;
+      found = true;
+    }
+  }
+  return found ? best : 0;
+}
+
+// --- LoRa TX (protocol: OB1|<type>|<node4>|...) ---
+bool loraCanTransmit() {
+  return loraOk && (millis() - lastLoraTxMs >= LORA_MIN_TX_GAP_MS);
+}
+
+void loraSendRaw(const String& frame) {
+  if (!loraCanTransmit()) return;
+  LoRa.beginPacket();
+  LoRa.print(frame);
+  LoRa.endPacket();
+  lastLoraTxMs = millis();
+}
+
+void loraSendBeacon() {
+  if (!loraCanTransmit()) return;
+  beaconSeq++;
+  loraSendRaw("OB1|B|" + nodeId4() + "|" + String(beaconSeq));
+}
+
+void loraBroadcastMessage(long long id, const String& nick, const String& text, const String& time) {
+  if (!loraOk) return;
+  String safeText = text.substring(0, 180);
+  loraSendRaw("OB1|M|" + nodeId4() + "|" + String(id) + "|" + nick + "|" + time + "|" + safeText);
+}
+
+void loraBroadcastSOS(long long id, const String& time, const String& location, const String& text) {
+  if (!loraOk) return;
+  String safeText = text.substring(0, 160);
+  String loc = location.length() > 0 ? location : "0,0";
+  loraSendRaw("OB1|S|" + nodeId4() + "|" + String(id) + "|" + time + "|" + loc + "|" + safeText);
+}
+
+// Splits a '|'-delimited frame into up to maxParts pieces. The final piece
+// keeps any remaining '|' characters intact (free-text message body).
+int splitFrame(const String& frame, String* parts, int maxParts) {
+  int count = 0;
+  int start = 0;
+  while (count < maxParts - 1) {
+    int idx = frame.indexOf('|', start);
+    if (idx < 0) break;
+    parts[count++] = frame.substring(start, idx);
+    start = idx + 1;
+  }
+  parts[count++] = frame.substring(start);
+  return count;
+}
+
+// --- LoRa RX (polled from loop(), not an ISR - the sketch's heavy String
+// use is not interrupt-safe with arduino-LoRa's onReceive callback) ---
+void loraPoll() {
+  if (!loraOk) return;
+  int packetSize = LoRa.parsePacket();
+  if (packetSize == 0) return;
+
+  String frame = "";
+  while (LoRa.available()) {
+    frame += (char)LoRa.read();
+  }
+  int rssi = LoRa.packetRssi();
+
+  String parts[8];
+  int n = splitFrame(frame, parts, 8);
+  if (n < 3 || parts[0] != "OB1") return;
+
+  String type = parts[1];
+  String origin = parts[2];
+  if (origin == nodeId4()) return; // ignore our own echoes
+
+  long distM = estimateDistance(rssi);
+  upsertPeer(origin, rssi, distM);
+
+  if (type == "B") return; // beacon: peer table already updated above
+
+  if (type == "M" && n >= 7) {
+    String msgId = parts[3];
+    String nick  = parts[4];
+    String time  = parts[5];
+    String text  = parts[6];
+    String dedupKey = origin + ":m:" + msgId;
+    if (seenFrameBefore(dedupKey)) return;
+    markFrameSeen(dedupKey);
+
+    long long idNum = atoll(msgId.c_str());
+    addMessage(idNum, nick + " (LoRa)", text, time, false, rssi, distM, origin);
+    String timestamp_sl = "2026-01-01T" + time + ":00.000Z";
+    addSyncItem("MSG-" + origin + "-" + msgId, "MESSAGE", text, "NORMAL", "", timestamp_sl, idNum, nick, origin, rssi, distM);
+    Serial.println("[LoRa RX] Message relayed from " + origin + " (RSSI " + String(rssi) + ")");
+  }
+
+  if (type == "S" && n >= 7) {
+    String msgId = parts[3];
+    String time  = parts[4];
+    String loc   = parts[5];
+    String text  = parts[6];
+    String dedupKey = origin + ":s:" + msgId;
+    if (seenFrameBefore(dedupKey)) return;
+    markFrameSeen(dedupKey);
+
+    long long idNum = atoll(msgId.c_str());
+    String fullText = "🆘 RELAYED SOS from " + origin + " | " + text;
+    addMessage(idNum, "🚨 SOS ALERT (LoRa)", fullText, time, true, rssi, distM, origin);
+    String timestamp_sl = "2026-01-01T" + time + ":00.000Z";
+    addSyncItem("SOS-" + origin + "-" + msgId, "SOS_BROADCAST", fullText, "CRITICAL", loc, timestamp_sl, idNum, "", origin, rssi, distM);
+    Serial.println("[LoRa RX] SOS relayed from " + origin + " (RSSI " + String(rssi) + ")");
+  }
 }
 
 // --- WiFi Reconnection Logic ---
@@ -1932,6 +2224,26 @@ void setup() {
   Serial.println(STA_SSID);
   WiFi.begin(STA_SSID, STA_PASSWORD);
 
+  // --- LoRa Ra-02 (SX1278) init ---
+  // ESP32-S3's default SPI pin mapping differs from classic ESP32 and from
+  // most tutorials, so pins are always passed explicitly here.
+  SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
+  LoRa.setPins(LORA_NSS, LORA_RST, LORA_DIO0);
+  loraOk = LoRa.begin(LORA_FREQ);
+  if (loraOk) {
+    LoRa.setSyncWord(LORA_SYNC_WORD);
+    LoRa.enableCrc();
+    LoRa.setSpreadingFactor(7);
+    LoRa.setSignalBandwidth(125E3);
+    LoRa.setTxPower(LORA_TX_POWER_DBM);
+    LoRa.setSPIFrequency(8E6); // safe margin under the SX1278's 10MHz limit
+    Serial.println("[LoRa] Init OK (433 MHz, node " + nodeId4() + ")");
+  } else {
+    // Module absent or miswired: the rest of the node (WiFi AP, web portal,
+    // cloud sync) keeps working normally without LoRa.
+    Serial.println("[LoRa] Init FAILED - module not detected. Continuing without LoRa.");
+  }
+
   dnsServer.start(DNS_PORT, "*", apIP);
   Serial.println("Captive Portal DNS Server started.");
 
@@ -1968,6 +2280,9 @@ void setup() {
     json += "\"queue_count\":" + String(syncCount) + ",";
     json += "\"sync_job_pending\":" + String(isSyncJobPending ? "true" : "false") + ",";
     json += "\"reconnecting\":" + String(isReconnecting ? "true" : "false") + ",";
+    json += "\"lora_ok\":" + String(loraOk ? "true" : "false") + ",";
+    json += "\"lora_peers\":" + String(countActivePeers()) + ",";
+    json += "\"lora_best_rssi\":" + String(bestPeerRssi()) + ",";
     json += "\"uptime_ms\":" + String(millis());
     json += "}";
     server.send(200, "application/json", json);
@@ -2007,10 +2322,11 @@ void setup() {
       return;
     }
 
-    addMessage(id, user, text, time, false);
+    addMessage(id, user, text, time, false, 0, 0, "");
+    loraBroadcastMessage(id, user, text, time);
 
     String timestamp_sl = "2026-01-01T" + time + ":00.000Z";
-    addSyncItem("MSG-" + String(id), "MESSAGE", text, "NORMAL", "", timestamp_sl, id);
+    addSyncItem("MSG-" + String(id), "MESSAGE", text, "NORMAL", "", timestamp_sl, id, user, "", 0, 0);
 
     Serial.println("[POST /api/messages] New message from " + user + ": " + text);
     server.send(200, "application/json", "{\"status\":\"OK\"}");
@@ -2019,15 +2335,18 @@ void setup() {
   server.on("/api/sos", HTTP_POST, []() {
     server.sendHeader("Access-Control-Allow-Origin", "*");
 
-    if (!server.hasArg("id") || !server.hasArg("distance") || !server.hasArg("time")) {
+    if (!server.hasArg("id") || !server.hasArg("time")) {
       Serial.println("[POST /api/sos] Bad request: missing required params.");
-      server.send(400, "application/json", "{\"error\":\"Missing required parameters: id, distance, time\"}");
+      server.send(400, "application/json", "{\"error\":\"Missing required parameters: id, time\"}");
       return;
     }
 
     String idStr    = server.arg("id");
-    String distance = server.arg("distance");
-    String time     = server.arg("time");
+    // "distance" and "location" are both optional: quickSOS() sends distance,
+    // triggerSOS() (GPS-confirmed modal flow) sends location instead.
+    String distance = server.hasArg("distance") ? server.arg("distance") : "0";
+    String location = server.hasArg("location") ? server.arg("location") : "";
+    String time      = server.arg("time");
 
     long long id = atoll(idStr.c_str());
     if (id <= 0) {
@@ -2036,12 +2355,15 @@ void setup() {
       return;
     }
 
-    int fakeRSSI = 0;
+    // Real signal strength from the best currently-visible LoRa peer
+    // (0 = no LoRa peers heard, not a valid dBm reading).
+    int rssi = bestPeerRssi();
     String signalLevel;
 
-    if (fakeRSSI > -50)      signalLevel = "VERY STRONG";
-    else if (fakeRSSI > -60) signalLevel = "STRONG";
-    else if (fakeRSSI > -70) signalLevel = "MEDIUM";
+    if (rssi == 0)           signalLevel = "NO LORA PEERS";
+    else if (rssi > -50)     signalLevel = "VERY STRONG";
+    else if (rssi > -60)     signalLevel = "STRONG";
+    else if (rssi > -70)     signalLevel = "MEDIUM";
     else                     signalLevel = "WEAK";
 
     String text  = "🆘 EMERGENCY SOS ACTIVE | ";
@@ -2049,14 +2371,16 @@ void setup() {
     text += "Signal: " + signalLevel + " | ";
     text += "Move toward stronger signal.";
 
-    addMessage(id, "🚨 SOS ALERT", text, time, true);
+    addMessage(id, "🚨 SOS ALERT", text, time, true, 0, 0, "");
 
     String timestamp_sl = "2026-01-01T" + time + ":00.000Z";
-    addSyncItem("SOS-" + String(id), "SOS_BROADCAST", text, "CRITICAL", "", timestamp_sl, id);
+    addSyncItem("SOS-" + String(id), "SOS_BROADCAST", text, "CRITICAL", location, timestamp_sl, id, "", "", 0, 0);
+
+    loraBroadcastSOS(id, time, location, text);
 
     Serial.println("========== SOS ALERT ==========");
     Serial.println("Approx Distance: " + distance + "m");
-    Serial.println("RSSI: " + String(fakeRSSI));
+    Serial.println("Best LoRa peer RSSI: " + String(rssi));
     Serial.println("Signal Strength: " + signalLevel);
     Serial.println("================================");
 
@@ -2121,7 +2445,9 @@ void setup() {
 }
 
 // --- Supabase HTTP POST helper ---
-int supabasePost(const String& endpoint, const String& jsonBody) {
+// preferHeader: pass "" for a plain insert, or a PostgREST "Prefer" value
+// (e.g. "resolution=ignore-duplicates") for idempotent upserts.
+int supabasePost(const String& endpoint, const String& jsonBody, const String& preferHeader) {
   if (WiFi.status() != WL_CONNECTED) return -1;
 
   HTTPClient http;
@@ -2130,6 +2456,9 @@ int supabasePost(const String& endpoint, const String& jsonBody) {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("apikey", SUPABASE_KEY);
   http.addHeader("Authorization", "Bearer " + String(SUPABASE_KEY));
+  if (preferHeader.length() > 0) {
+    http.addHeader("Prefer", preferHeader);
+  }
 
   int httpCode = http.POST(jsonBody);
 
@@ -2154,17 +2483,30 @@ bool uploadMessagesToSupabase() {
   for (int i = 0; i < syncCount; i++) {
     if (syncQueue[i].type != "MESSAGE") continue;
 
+    // Fix: peer_nick previously serialized the same field as message_text
+    // (both read from syncQueue[i].content) because SyncItem had no
+    // dedicated user field. It now does.
+    String peerNick = syncQueue[i].user.length() > 0 ? syncQueue[i].user : "Unknown";
+
     String body = "{";
     body += "\"node_id\":\""        + jsonEscape(macAddr)                   + "\",";
-    body += "\"peer_nick\":\""      + jsonEscape(syncQueue[i].content)      + "\",";
+    body += "\"peer_nick\":\""      + jsonEscape(peerNick)                  + "\",";
     body += "\"message_text\":\""   + jsonEscape(syncQueue[i].content)      + "\",";
     body += "\"priority\":\""       + jsonEscape(syncQueue[i].priority)     + "\",";
     body += "\"captured_at_sl\":\"" + jsonEscape(syncQueue[i].timestamp_sl) + "\",";
     body += "\"timestamp_ms\":"     + String(syncQueue[i].timestamp_ms)     + ",";
+    if (syncQueue[i].originNode.length() > 0) {
+      // Relayed from another node over LoRa - record provenance and signal quality.
+      body += "\"origin_node_id\":\"" + jsonEscape(syncQueue[i].originNode) + "\",";
+      body += "\"rssi\":"             + String(syncQueue[i].rssi)          + ",";
+      body += "\"distance_m\":"       + String(syncQueue[i].distM)         + ",";
+    }
     body += "\"synced_from_queue\":true";
     body += "}";
 
-    int code = supabasePost("/rest/v1/edge_messages", body);
+    // on_conflict + ignore-duplicates makes retries after a partial-failure
+    // cycle idempotent instead of creating duplicate rows.
+    int code = supabasePost("/rest/v1/edge_messages?on_conflict=node_id,timestamp_ms", body, "resolution=ignore-duplicates,return=minimal");
     if (code < 200 || code > 299) {
       allOk = false;
       Serial.printf("[Supabase] Message item %d failed (HTTP %d), will retry next cycle.\n", i, code);
@@ -2188,16 +2530,21 @@ bool uploadSOSToSupabase() {
       lngStr = loc.substring(commaIdx + 1);
     }
 
+    String provenance = " | node=" + jsonEscape(WiFi.macAddress()) + " | captured=" + jsonEscape(syncQueue[i].timestamp_sl);
+    if (syncQueue[i].originNode.length() > 0) {
+      provenance += " | relayed_from=" + jsonEscape(syncQueue[i].originNode) + " | rssi=" + String(syncQueue[i].rssi) + "dBm";
+    }
+
     String body = "{";
     body += "\"user_id\":\""        + String(NODE_USER_ID)                  + "\",";
     body += "\"stype\":\"other\",";
     body += "\"latitude\":"         + latStr                                 + ",";
     body += "\"longitude\":"        + lngStr                                 + ",";
-    body += "\"additional_info\":\"" + jsonEscape(syncQueue[i].content)     + " | node=" + jsonEscape(WiFi.macAddress()) + " | captured=" + jsonEscape(syncQueue[i].timestamp_sl) + "\",";
+    body += "\"additional_info\":\"" + jsonEscape(syncQueue[i].content)     + provenance + "\",";
     body += "\"status\":\"active\"";
     body += "}";
 
-    int code = supabasePost("/rest/v1/sos_requests", body);
+    int code = supabasePost("/rest/v1/sos_requests", body, "");
     if (code < 200 || code > 299) {
       allOk = false;
       Serial.printf("[Supabase] SOS item %d failed (HTTP %d), will retry next cycle.\n", i, code);
@@ -2242,4 +2589,15 @@ void loop() {
   server.handleClient();
   handleWiFiReconnect();   // ADDED: auto-reconnect logic
   checkBackgroundSyncJob();
+
+  loraPoll(); // polled, not interrupt-driven - see loraPoll() comment above
+
+  if (loraOk) {
+    long elapsedMs = (long)(millis() - lastBeaconMs);
+    long intervalMs = (long)BEACON_INTERVAL_MS + random(-2000, 2000); // jitter avoids synced collisions
+    if (elapsedMs >= intervalMs) {
+      lastBeaconMs = millis();
+      loraSendBeacon();
+    }
+  }
 }

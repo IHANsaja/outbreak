@@ -42,6 +42,36 @@ class RiverReport(BaseModel):
 def health():
     return {"status": "operational", "roles": ["Early Warning", "Trend Monitor", "Strategic Path"]}
 
+
+def _smart_pad(records: list, target: int = 12) -> list:
+    """Pad a short history window to `target` records using linear-trend
+    backward projection instead of a flat repeated-first-row line.
+
+    In normal operation the caller (data-pipeline/api_client.py) already
+    builds a full 12-row, hourly-interpolated window before POSTing here, so
+    this rarely triggers. It exists as defense-in-depth for any other direct
+    caller (e.g. test scripts) that sends fewer than 12 records."""
+    if len(records) >= target:
+        return records
+    if len(records) < 2:
+        # With <2 records we truly cannot infer a trend; fall back to
+        # flat-repeat as an honest last resort.
+        while len(records) < target and records:
+            records.insert(0, records[0].copy())
+        return records
+
+    now_val = records[-1]['water_level_now']
+    prev_val = records[-2]['water_level_now']
+    delta = now_val - prev_val
+    needed = target - len(records)
+    padding = []
+    for i in range(needed, 0, -1):
+        p = records[0].copy()
+        p['water_level_now'] = max(0.0, now_val - delta * (i + len(records) - 1))
+        padding.append(p)
+    return padding + records
+
+
 @app.post("/predict")
 def predict(history: List[RiverReport]):
     """
@@ -50,12 +80,10 @@ def predict(history: List[RiverReport]):
     """
     if len(history) < 1:
         raise HTTPException(status_code=400, detail="At least 1 report is required.")
-    
-    # Pad history to 12 records if we have fewer — repeat the oldest record
+
     records = [r.dict() for r in history]
-    while len(records) < 12:
-        records.insert(0, records[0].copy())
-    
+    records = _smart_pad(records, target=12)
+
     df = pd.DataFrame(records)
     
     # --- Column preparation ---
@@ -67,7 +95,7 @@ def predict(history: List[RiverReport]):
     if df['time_idx'].isnull().all():
         df['time_idx'] = np.arange(len(df), dtype=np.int64)
     else:
-        df['time_idx'] = pd.to_numeric(df['time_idx'], errors='coerce').fillna(method='ffill').astype(np.int64)
+        df['time_idx'] = pd.to_numeric(df['time_idx'], errors='coerce').ffill().astype(np.int64)
         
     # --- Type coercion ---
     # Numeric coercion for all feature columns
@@ -108,6 +136,7 @@ def predict(history: List[RiverReport]):
                 "trend_monitor_12h": forecasts["trend_monitor_12h"],
                 "strategic_path_24h": forecasts["strategic_path_24h"]
             },
+            "dampened": forecasts["dampened"],
             "units": "meters",
             "metadata": {
                 "window_size": len(df),

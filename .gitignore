@@ -24,7 +24,7 @@ build/
 dmc_downloads/
 *.log
 pipeline_state.json
-latest_history.json
+data-pipeline/test_fixture.json
 data-pipeline/processed_urls.json
 data/training_data.csv
 forecasting-engine/lightning_logs/

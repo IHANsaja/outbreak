@@ -28,6 +28,7 @@ import { useEffect, useState, Suspense } from "react";
 import { getDetailedReportData } from "@/app/actions/forecasting";
 import { getRecentSos, getActiveHazards } from "@/app/actions/data";
 import stationsData from "@/lib/stations.json";
+import { formatForecast } from "@/lib/forecastMeta";
 
 function ReportContent() {
   const { t } = useLanguage();
@@ -94,7 +95,7 @@ function ReportContent() {
   
   const thresholdY = scaleY(latestReport?.major_flood || 8.0);
   const forecastPointX = 395;
-  const forecastPointY = scaleY(latestReport?.forecast_1h || latestReport?.water_level_now);
+  const forecastPointY = scaleY(latestReport?.forecast_1h != null ? latestReport.forecast_1h : latestReport?.water_level_now);
 
   // Helper to get status tag for global table
   const getStatusInfo = (report: any) => {
@@ -273,7 +274,7 @@ function ReportContent() {
                                             </td>
                                             <td className="px-6 py-4 text-xs font-black text-zinc-900 italic">{report.water_level_now}m</td>
                                             <td className="px-6 py-4 text-xs font-black text-orange-500 italic text-center">
-                                                {report.forecast_1h ? report.forecast_1h.toFixed(2) + "m" : "---"}
+                                                {formatForecast(report.forecast_1h)}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <span className={cn("px-2 py-0.5 text-[8px] font-black text-white rounded uppercase tracking-[0.1em]", status.color)}>

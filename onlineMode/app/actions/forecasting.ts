@@ -8,34 +8,24 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function getLatestRiverReports(stationId: number) {
-  // Fetch more records to ensure we have enough to sample hourly
+  // Returns the last 24 real reports in chronological order. Previously this
+  // deduplicated to "one record per hour," which was only ever a stand-in
+  // for assumed-uniform spacing; the AI dashboard chart now scales its
+  // x-axis from each report's actual timestamp, so real (possibly
+  // irregularly-spaced) reports can be plotted directly.
   const { data, error } = await supabase
     .from("river_reports")
     .select("*")
     .eq("station_id", stationId)
     .order("timestamp", { ascending: false })
-    .limit(300);
+    .limit(24);
 
   if (error) {
     console.error("Error fetching river reports:", error);
     return [];
   }
 
-  // Sample one record per hour
-  const hourlyData: any[] = [];
-  const seenHours = new Set<string>();
-
-  for (const report of data) {
-    const hourStr = new Date(report.timestamp).toISOString().slice(0, 13); // YYYY-MM-DDTHH
-    if (!seenHours.has(hourStr)) {
-      hourlyData.push(report);
-      seenHours.add(hourStr);
-    }
-    if (hourlyData.length >= 12) break;
-  }
-
-  // Return in reverse chronological order for the chart (oldest to newest)
-  return hourlyData.reverse();
+  return data.reverse(); // oldest to newest for the chart
 }
 
 import stationsData from "../../lib/stations.json";
@@ -240,22 +230,13 @@ export async function getDetailedReportData(stationId: number) {
     return { reports: [], station: null, globalInsights: [] };
   }
 
-  // Sample hourly records for the chart
-  const hourlyReports: any[] = [];
-  const seenHours = new Set<string>();
+  // rawReports is already sorted descending by timestamp and limited to 24 -
+  // no need to further bucket/dedupe by hour (that only ever stood in for
+  // assumed-uniform spacing; consumers now use real timestamps directly).
   const rawReports = stationRes.data || [];
 
-  for (const report of rawReports) {
-    const hourStr = new Date(report.timestamp).toISOString().slice(0, 13);
-    if (!seenHours.has(hourStr)) {
-      hourlyReports.push(report);
-      seenHours.add(hourStr);
-    }
-    if (hourlyReports.length >= 24) break;
-  }
-
   const station = stationsData.find(s => s.id === stationId);
-  
+
   // Deduplicate global results for the "all river status" table
   const latestPerStation = new Map<number, any>();
   globalRes.data?.forEach(report => {
@@ -264,8 +245,8 @@ export async function getDetailedReportData(stationId: number) {
     }
   });
 
-  return { 
-    reports: hourlyReports.reverse(), 
+  return {
+    reports: rawReports.slice().reverse(),
     station,
     globalInsights: Array.from(latestPerStation.values())
   };
@@ -305,20 +286,22 @@ export async function getCriticalAlerts() {
     else if (report.water_level_now >= (report.minor_flood || 999)) currentLevel = "minor";
     else if (report.water_level_now >= (report.alert_level || 999)) currentLevel = "alert";
 
-    // Check Forecast Status (max of 1h, 12h, 24h)
-    const maxForecast = Math.max(
-      report.forecast_1h || 0, 
-      report.forecast_12h || 0, 
-      report.forecast_24h || 0
-    );
-    
+    // Check Forecast Status (max of 1h, 12h, 24h). null (not 0) when no
+    // forecast is available at all, so a missing forecast isn't silently
+    // treated as a safe 0m reading.
+    const forecastVals: number[] = [report.forecast_1h, report.forecast_12h, report.forecast_24h]
+      .filter((v: number | null) => v != null);
+    const maxForecast = forecastVals.length ? Math.max(...forecastVals) : null;
+
     let forecastLevel = "safe";
-    if (maxForecast >= (report.major_flood || 999)) forecastLevel = "major";
+    if (maxForecast == null) forecastLevel = "unknown";
+    else if (maxForecast >= (report.major_flood || 999)) forecastLevel = "major";
     else if (maxForecast >= (report.minor_flood || 999)) forecastLevel = "minor";
     else if (maxForecast >= (report.alert_level || 999)) forecastLevel = "alert";
 
-    // Only alert if either current or forecast is at least "alert" level
-    if (currentLevel !== "safe" || forecastLevel !== "safe") {
+    // Only alert if the current level is at risk, or a forecast exists and
+    // is at risk - a merely-unknown forecast isn't itself a risk signal.
+    if (currentLevel !== "safe" || (forecastLevel !== "safe" && forecastLevel !== "unknown")) {
       alerts.push({
         station_id: report.station_id,
         river,

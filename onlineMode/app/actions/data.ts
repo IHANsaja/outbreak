@@ -93,6 +93,21 @@ export async function getOfficialUpdates() {
   return data
 }
 
+export async function getOfficialUpdateById(id: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('official_updates')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('Error fetching update:', error)
+    return null
+  }
+  return data
+}
+
 export async function getStats() {
   const supabase = await createClient()
   
@@ -410,6 +425,21 @@ export async function addOfficialUpdate(formData: FormData) {
   revalidatePath('/')
   revalidatePath('/news')
   return { success: true }
+}
+
+export async function getEdgeMessages() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('edge_messages')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) {
+    console.error('Error fetching edge messages:', error)
+    return []
+  }
+  return data
 }
 
 export async function getHourlyActivityStats() {

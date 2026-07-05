@@ -216,7 +216,7 @@ export default function WaterLevelBrief() {
           </span>
           <span className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right flex items-center justify-end">
             AI 1h
-            <HelpTooltip text="Our AI predicts what the water level will be in 1 hour. If this number is higher than the current level, the water is expected to keep rising." />
+            <HelpTooltip text="Our AI (XGBoost model) predicts what the water level will be in 1 hour. If this number is higher than the current level, the water is expected to keep rising." />
           </span>
           <span className="col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Status</span>
           <span className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Updated</span>
@@ -275,7 +275,7 @@ export default function WaterLevelBrief() {
 
                 {/* AI Forecast */}
                 <div className="hidden md:flex col-span-2 items-center justify-end gap-1">
-                  {station.forecast_1h ? (
+                  {station.forecast_1h != null ? (
                     <>
                       <Activity className="w-3 h-3 text-orange-400" />
                       <span className="text-xs font-black text-orange-500 italic tabular-nums">
@@ -283,7 +283,7 @@ export default function WaterLevelBrief() {
                       </span>
                     </>
                   ) : (
-                    <span className="text-[10px] font-bold text-gray-300">---</span>
+                    <span className="text-[10px] font-bold text-gray-300">—</span>
                   )}
                 </div>
 
@@ -296,7 +296,10 @@ export default function WaterLevelBrief() {
                     {cfg.label}
                   </span>
                   {station.is_anomaly && (
-                    <span className="ml-1.5 px-1 py-0.5 bg-purple-100 text-purple-600 text-[7px] font-black rounded uppercase">
+                    <span
+                      className="ml-1.5 px-1 py-0.5 bg-purple-100 text-purple-600 text-[7px] font-black rounded uppercase cursor-help"
+                      title="This reading was flagged as statistically unusual by the forecasting engine (e.g. an implausible jump). Verify manually before acting on it."
+                    >
                       AI
                     </span>
                   )}

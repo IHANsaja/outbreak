@@ -36,6 +36,32 @@ import { getLatestRiverReports, getMonitoredStations, getGlobalAIInsights } from
 import { getRecentSos, getActiveHazards, getOfficialUpdates, getAllIncidents } from "@/app/actions/data";
 import { motion, AnimatePresence } from "framer-motion";
 import OperationsMap from "@/components/OperationsMap";
+import { FORECAST_MODEL_META, formatForecast } from "@/lib/forecastMeta";
+
+const RISK_TIER_META = {
+   major: { label: "CRITICAL", sub: "Major flood risk detected", color: "text-red-600", bg: "bg-red-50", border: "border-red-100" },
+   minor: { label: "WARNING", sub: "Minor flood risk detected", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
+   alert: { label: "ADVISORY", sub: "Approaching safety limits", color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-100" },
+   safe: { label: "STABLE", sub: "Current and forecast levels safe", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+} as const;
+
+/** Classifies flood risk using the current level AND the max forecast
+ * (when available) against station thresholds. Returns null when the
+ * thresholds themselves aren't known yet, rather than defaulting to "safe". */
+function classifyRisk(
+   current: number | undefined,
+   maxForecast: number | null,
+   major: number | undefined,
+   minor: number | undefined,
+   alert: number | undefined
+): keyof typeof RISK_TIER_META | null {
+   if (current == null || major == null || minor == null || alert == null) return null;
+   const peak = maxForecast != null ? Math.max(current, maxForecast) : current;
+   if (peak >= major) return "major";
+   if (peak >= minor) return "minor";
+   if (peak >= alert) return "alert";
+   return "safe";
+}
 
 export default function AIDashboard() {
    const { t } = useLanguage();
@@ -184,14 +210,15 @@ export default function AIDashboard() {
          latestReport.major_flood,
       ];
 
-      // Include forecasts if available
-      if (latestReport.forecast_1h) allValues.push(latestReport.forecast_1h);
-      if (latestReport.forecast_12h) allValues.push(latestReport.forecast_12h);
-      if (latestReport.forecast_24h) allValues.push(latestReport.forecast_24h);
+      // Include forecasts if available (null-safe: a genuine 0.00 forecast
+      // must still be included in the Y-axis range, not skipped).
+      if (latestReport.forecast_1h != null) allValues.push(latestReport.forecast_1h);
+      if (latestReport.forecast_12h != null) allValues.push(latestReport.forecast_12h);
+      if (latestReport.forecast_24h != null) allValues.push(latestReport.forecast_24h);
 
       const dataMin = Math.min(...allValues);
       const dataMax = Math.max(...allValues);
-      
+
       // Add 15% padding above and below
       const range = dataMax - dataMin || 1;
       const yMin = Math.max(0, dataMin - range * 0.15);
@@ -210,12 +237,18 @@ export default function AIDashboard() {
          return padTop + chartH - ratio * chartH;
       };
 
-      const totalPoints = reports.length;
-      // Reserve horizontal space for future forecasts (up to +4 offset)
-      const forecastReserve = 4.5; 
-      const domainX = totalPoints > 1 ? (totalPoints - 1) + forecastReserve : Math.max(1, forecastReserve);
-      const xStep = chartW / domainX;
-      const scaleX = (i: number) => padLeft + i * xStep;
+      // Time-based X axis: previously this scaled by array index (1 unit =
+      // "1 report"), which silently assumed every report was exactly 1 hour
+      // apart. Real reports arrive irregularly (minutes to many hours apart
+      // in practice), so forecast points placed at fixed index offsets had
+      // no real relationship to elapsed time. Scaling by actual timestamps
+      // fixes this regardless of how irregularly the real data is spaced.
+      const timestamps = reports.map(r => new Date(r.timestamp).getTime());
+      const minTs = timestamps[0];
+      const lastRealTs = timestamps[timestamps.length - 1];
+      const maxTs = lastRealTs + 24 * 3600 * 1000; // reserve space up to the +24h forecast horizon
+      const domainMs = Math.max(maxTs - minTs, 3600 * 1000);
+      const scaleX = (ts: number) => padLeft + ((ts - minTs) / domainMs) * chartW;
 
       // Generate nice Y-axis ticks
       const tickCount = 5;
@@ -225,14 +258,14 @@ export default function AIDashboard() {
          yTicks.push(yMin + i * niceStep);
       }
 
-      return { yMin, yMax, chartW, chartH, padLeft, padRight, padTop, padBottom, scaleY, scaleX, yTicks, xStep, totalPoints };
+      return { yMin, yMax, chartW, chartH, padLeft, padRight, padTop, padBottom, scaleY, scaleX, yTicks, minTs, maxTs, lastRealTs };
    }, [reports, latestReport]);
 
    // Build SVG path strings
    const historyPath = useMemo(() => {
       if (!chartConfig || reports.length < 1) return "";
       return reports.map((r, i) => {
-         const x = chartConfig.scaleX(i);
+         const x = chartConfig.scaleX(new Date(r.timestamp).getTime());
          const y = chartConfig.scaleY(r.water_level_now);
          return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)},${y.toFixed(1)}`;
       }).join(' ');
@@ -242,109 +275,81 @@ export default function AIDashboard() {
       if (!chartConfig || reports.length < 1) return "";
       const { scaleX, scaleY, padTop, chartH } = chartConfig;
       const bottom = padTop + chartH;
-      const points = reports.map((r, i) => `${scaleX(i).toFixed(1)},${scaleY(r.water_level_now).toFixed(1)}`);
-      return `M ${scaleX(0).toFixed(1)},${bottom} L ${points.join(' L ')} L ${scaleX(reports.length - 1).toFixed(1)},${bottom} Z`;
+      const points = reports.map(r => `${scaleX(new Date(r.timestamp).getTime()).toFixed(1)},${scaleY(r.water_level_now).toFixed(1)}`);
+      const firstX = scaleX(new Date(reports[0].timestamp).getTime());
+      const lastX = scaleX(new Date(reports[reports.length - 1].timestamp).getTime());
+      return `M ${firstX.toFixed(1)},${bottom} L ${points.join(' L ')} L ${lastX.toFixed(1)},${bottom} Z`;
    }, [reports, chartConfig]);
 
    const forecastPath = useMemo(() => {
-      if (!chartConfig || !latestReport?.forecast_1h) return "";
-      const { scaleX, scaleY } = chartConfig;
-      const lastIdx = reports.length - 1;
-      const startX = scaleX(lastIdx);
+      if (!chartConfig) return "";
+      const { scaleX, scaleY, lastRealTs } = chartConfig;
+      const startX = scaleX(lastRealTs);
       const startY = scaleY(latestReport.water_level_now);
-      
+
       const forecasts = [
-         { val: latestReport.forecast_1h, offset: 1 },
-         { val: latestReport.forecast_12h, offset: 2.5 },
-         { val: latestReport.forecast_24h, offset: 4 },
+         { val: latestReport.forecast_1h, hours: 1 },
+         { val: latestReport.forecast_12h, hours: 12 },
+         { val: latestReport.forecast_24h, hours: 24 },
       ].filter(f => f.val != null);
 
       if (!forecasts.length) return "";
-      
+
       let d = `M ${startX.toFixed(1)},${startY.toFixed(1)}`;
       forecasts.forEach(f => {
-         d += ` L ${scaleX(lastIdx + f.offset).toFixed(1)},${scaleY(f.val).toFixed(1)}`;
+         const x = scaleX(lastRealTs + f.hours * 3600 * 1000);
+         d += ` L ${x.toFixed(1)},${scaleY(f.val).toFixed(1)}`;
       });
       return d;
    }, [reports, latestReport, chartConfig]);
 
+   // Null-safe max forecast across the three horizons; null (not 0) when no
+   // forecast data is available at all, so "insufficient data" can be shown
+   // honestly instead of silently reading as a fake "safe" 0m level.
+   const forecastVals = [latestReport?.forecast_1h, latestReport?.forecast_12h, latestReport?.forecast_24h]
+      .filter((v): v is number => v != null);
+   const maxForecast = forecastVals.length ? Math.max(...forecastVals) : null;
+   const riskTier = latestReport ? classifyRisk(latestReport.water_level_now, maxForecast, latestReport.major_flood, latestReport.minor_flood, latestReport.alert_level) : null;
+   const riskMeta = riskTier ? RISK_TIER_META[riskTier] : null;
+   const forecastDelta = (maxForecast != null && latestReport) ? maxForecast - latestReport.water_level_now : null;
+
    // Human-readable metric cards
    const statsData = [
-      { 
-         label: "Water Level", 
-         value: latestReport ? `${latestReport.water_level_now.toFixed(2)}m` : "--", 
-         sub: latestReport && latestReport.water_level_lag1 
+      {
+         label: "Water Level",
+         value: latestReport ? `${latestReport.water_level_now.toFixed(2)}m` : "--",
+         sub: latestReport && latestReport.water_level_lag1
             ? `${latestReport.water_level_now > latestReport.water_level_lag1 ? '▲' : '▼'} from ${latestReport.water_level_lag1.toFixed(2)}m`
             : "Current reading",
-         icon: Waves, 
-         color: "text-sky-600", 
+         icon: Waves,
+         color: "text-sky-600",
          bg: "bg-sky-50",
          border: "border-sky-100"
       },
-      { 
-         label: "Predictive Status", 
-         value: (() => {
-            const maxF = Math.max(latestReport?.forecast_1h || 0, latestReport?.forecast_12h || 0, latestReport?.forecast_24h || 0);
-            if (latestReport?.water_level_now >= latestReport?.major_flood || maxF >= latestReport?.major_flood) return "CRITICAL";
-            if (latestReport?.water_level_now >= latestReport?.minor_flood || maxF >= latestReport?.minor_flood) return "WARNING";
-            if (latestReport?.water_level_now >= latestReport?.alert_level || maxF >= latestReport?.alert_level) return "ADVISORY";
-            return "STABLE";
-         })(), 
-         sub: (() => {
-            const maxF = Math.max(latestReport?.forecast_1h || 0, latestReport?.forecast_12h || 0, latestReport?.forecast_24h || 0);
-            if (latestReport?.water_level_now >= latestReport?.major_flood || maxF >= latestReport?.major_flood) return "Major flood risk detected";
-            if (latestReport?.water_level_now >= latestReport?.minor_flood || maxF >= latestReport?.minor_flood) return "Minor flood risk detected";
-            if (latestReport?.water_level_now >= latestReport?.alert_level || maxF >= latestReport?.alert_level) return "Approaching safety limits";
-            return "Current and forecast levels safe";
-         })(),
-         icon: ShieldAlert, 
-         color: (() => {
-            const maxF = Math.max(latestReport?.forecast_1h || 0, latestReport?.forecast_12h || 0, latestReport?.forecast_24h || 0);
-            if (latestReport?.water_level_now >= latestReport?.major_flood || maxF >= latestReport?.major_flood) return "text-red-600";
-            if (latestReport?.water_level_now >= latestReport?.minor_flood || maxF >= latestReport?.minor_flood) return "text-orange-600";
-            if (latestReport?.water_level_now >= latestReport?.alert_level || maxF >= latestReport?.alert_level) return "text-yellow-600";
-            return "text-emerald-600";
-         })(), 
-         bg: (() => {
-            const maxF = Math.max(latestReport?.forecast_1h || 0, latestReport?.forecast_12h || 0, latestReport?.forecast_24h || 0);
-            if (latestReport?.water_level_now >= latestReport?.major_flood || maxF >= latestReport?.major_flood) return "bg-red-50";
-            if (latestReport?.water_level_now >= latestReport?.minor_flood || maxF >= latestReport?.minor_flood) return "bg-orange-50";
-            if (latestReport?.water_level_now >= latestReport?.alert_level || maxF >= latestReport?.alert_level) return "bg-yellow-50";
-            return "bg-emerald-50";
-         })(),
-         border: (() => {
-            const maxF = Math.max(latestReport?.forecast_1h || 0, latestReport?.forecast_12h || 0, latestReport?.forecast_24h || 0);
-            if (latestReport?.water_level_now >= latestReport?.major_flood || maxF >= latestReport?.major_flood) return "border-red-100";
-            if (latestReport?.water_level_now >= latestReport?.minor_flood || maxF >= latestReport?.minor_flood) return "border-orange-100";
-            if (latestReport?.water_level_now >= latestReport?.alert_level || maxF >= latestReport?.alert_level) return "border-yellow-100";
-            return "border-emerald-100";
-         })()
+      {
+         label: "Predictive Status",
+         value: riskMeta ? riskMeta.label : "—",
+         sub: riskMeta ? riskMeta.sub : "Awaiting station data",
+         icon: ShieldAlert,
+         color: riskMeta ? riskMeta.color : "text-zinc-400",
+         bg: riskMeta ? riskMeta.bg : "bg-zinc-50",
+         border: riskMeta ? riskMeta.border : "border-zinc-100"
       },
-      { 
-         label: "Rainfall (3h avg)", 
-         value: latestReport ? `${latestReport.rainfall_roll3.toFixed(1)}mm` : "--", 
+      {
+         label: "Rainfall (3h avg)",
+         value: latestReport ? `${latestReport.rainfall_roll3.toFixed(1)}mm` : "--",
          sub: "Rolling 3-hour average",
-         icon: CloudRain, 
-         color: "text-orange-600", 
+         icon: CloudRain,
+         color: "text-orange-600",
          bg: "bg-orange-50",
          border: "border-orange-100"
       },
-      { 
-         label: "Forecast Impact", 
-         value: (() => {
-            const maxF = Math.max(latestReport?.forecast_1h || 0, latestReport?.forecast_12h || 0, latestReport?.forecast_24h || 0);
-            const delta = maxF - (latestReport?.water_level_now || 0);
-            if (delta > 0.5) return "RISING";
-            if (delta < -0.5) return "RECEDING";
-            return "STABLE";
-         })(), 
-         sub: (() => {
-            const maxF = Math.max(latestReport?.forecast_1h || 0, latestReport?.forecast_12h || 0, latestReport?.forecast_24h || 0);
-            const delta = maxF - (latestReport?.water_level_now || 0);
-            return delta > 0 ? `Projected +${delta.toFixed(2)}m rise` : `Projected ${delta.toFixed(2)}m fall`;
-         })(),
-         icon: Gauge, 
-         color: "text-violet-600", 
+      {
+         label: "Forecast Impact",
+         value: forecastDelta == null ? "—" : forecastDelta > 0.5 ? "RISING" : forecastDelta < -0.5 ? "RECEDING" : "STABLE",
+         sub: forecastDelta == null ? "No forecast available yet" : forecastDelta > 0 ? `Projected +${forecastDelta.toFixed(2)}m rise` : `Projected ${forecastDelta.toFixed(2)}m fall`,
+         icon: Gauge,
+         color: "text-violet-600",
          bg: "bg-violet-50",
          border: "border-violet-100"
       },
@@ -355,7 +360,11 @@ export default function AIDashboard() {
       if (!globalReports.length) return [];
       
       const atRiskCount = globalReports.filter(r => r.water_level_now >= r.alert_level).length;
-      const forecastRiskCount = globalReports.filter(r => r.forecast_12h >= r.major_flood || r.forecast_1h >= r.major_flood).length;
+      const forecastRiskCount = globalReports.filter(r =>
+         (r.forecast_1h != null && r.forecast_1h >= r.major_flood) ||
+         (r.forecast_12h != null && r.forecast_12h >= r.major_flood) ||
+         (r.forecast_24h != null && r.forecast_24h >= r.major_flood)
+      ).length;
       const anomalyCount = globalReports.filter(r => r.is_anomaly).length;
 
       return [
@@ -388,6 +397,33 @@ export default function AIDashboard() {
    }, [globalReports]);
 
    const messages = aiInsights;
+
+   // Regional severity per river, derived from the latest report per station
+   // (peak of current level / 24h forecast vs. major flood threshold).
+   const regionalSeverity = useMemo(() => {
+      if (!globalReports.length) return [];
+
+      const byRiver = new Map<string, any[]>();
+      globalReports.forEach(r => {
+         const key = r.river || "Unknown River";
+         if (!byRiver.has(key)) byRiver.set(key, []);
+         byRiver.get(key)!.push(r);
+      });
+
+      const rows = Array.from(byRiver.entries()).map(([river, reports]) => {
+         let maxRatio = 0;
+         reports.forEach(r => {
+            const peak = Math.max(r.water_level_now || 0, r.forecast_24h || 0);
+            const threshold = r.major_flood || 0;
+            if (threshold > 0) maxRatio = Math.max(maxRatio, peak / threshold);
+         });
+         const risk = Math.max(0, Math.min(100, Math.round(maxRatio * 100)));
+         const status = risk >= 80 ? "Critical" : risk >= 55 ? "High" : risk >= 30 ? "Elevated" : "Stable";
+         return { name: `${river} Basin`, risk, status };
+      });
+
+      return rows.sort((a, b) => b.risk - a.risk).slice(0, 4);
+   }, [globalReports]);
 
     // Format timestamp for X-axis with day context
     const formatTime = (ts: string, prevTs?: string) => {
@@ -578,7 +614,7 @@ export default function AIDashboard() {
 
                            {/* X-axis time labels */}
                            {reports.map((r, i) => {
-                              const x = chartConfig.scaleX(i);
+                              const x = chartConfig.scaleX(new Date(r.timestamp).getTime());
                               const prevTs = i > 0 ? reports[i-1].timestamp : undefined;
                               return (
                                  <text key={`xlabel-${i}`} x={x} y={chartConfig.padTop + chartConfig.chartH + 25} textAnchor="middle" className="text-[9px] font-bold" fill="#a1a1aa">
@@ -664,7 +700,7 @@ export default function AIDashboard() {
 
                            {/* Data points */}
                            {reports.map((r, i) => {
-                              const cx = chartConfig.scaleX(i);
+                              const cx = chartConfig.scaleX(new Date(r.timestamp).getTime());
                               const cy = chartConfig.scaleY(r.water_level_now);
                               const isLast = i === reports.length - 1;
                               return (
@@ -688,22 +724,22 @@ export default function AIDashboard() {
                            })}
 
                            {/* Forecast data points */}
-                           {latestReport?.forecast_1h && chartConfig && (() => {
-                              const lastIdx = reports.length - 1;
+                           {latestReport && chartConfig && (() => {
+                              const { lastRealTs } = chartConfig;
                               const forecasts = [
-                                 { val: latestReport.forecast_1h, offset: 1, label: "1h" },
-                                 { val: latestReport.forecast_12h, offset: 2.5, label: "12h" },
-                                 { val: latestReport.forecast_24h, offset: 4, label: "24h" },
+                                 { val: latestReport.forecast_1h, hours: 1, label: "1h", model: FORECAST_MODEL_META.forecast_1h.model as string },
+                                 { val: latestReport.forecast_12h, hours: 12, label: "12h", model: FORECAST_MODEL_META.forecast_12h.model as string },
+                                 { val: latestReport.forecast_24h, hours: 24, label: "24h", model: FORECAST_MODEL_META.forecast_24h.model as string },
                               ].filter(f => f.val != null);
 
                               return forecasts.map((f, i) => {
-                                 const cx = chartConfig.scaleX(lastIdx + f.offset);
+                                 const cx = chartConfig.scaleX(lastRealTs + f.hours * 3600 * 1000);
                                  const cy = chartConfig.scaleY(f.val);
                                  return (
                                     <g key={`forecast-${i}`}>
                                        <circle cx={cx} cy={cy} r="4" fill="white" stroke="#f43f5e" strokeWidth="2" className="animate-pulse" />
                                        <text x={cx} y={cy - 10} textAnchor="middle" className="text-[9px] font-black" fill="#f43f5e">
-                                          {f.label}: {f.val.toFixed(2)}m
+                                          {f.model} {f.label}: {f.val.toFixed(2)}m
                                        </text>
                                     </g>
                                  );
@@ -717,21 +753,27 @@ export default function AIDashboard() {
                   {latestReport && (
                      <div className="mt-4 pt-4 border-t border-zinc-50 grid grid-cols-3 gap-4">
                         <div className="text-center p-3 rounded-xl bg-sky-50/50">
-                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Next 1h</div>
+                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
+                              Next 1h <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_1h.model}</span>
+                           </div>
                            <div className="text-lg font-black italic tracking-tighter text-sky-600">
-                              {latestReport.forecast_1h != null ? `${latestReport.forecast_1h.toFixed(2)}m` : '—'}
+                              {formatForecast(latestReport.forecast_1h)}
                            </div>
                         </div>
                         <div className="text-center p-3 rounded-xl bg-orange-50/50">
-                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Next 12h</div>
+                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
+                              Next 12h <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_12h.model}</span>
+                           </div>
                            <div className="text-lg font-black italic tracking-tighter text-orange-600">
-                              {latestReport.forecast_12h != null ? `${latestReport.forecast_12h.toFixed(2)}m` : '—'}
+                              {formatForecast(latestReport.forecast_12h)}
                            </div>
                         </div>
                         <div className="text-center p-3 rounded-xl bg-amber-50/50">
-                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Strategic 24h</div>
+                           <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
+                              Strategic 24h <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_24h.model}</span>
+                           </div>
                            <div className="text-lg font-black italic tracking-tighter text-amber-600">
-                              {latestReport.forecast_24h != null ? `${latestReport.forecast_24h.toFixed(2)}m` : '—'}
+                              {formatForecast(latestReport.forecast_24h)}
                            </div>
                         </div>
                      </div>
@@ -884,13 +926,8 @@ export default function AIDashboard() {
                      </div>
                   </div>
                   <div className="space-y-8">
-                     {[
-                        { name: "Kalu Ganga Basin", risk: 85, status: "Critical" },
-                        { name: "Kelani River Zone", risk: 62, status: "High" },
-                        { name: "Mahaweli Network", risk: 38, status: "Elevated" },
-                        { name: "Gin Ganga Valley", risk: 15, status: "Stable" }
-                     ].map((region, i) => (
-                        <div key={i} className="space-y-3">
+                     {regionalSeverity.length > 0 ? regionalSeverity.map((region, i) => (
+                        <div key={region.name} className="space-y-3">
                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
                               <span className="text-zinc-500">{region.name}</span>
                               <span className={cn(
@@ -899,18 +936,20 @@ export default function AIDashboard() {
                               )}>{region.risk}% RISK</span>
                            </div>
                            <div className="h-2.5 bg-zinc-50 rounded-full overflow-hidden border border-zinc-100/50">
-                              <motion.div 
+                              <motion.div
                                  initial={{ width: 0 }}
                                  animate={{ width: `${region.risk}%` }}
                                  transition={{ duration: 1.5, delay: i * 0.2 }}
-                                 className={cn("h-full rounded-full", 
-                                    region.status === 'Critical' ? "bg-red-500" : 
+                                 className={cn("h-full rounded-full",
+                                    region.status === 'Critical' ? "bg-red-500" :
                                     region.status === 'High' ? "bg-orange-500" : "bg-blue-500"
-                                 )} 
+                                 )}
                               />
                            </div>
                         </div>
-                     ))}
+                     )) : (
+                        <p className="text-center py-6 text-zinc-300 font-bold uppercase tracking-widest text-[10px]">No telemetry data yet</p>
+                     )}
                   </div>
                </div>
             </div>

@@ -99,5 +99,28 @@ CREATE TABLE public.river_reports (
   timestamp timestamp with time zone DEFAULT now(),
   created_at timestamp with time zone DEFAULT now(),
   is_anomaly boolean DEFAULT false,
+  dampened_1h boolean,
+  dampened_12h boolean,
+  dampened_24h boolean,
   CONSTRAINT river_reports_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.edge_messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  node_id character varying NOT NULL,
+  origin_node_id text,
+  peer_nick character varying,
+  message_text text NOT NULL,
+  priority character varying NOT NULL DEFAULT 'NORMAL',
+  rssi integer,
+  distance_m integer,
+  captured_at_sl timestamp with time zone,
+  timestamp_ms bigint NOT NULL,
+  synced_from_queue boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT edge_messages_pkey PRIMARY KEY (id),
+  CONSTRAINT edge_messages_node_msg_uidx UNIQUE (node_id, timestamp_ms)
+);
+-- RLS: anon (edge devices) may insert; authenticated users may read.
+-- RPC: public.get_hourly_stats() returns 24 rows (hour, count) of
+-- incidents+sos_requests activity in the last 24h, used by the authority
+-- dashboard's "System Activity" chart.

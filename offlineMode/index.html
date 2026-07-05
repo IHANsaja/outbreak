@@ -457,20 +457,20 @@
 
         <div class="metric-card">
           <div class="metric-label">Signal Strength</div>
-          <div class="metric-value">Strong (4/4)</div>
-          <div class="metric-sub">98% Packet Rate</div>
+          <div class="metric-value">Unknown</div>
+          <div class="metric-sub">Static preview - see live node for real telemetry</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Broadcast Range</div>
-          <div class="metric-value">~100 Meters</div>
-          <div class="metric-sub">LoRa Mesh Active</div>
+          <div class="metric-value">Unknown</div>
+          <div class="metric-sub">No LoRa data</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Peers Connected</div>
-          <div class="metric-value" id="peerCount">12 Devices</div>
-          <div class="metric-sub">Secure Channel #1</div>
+          <div class="metric-value" id="peerCount">0 Devices</div>
+          <div class="metric-sub">LoRa Mesh Channel</div>
         </div>
       </aside>
 
@@ -913,12 +913,6 @@
           loadDataFromServer();
         }
       }, 3000);
-
-      // Simulate mesh connection fluctuation
-      setInterval(() => {
-        const peers = Math.floor(Math.random() * 5) + 10;
-        document.getElementById("peerCount").innerText = peers + " Devices";
-      }, 5000);
     </script>
   </body>
 </html>
