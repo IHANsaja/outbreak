@@ -137,6 +137,9 @@ def predict(history: List[RiverReport]):
                 "strategic_path_24h": forecasts["strategic_path_24h"]
             },
             "dampened": forecasts["dampened"],
+            "quantile_range": {
+                "strategic_path_24h": forecasts.get("quantile_range", {}).get("strategic_path_24h")
+            },
             "units": "meters",
             "metadata": {
                 "window_size": len(df),

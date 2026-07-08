@@ -4,7 +4,7 @@ pandas
 numpy
 torch
 xgboost
-pytorch-forecasting
+pytorch-forecasting==1.8.0
 scikit-learn
 joblib
 python-multipart

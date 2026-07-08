@@ -110,7 +110,7 @@ function ReportContent() {
         {/* Action Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
             <div className="space-y-1">
-                <h1 className="text-2xl font-black text-zinc-900 italic tracking-tight uppercase leading-none">Hydrological AI Prediction Report</h1>
+                <h1 className="text-2xl font-black text-zinc-900 italic tracking-tight uppercase leading-none">Flood Forecast Report</h1>
                 <p className="text-[10px] font-bold text-gray-400 uppercase">Generated on: {hasMounted ? new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(',', '') : "--"}</p>
             </div>
             
@@ -137,11 +137,11 @@ function ReportContent() {
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xl font-black tracking-tight uppercase text-zinc-900 leading-none">OUTBREAK</span>
-                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1 italic">NATIONAL DISASTER MANAGEMENT CENTER</span>
+                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1 italic">FLOOD FORECASTING SYSTEM</span>
                     </div>
                     </div>
                     <div className="flex flex-col items-end text-right">
-                    <span className="px-2 py-0.5 bg-red-50 text-red-600 border border-red-100 text-[8px] font-black rounded uppercase tracking-widest">RESTRICTED DISTRIBUTION</span>
+                    <span className="px-2 py-0.5 bg-red-50 text-red-600 border border-red-100 text-[8px] font-black rounded uppercase tracking-widest">AI-GENERATED FORECAST</span>
                     <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Ref: AI-NAT-{new Date().toISOString().slice(0,10).replace(/-/g, '')}-{stationId}</span>
                     </div>
                 </div>

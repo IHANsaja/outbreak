@@ -17,8 +17,10 @@ import {
   Camera,
   Activity,
   CheckCircle2,
+  Brain,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 
 type HomeHazard = {
@@ -67,6 +69,7 @@ export default function Home() {
   const [stations, setStations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { t } = useLanguage();
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchData() {
@@ -129,7 +132,7 @@ export default function Home() {
         {/* Quick Actions Grid */}
         <section className="space-y-4 md:space-y-6">
           <h3 className="font-black text-zinc-900 italic text-base md:text-lg">{t("quick_actions")}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <QuickActionCard
               icon={LifeBuoy}
               bgIcon={LifeBuoy}
@@ -156,6 +159,14 @@ export default function Home() {
               count={stats.activeHazards > 0 ? stats.activeHazards : undefined}
               className="h-full"
               onClick={() => setIsHazardsOpen(true)}
+            />
+            <QuickActionCard
+              icon={Brain}
+              bgIcon={Brain}
+              title="AI Flood Forecast"
+              description="View live water-level predictions and risk outlook for your river."
+              className="h-full"
+              onClick={() => router.push('/ai')}
             />
           </div>
         </section>

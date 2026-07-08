@@ -11,6 +11,7 @@ import {
    ArrowUpRight,
    FileText,
    ShieldAlert,
+   ShieldCheck,
    Zap,
    Clock,
    MapPin,
@@ -37,6 +38,24 @@ import { getRecentSos, getActiveHazards, getOfficialUpdates, getAllIncidents } f
 import { motion, AnimatePresence } from "framer-motion";
 import OperationsMap from "@/components/OperationsMap";
 import { FORECAST_MODEL_META, formatForecast } from "@/lib/forecastMeta";
+
+/** Honest, computable-today confidence signal: whether the physical-
+ * plausibility safety cap overrode this specific forecast's raw model
+ * output. Not a substitute for real quantile regression - just surfaces
+ * a real thing we already know rather than showing nothing. Renders
+ * nothing when there's no forecast to have an opinion about. */
+function ConfidenceBadge({ value, dampened }: { value: number | null | undefined; dampened: boolean | null | undefined }) {
+   if (value == null) return null;
+   return (
+      <div className={cn(
+         "mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider",
+         dampened ? "bg-amber-100 text-amber-700" : "bg-emerald-50 text-emerald-600"
+      )}>
+         {dampened ? <ShieldAlert className="w-2.5 h-2.5" /> : <ShieldCheck className="w-2.5 h-2.5" />}
+         {dampened ? "Safety-Capped" : "Model Output"}
+      </div>
+   );
+}
 
 const RISK_TIER_META = {
    major: { label: "CRITICAL", sub: "Major flood risk detected", color: "text-red-600", bg: "bg-red-50", border: "border-red-100" },
@@ -302,6 +321,21 @@ export default function AIDashboard() {
       });
       return d;
    }, [reports, latestReport, chartConfig]);
+
+   // TFT quantile prediction range (lower/upper bound) at the 24h horizon.
+   // null when the model couldn't extract a real range - never fabricated.
+   const tftQuantileBand = useMemo(() => {
+      if (!chartConfig || !latestReport) return null;
+      if (latestReport.forecast_24h_lower == null || latestReport.forecast_24h_upper == null) return null;
+
+      const { scaleX, scaleY, lastRealTs } = chartConfig;
+      const x = scaleX(lastRealTs + 24 * 3600 * 1000);
+      const yLower = scaleY(latestReport.forecast_24h_lower);
+      const yUpper = scaleY(latestReport.forecast_24h_upper);
+
+      const bandHalfWidth = 14;
+      return { x1: x - bandHalfWidth, x2: x + bandHalfWidth, yLower, yUpper, centerX: x };
+   }, [chartConfig, latestReport]);
 
    // Null-safe max forecast across the three horizons; null (not 0) when no
    // forecast data is available at all, so "insufficient data" can be shown
@@ -723,6 +757,21 @@ export default function AIDashboard() {
                               );
                            })}
 
+                           {/* TFT 24h quantile prediction range band */}
+                           {tftQuantileBand && (
+                              <g>
+                                 <rect
+                                    x={tftQuantileBand.x1}
+                                    y={Math.min(tftQuantileBand.yLower, tftQuantileBand.yUpper)}
+                                    width={tftQuantileBand.x2 - tftQuantileBand.x1}
+                                    height={Math.abs(tftQuantileBand.yLower - tftQuantileBand.yUpper)}
+                                    rx="6" fill="#f43f5e" opacity="0.12"
+                                 />
+                                 <line x1={tftQuantileBand.x1} y1={tftQuantileBand.yUpper} x2={tftQuantileBand.x2} y2={tftQuantileBand.yUpper} stroke="#f43f5e" strokeWidth="1" strokeDasharray="2,2" opacity="0.4" />
+                                 <line x1={tftQuantileBand.x1} y1={tftQuantileBand.yLower} x2={tftQuantileBand.x2} y2={tftQuantileBand.yLower} stroke="#f43f5e" strokeWidth="1" strokeDasharray="2,2" opacity="0.4" />
+                              </g>
+                           )}
+
                            {/* Forecast data points */}
                            {latestReport && chartConfig && (() => {
                               const { lastRealTs } = chartConfig;
@@ -759,6 +808,7 @@ export default function AIDashboard() {
                            <div className="text-lg font-black italic tracking-tighter text-sky-600">
                               {formatForecast(latestReport.forecast_1h)}
                            </div>
+                           <ConfidenceBadge value={latestReport.forecast_1h} dampened={latestReport.dampened_1h} />
                         </div>
                         <div className="text-center p-3 rounded-xl bg-orange-50/50">
                            <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
@@ -767,6 +817,7 @@ export default function AIDashboard() {
                            <div className="text-lg font-black italic tracking-tighter text-orange-600">
                               {formatForecast(latestReport.forecast_12h)}
                            </div>
+                           <ConfidenceBadge value={latestReport.forecast_12h} dampened={latestReport.dampened_12h} />
                         </div>
                         <div className="text-center p-3 rounded-xl bg-amber-50/50">
                            <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
@@ -775,13 +826,59 @@ export default function AIDashboard() {
                            <div className="text-lg font-black italic tracking-tighter text-amber-600">
                               {formatForecast(latestReport.forecast_24h)}
                            </div>
+                           <ConfidenceBadge value={latestReport.forecast_24h} dampened={latestReport.dampened_24h} />
+                        </div>
+                     </div>
+                  )}
+
+                  {/* TFT quantile confidence range - plain-language callout.
+                      Only renders when the model has genuinely produced a
+                      quantile spread (requires QuantileLoss training - the
+                      currently deployed checkpoint is RMSE-trained, so this
+                      stays hidden until the model is retrained). */}
+                  {latestReport?.forecast_24h_lower != null && latestReport?.forecast_24h_upper != null ? (
+                     <div className="mt-4 p-4 rounded-xl bg-rose-50/60 border border-rose-100 flex items-start gap-3">
+                        <Activity className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />
+                        <div>
+                           <p className="text-xs font-bold text-zinc-700 leading-relaxed">
+                              There is a {Math.round(latestReport.forecast_24h_confidence_pct ?? 0)}% chance the water level will be
+                              between <span className="font-black text-rose-600">{latestReport.forecast_24h_lower.toFixed(2)}m</span> and{" "}
+                              <span className="font-black text-rose-600">{latestReport.forecast_24h_upper.toFixed(2)}m</span> in 24 hours.
+                           </p>
+                           <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
+                              {FORECAST_MODEL_META.forecast_24h.model} Confidence Range
+                           </p>
+                        </div>
+                     </div>
+                  ) : latestReport?.forecast_24h != null && (
+                     // Honest fallback: no numeric confidence interval is available
+                     // for this model yet, but whether the safety cap intervened
+                     // is real, computable signal about how much to trust this number.
+                     <div className={cn(
+                        "mt-4 p-4 rounded-xl border flex items-start gap-3",
+                        latestReport.dampened_24h ? "bg-amber-50/60 border-amber-100" : "bg-emerald-50/60 border-emerald-100"
+                     )}>
+                        {latestReport.dampened_24h ? (
+                           <ShieldAlert className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                        ) : (
+                           <ShieldCheck className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                        )}
+                        <div>
+                           <p className="text-xs font-bold text-zinc-700 leading-relaxed">
+                              {latestReport.dampened_24h
+                                 ? "The raw model output exceeded a physically plausible rate of change and was capped by the safety limit — treat this 24h number as lower-confidence."
+                                 : "This is a clean, uncapped model output — no safety override was triggered."}
+                           </p>
+                           <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
+                              {FORECAST_MODEL_META.forecast_24h.model} · A precise confidence range isn&apos;t available for this model yet
+                           </p>
                         </div>
                      </div>
                   )}
                </div>
             </div>
 
-            {/* ─── Tactical Operations Monitor ─── */}
+            {/* ─── Flood Risk Monitor ─── */}
             <div className="mb-12">
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2">

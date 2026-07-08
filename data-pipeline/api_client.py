@@ -226,6 +226,7 @@ class APIClient:
 
             forecasts_data = forecast.get("forecasts", {})
             dampened_data = forecast.get("dampened", {})
+            quantile_range = forecast.get("quantile_range", {}).get("strategic_path_24h")
 
             # lag1/lag2 persisted alongside the report reflect what the model
             # actually used (the interpolated hourly values), not just the
@@ -258,6 +259,9 @@ class APIClient:
                 "dampened_1h": dampened_data.get("early_warning_1h", False),
                 "dampened_12h": dampened_data.get("trend_monitor_12h", False),
                 "dampened_24h": dampened_data.get("strategic_path_24h", False),
+                "forecast_24h_lower": quantile_range.get("lower") if quantile_range else None,
+                "forecast_24h_upper": quantile_range.get("upper") if quantile_range else None,
+                "forecast_24h_confidence_pct": quantile_range.get("confidence_pct") if quantile_range else None,
             }
 
             headers = {

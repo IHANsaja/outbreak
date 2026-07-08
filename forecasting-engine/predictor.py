@@ -240,8 +240,19 @@ class ForecastingEngine:
 
         return predictions[-1], clipped_any
 
-    def predict_tft_recursive(self, history_df: pd.DataFrame, steps: int = 24) -> Tuple[float, bool]:
-        if not self.tft_model: return 0.0, False
+    def predict_tft_recursive(self, history_df: pd.DataFrame, steps: int = 24) -> Tuple[float, bool, Optional[Dict[str, float]]]:
+        """Returns (point_prediction, was_clipped, quantile_info).
+        quantile_info is None if the model's quantile spread could not be
+        extracted (missing model, extraction error, etc.) - never fabricated.
+
+        NOTE ON RECURSIVE UNCERTAINTY: the quantile spread is extracted ONLY
+        at the final (24th) recursive step, reflecting the model's own
+        uncertainty about that last step given the (partly synthetic) history
+        fed into it - not the full compounding uncertainty across all 24
+        recursive steps. This is a documented simplification, consistent with
+        how the point forecast already works recursively.
+        """
+        if not self.tft_model: return 0.0, False, None
 
         current_history = history_df.tail(12).copy()
         has_dt = 'datetime' in current_history.columns and current_history['datetime'].notna().all()
@@ -252,6 +263,7 @@ class ForecastingEngine:
 
         predictions = []
         clipped_any = False
+        quantile_info: Optional[Dict[str, float]] = None
         start_val = current_history.iloc[-1]['water_level_now']
 
         logger.info(f"--- Starting TFT 24h Recursive (Start: {start_val:.2f}m) ---")
@@ -270,6 +282,9 @@ class ForecastingEngine:
                 clipped_any = clipped_any or was_clipped
                 predictions.append(pred_val)
                 logger.info(f"  Step {i+1} (+1h): Raw={raw_pred:.4f}, Result={pred_val:.2f}m")
+
+                if i == steps - 1:
+                    quantile_info = self._extract_tft_quantiles(scaled_window, current_val)
 
             new_row = current_history.iloc[-1].copy()
             new_row['water_level_lag2'] = current_history.iloc[-1]['water_level_lag1']
@@ -295,7 +310,56 @@ class ForecastingEngine:
             for col in ['station_id', 'river_id']:
                 current_history[col] = current_history[col].astype(str)
 
-        return predictions[-1], clipped_any
+        return predictions[-1], clipped_any, quantile_info
+
+    # pytorch_forecasting's library default 7-quantile output, used only as a
+    # logged fallback assumption when this checkpoint's real quantile levels
+    # can't be introspected via model.loss.quantiles.
+    DEFAULT_QUANTILES = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
+
+    def _extract_tft_quantiles(self, scaled_window: pd.DataFrame, current_val: float) -> Optional[Dict[str, float]]:
+        """Extracts TFT's real quantile spread for its most recent prediction
+        step. Returns None (never fabricates a range) on any failure."""
+        try:
+            with torch.no_grad():
+                quantile_preds = self.tft_model.predict(scaled_window, mode="quantiles")
+            arr = quantile_preds.numpy().flatten()
+
+            quantile_levels = getattr(getattr(self.tft_model, "loss", None), "quantiles", None)
+            if quantile_levels is None or len(quantile_levels) != len(arr):
+                logger.warning(
+                    f"TFT model.loss has no usable .quantiles matching output shape "
+                    f"(got {len(arr)} values) - assuming default {self.DEFAULT_QUANTILES}"
+                )
+                quantile_levels = self.DEFAULT_QUANTILES
+                if len(quantile_levels) != len(arr):
+                    logger.error(
+                        f"TFT quantile output has {len(arr)} columns, neither real nor "
+                        f"assumed levels match - skipping quantile range."
+                    )
+                    return None
+
+            min_q, max_q = min(quantile_levels), max(quantile_levels)
+            lower_idx = quantile_levels.index(min_q)
+            upper_idx = quantile_levels.index(max_q)
+
+            lower_val = max(0.0, self._unscale_val(float(arr[lower_idx])))
+            upper_val = max(0.0, self._unscale_val(float(arr[upper_idx])))
+
+            # Same physical-plausibility cap as the point forecast (user-approved):
+            # a citizen should never see a range implying an impossible water level.
+            lower_val, _ = self._dampen_prediction(current_val, lower_val)
+            upper_val, _ = self._dampen_prediction(current_val, upper_val)
+
+            confidence_pct = (max_q - min_q) * 100
+            logger.info(
+                f"TFT quantile range: [{lower_val:.2f}m, {upper_val:.2f}m] "
+                f"confidence={confidence_pct:.0f}% (levels {min_q}-{max_q})"
+            )
+            return {"lower": lower_val, "upper": upper_val, "confidence_pct": confidence_pct}
+        except Exception as e:
+            logger.error(f"TFT quantile extraction failed: {e}")
+            return None
 
     def get_specialized_forecasts(self, history_df: pd.DataFrame):
         # Each model's forecast is now computed and returned independently -
@@ -305,7 +369,7 @@ class ForecastingEngine:
         # no longer matters functionally).
         xgb_val = self.predict_xgb_1h(history_df)
         lstm_val, lstm_clipped = self.predict_lstm_recursive(history_df, steps=12)
-        tft_val, tft_clipped = self.predict_tft_recursive(history_df, steps=24)
+        tft_val, tft_clipped, tft_quantiles = self.predict_tft_recursive(history_df, steps=24)
 
         return {
             "early_warning_1h": xgb_val,
@@ -315,5 +379,8 @@ class ForecastingEngine:
                 "early_warning_1h": False,
                 "trend_monitor_12h": lstm_clipped,
                 "strategic_path_24h": tft_clipped,
+            },
+            "quantile_range": {
+                "strategic_path_24h": tft_quantiles,  # None if unavailable
             },
         }

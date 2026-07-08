@@ -102,6 +102,9 @@ CREATE TABLE public.river_reports (
   dampened_1h boolean,
   dampened_12h boolean,
   dampened_24h boolean,
+  forecast_24h_lower double precision,
+  forecast_24h_upper double precision,
+  forecast_24h_confidence_pct double precision,
   CONSTRAINT river_reports_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.edge_messages (

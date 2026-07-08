@@ -3,6 +3,7 @@
 import React from "react";
 import { MapPin, Droplets } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatForecast } from "@/lib/forecastMeta";
 
 interface OperationsMapProps {
   incidents: any[];
@@ -96,10 +97,12 @@ export default function OperationsMap({ incidents = [], sos = [], stations = [],
                               status === 'alert' ? "bg-yellow-500 text-white" : "bg-zinc-900/80 text-white"
                            )}>
                               {s.water_level_now.toFixed(1)}m
-                              {s.forecast_12h > s.water_level_now ? (
-                                 <span className="text-[6px]">▲</span>
-                              ) : (
-                                 <span className="text-[6px]">▼</span>
+                              {s.forecast_12h != null && (
+                                 s.forecast_12h > s.water_level_now ? (
+                                    <span className="text-[6px]">▲</span>
+                                 ) : (
+                                    <span className="text-[6px]">▼</span>
+                                 )
                               )}
                            </div>
                         </div>
@@ -121,16 +124,16 @@ export default function OperationsMap({ incidents = [], sos = [], stations = [],
                                  <span className="text-zinc-400">12H Pred</span>
                                  <span className={cn(
                                     "px-1.5 py-0.5 rounded",
-                                    s.forecast_12h > s.water_level_now ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
-                                 )}>{s.forecast_12h.toFixed(2)}m</span>
+                                    s.forecast_12h != null && s.forecast_12h > s.water_level_now ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
+                                 )}>{formatForecast(s.forecast_12h)}</span>
                               </div>
 
                               <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-tighter">
                                  <span className="text-zinc-400">24H Pred</span>
                                  <span className={cn(
                                     "px-1.5 py-0.5 rounded",
-                                    s.forecast_24h > s.water_level_now ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
-                                 )}>{s.forecast_24h.toFixed(2)}m</span>
+                                    s.forecast_24h != null && s.forecast_24h > s.water_level_now ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
+                                 )}>{formatForecast(s.forecast_24h)}</span>
                               </div>
                            </div>
                         </div>
