@@ -4,6 +4,7 @@ import React from "react";
 import { MapPin, Droplets } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatForecast } from "@/lib/forecastMeta";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface OperationsMapProps {
   incidents: any[];
@@ -13,6 +14,7 @@ interface OperationsMapProps {
 }
 
 export default function OperationsMap({ incidents = [], sos = [], stations = [], selectedStationId }: OperationsMapProps) {
+  const { t } = useLanguage();
   // Simple mapping function to scale lat/lng to a 0-100 percentage
   // Sri Lanka bounds (approx): Lat 5.9 to 9.9, Lng 79.6 to 81.9
   const mapCoords = (lat: number, lng: number) => {
@@ -29,17 +31,17 @@ export default function OperationsMap({ incidents = [], sos = [], stations = [],
     <div className="bg-white rounded-[2rem] border border-zinc-100 shadow-xl overflow-hidden group">
       <div className="p-6 border-b border-zinc-50 flex justify-between items-center bg-white">
         <h3 className="text-lg font-black text-zinc-900 flex items-center gap-2 italic tracking-tight">
-          Operations Map
+          {t("ai_operations_map_title")}
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
         </h3>
         <div className="flex gap-4">
            <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 bg-red-500 rounded-full" />
-              <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Incident</span>
+              <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{t("ai_map_legend_incident")}</span>
            </div>
            <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 bg-blue-500 rounded-full" />
-              <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Stations</span>
+              <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{t("ai_map_legend_stations")}</span>
            </div>
         </div>
       </div>
@@ -116,12 +118,12 @@ export default function OperationsMap({ incidents = [], sos = [], stations = [],
                               </div>
                               
                               <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-tighter">
-                                 <span className="text-zinc-400">Current</span>
+                                 <span className="text-zinc-400">{t("ai_map_tooltip_current")}</span>
                                  <span className="text-white bg-white/5 px-1.5 py-0.5 rounded">{s.water_level_now.toFixed(2)}m</span>
                               </div>
-                              
+
                               <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-tighter">
-                                 <span className="text-zinc-400">12H Pred</span>
+                                 <span className="text-zinc-400">{t("ai_map_tooltip_12h_pred")}</span>
                                  <span className={cn(
                                     "px-1.5 py-0.5 rounded",
                                     s.forecast_12h != null && s.forecast_12h > s.water_level_now ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
@@ -129,7 +131,7 @@ export default function OperationsMap({ incidents = [], sos = [], stations = [],
                               </div>
 
                               <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-tighter">
-                                 <span className="text-zinc-400">24H Pred</span>
+                                 <span className="text-zinc-400">{t("ai_map_tooltip_24h_pred")}</span>
                                  <span className={cn(
                                     "px-1.5 py-0.5 rounded",
                                     s.forecast_24h != null && s.forecast_24h > s.water_level_now ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
@@ -175,7 +177,7 @@ export default function OperationsMap({ incidents = [], sos = [], stations = [],
         </div>
 
         <div className="absolute bottom-4 w-full text-[10px] font-black text-zinc-300 uppercase tracking-widest text-center pointer-events-none">
-          Active Incident Simulation View
+          {t("ai_map_simulation_view")}
         </div>
       </div>
     </div>

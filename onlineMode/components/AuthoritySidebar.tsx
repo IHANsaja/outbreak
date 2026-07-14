@@ -17,18 +17,19 @@ import {
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import BroadcastAlertModal from "./BroadcastAlertModal";
+import { useLanguage } from "@/context/LanguageContext";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const navItems: { name: string, href: string, icon: any, badge?: number }[] = [
-  { name: "Dashboard", href: "/authority/dashboard", icon: LayoutDashboard },
-  { name: "Incidents", href: "/authority/incidents", icon: AlertTriangle },
-  { name: "Resources", href: "/authority/resources", icon: Package },
-  { name: "Hazards", href: "/authority/hazards", icon: Zap },
-  { name: "Map View", href: "/authority/map", icon: MapIcon },
-  { name: "Analysis", href: "/authority/analysis", icon: BarChart3 },
+const navItems: { name: string, key: string, href: string, icon: any, badge?: number }[] = [
+  { name: "Dashboard", key: "au_nav_dashboard", href: "/authority/dashboard", icon: LayoutDashboard },
+  { name: "Incidents", key: "au_nav_incidents", href: "/authority/incidents", icon: AlertTriangle },
+  { name: "Resources", key: "au_nav_resources", href: "/authority/resources", icon: Package },
+  { name: "Hazards", key: "au_nav_hazards", href: "/authority/hazards", icon: Zap },
+  { name: "Map View", key: "au_nav_map_view", href: "/authority/map", icon: MapIcon },
+  { name: "Analysis", key: "au_nav_analysis", href: "/authority/analysis", icon: BarChart3 },
 ];
 
 interface AuthoritySidebarProps {
@@ -37,6 +38,7 @@ interface AuthoritySidebarProps {
 }
 
 export default function AuthoritySidebar({ isOpen, onClose }: AuthoritySidebarProps) {
+  const { t } = useLanguage();
   const pathname = usePathname();
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [incidentCount, setIncidentCount] = useState<number | null>(null);
@@ -67,7 +69,7 @@ export default function AuthoritySidebar({ isOpen, onClose }: AuthoritySidebarPr
             </div>
             <div>
               <h1 className="font-bold text-lg tracking-tight leading-none">OUTBREAK</h1>
-              <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Authority</p>
+              <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">{t("au_authority_label")}</p>
             </div>
           </div>
 
@@ -99,7 +101,7 @@ export default function AuthoritySidebar({ isOpen, onClose }: AuthoritySidebarPr
                   "w-5 h-5",
                   isActive ? "text-auth-accent-red" : "group-hover:text-white"
                 )} />
-                <span className="font-medium text-sm">{item.name}</span>
+                <span className="font-medium text-sm">{t(item.key)}</span>
                 {item.badge && (
                   <span className="ml-auto bg-auth-accent-red text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {item.badge}
@@ -120,7 +122,7 @@ export default function AuthoritySidebar({ isOpen, onClose }: AuthoritySidebarPr
             className="w-full bg-auth-accent-red hover:bg-red-600 transition-colors py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-sm shadow-xl shadow-red-900/20 active:scale-95 duration-200"
           >
             <Radio className="w-5 h-5 animate-pulse" />
-            BROADCAST ALERT
+            {t("au_broadcast_alert")}
           </button>
 
           <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer group">
@@ -135,7 +137,7 @@ export default function AuthoritySidebar({ isOpen, onClose }: AuthoritySidebarPr
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate">Director Silva</p>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Online</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t("online")}</p>
             </div>
             <Settings className="w-5 h-5 text-slate-500 group-hover:text-white transition-colors" />
           </div>

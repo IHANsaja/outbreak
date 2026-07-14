@@ -4,6 +4,7 @@ import { X, AlertTriangle, MapPin, Send, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/context/ToastContext";
 import { addHazard } from "@/app/actions/data";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface AddHazardModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface AddHazardModalProps {
 }
 
 export default function AddHazardModal({ isOpen, onClose, onSuccess }: AddHazardModalProps) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [isSending, setIsSending] = useState(false);
   const [title, setTitle] = useState("");
@@ -22,7 +24,7 @@ export default function AddHazardModal({ isOpen, onClose, onSuccess }: AddHazard
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return showToast("Title is required", "error");
+    if (!title.trim()) return showToast(t("au_title_required_toast"), "error");
 
     setIsSending(true);
     try {
@@ -34,7 +36,7 @@ export default function AddHazardModal({ isOpen, onClose, onSuccess }: AddHazard
       formData.append("longitude", longitude);
 
       await addHazard(formData);
-      showToast("Hazard added successfully", "success");
+      showToast(t("au_hazard_added_toast"), "success");
       onSuccess();
       onClose();
       // Reset form
@@ -42,7 +44,7 @@ export default function AddHazardModal({ isOpen, onClose, onSuccess }: AddHazard
       setDescription("");
       setSeverity("Moderate");
     } catch (err) {
-      showToast("Failed to add hazard", "error");
+      showToast(t("au_add_hazard_failed_toast"), "error");
     } finally {
       setIsSending(false);
     }
@@ -72,8 +74,8 @@ export default function AddHazardModal({ isOpen, onClose, onSuccess }: AddHazard
                     <AlertTriangle className="w-6 h-6 text-orange-500" />
                  </div>
                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">Add Hazard Zone</h2>
-                    <p className="text-slate-500 text-xs mt-1">Mark a dangerous area on the situation map.</p>
+                    <h2 className="text-xl font-bold text-slate-900">{t("au_add_hazard_zone")}</h2>
+                    <p className="text-slate-500 text-xs mt-1">{t("au_mark_dangerous_area_desc")}</p>
                  </div>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
@@ -83,43 +85,43 @@ export default function AddHazardModal({ isOpen, onClose, onSuccess }: AddHazard
 
             <form onSubmit={handleSubmit} className="p-8 pt-4 space-y-6">
                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Hazard Title</label>
-                  <input 
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{t("au_hazard_title_label")}</label>
+                  <input
                     type="text"
                     required
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Landslide Area - Ella"
+                    placeholder={t("au_hazard_title_placeholder")}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all"
                   />
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Severity</label>
-                    <select 
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{t("au_severity_label")}</label>
+                    <select
                       value={severity}
                       onChange={(e: any) => setSeverity(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-slate-700 font-bold focus:outline-none cursor-pointer"
                     >
-                      <option value="Low">Low</option>
-                      <option value="Moderate">Moderate</option>
-                      <option value="High">High</option>
-                      <option value="Critical">Critical</option>
+                      <option value="Low">{t("au_low")}</option>
+                      <option value="Moderate">{t("au_moderate")}</option>
+                      <option value="High">{t("high")}</option>
+                      <option value="Critical">{t("critical")}</option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Initial Status</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{t("au_initial_status_label")}</label>
                     <div className="w-full bg-slate-100 rounded-2xl py-4 px-6 text-slate-400 font-bold cursor-not-allowed">
-                       Active
+                       {t("au_active_status")}
                     </div>
                   </div>
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Latitude</label>
-                    <input 
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{t("au_latitude_label")}</label>
+                    <input
                       type="text"
                       value={latitude}
                       onChange={(e) => setLatitude(e.target.value)}
@@ -127,8 +129,8 @@ export default function AddHazardModal({ isOpen, onClose, onSuccess }: AddHazard
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Longitude</label>
-                    <input 
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{t("au_longitude_label")}</label>
+                    <input
                       type="text"
                       value={longitude}
                       onChange={(e) => setLongitude(e.target.value)}
@@ -138,22 +140,22 @@ export default function AddHazardModal({ isOpen, onClose, onSuccess }: AddHazard
                </div>
 
                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
-                  <textarea 
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{t("au_description_label")}</label>
+                  <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Details about the hazard and recommended precautions..."
+                    placeholder={t("au_hazard_desc_placeholder")}
                     className="w-full h-32 bg-slate-50 border border-slate-200 rounded-[28px] p-6 text-slate-700 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:border-orange-500 transition-all resize-none"
                   />
                </div>
 
-               <button 
+               <button
                  type="submit"
                  disabled={isSending}
                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white py-5 rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-xl shadow-orange-500/20 transition-all active:scale-[0.98] group"
                >
                   {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
-                  {isSending ? "CREATING HAZARD ZONE..." : "CREATE ACTIVE HAZARD"}
+                  {isSending ? t("au_creating_hazard_zone") : t("au_create_active_hazard")}
                </button>
             </form>
           </motion.div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Map as MapIcon } from "lucide-react";
 import Link from "next/link";
 import SituationMap from "@/components/SituationMap";
+import { useLanguage } from "@/context/LanguageContext";
 
 type Hazard = {
   id: string | number;
@@ -36,6 +37,7 @@ type Need = {
 };
 
 export default function SituationMapPage() {
+  const { t } = useLanguage();
   const [hazards, setHazards] = useState<Hazard[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [needs, setNeeds] = useState<Need[]>([]);
@@ -75,8 +77,8 @@ export default function SituationMapPage() {
           <div className="flex items-center gap-3">
             <MapIcon className="h-5 w-5 text-gray-400" />
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">Live proximity map</p>
-              <h1 className="text-xl font-black italic text-zinc-900">Situation Map</h1>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-500">{t("c_live_proximity_map")}</p>
+              <h1 className="text-xl font-black italic text-zinc-900">{t("situation_map")}</h1>
             </div>
           </div>
 
@@ -85,7 +87,7 @@ export default function SituationMapPage() {
             className="inline-flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-900 shadow-sm transition hover:bg-gray-50 active:scale-95"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back Home
+            {t("c_back_home")}
           </Link>
         </div>
       </header>

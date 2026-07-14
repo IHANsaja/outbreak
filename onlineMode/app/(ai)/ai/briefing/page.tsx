@@ -24,7 +24,9 @@ import { getGlobalAIInsights, getCriticalAlerts, getLatestDMCBrief } from "@/app
 // is rendered distinctly rather than being conflated with a confirmed-safe
 // reading (a missing forecast is not itself a safety guarantee).
 const SEVERITY_RANK: Record<string, number> = { major: 3, minor: 2, alert: 1, safe: 0, unknown: -1 };
-const SEVERITY_LABEL: Record<string, string> = { major: "CRITICAL", minor: "HIGH", alert: "ADVISORY", safe: "STABLE", unknown: "NO DATA" };
+// Keys into the translation dictionary, resolved to display text inside the
+// component (module scope has no hook access) via severityLabel() below.
+const SEVERITY_LABEL_KEY: Record<string, string> = { major: "critical", minor: "high", alert: "ai_severity_advisory", safe: "stable", unknown: "ai_severity_no_data" };
 const SEVERITY_COLOR: Record<string, string> = {
   major: "bg-red-500 text-white",
   minor: "bg-orange-500 text-white",
@@ -61,6 +63,8 @@ export default function IntelligenceBriefingPage() {
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
   const [stats, setStats] = useState({ totalMonitored: 0, atAlert: 0, flooding: 0, anomalies: 0, lastUpdated: null as string | null });
   const [riskStations, setRiskStations] = useState<RiskStation[]>([]);
+
+  const severityLabel = (level: string) => t(SEVERITY_LABEL_KEY[level] ?? level).toUpperCase();
 
   useEffect(() => {
     async function load() {
@@ -140,7 +144,7 @@ export default function IntelligenceBriefingPage() {
                          <h1 className="text-3xl font-black text-zinc-900 italic tracking-tighter leading-none mb-2">{t("intelligence_briefing")}</h1>
                          <div className="flex items-center gap-3">
                             <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded", hasCritical ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-500")}>
-                               {hasCritical ? t("restricted") : "ROUTINE"}
+                               {hasCritical ? t("restricted") : t("ai_routine_status")}
                             </span>
                             <span className="text-[9px] font-bold text-gray-400">REF: AI-BRF-{stats.totalMonitored}-{riskStations.length}</span>
                          </div>
@@ -166,14 +170,14 @@ export default function IntelligenceBriefingPage() {
                       <h2 className="text-sm font-black text-zinc-900 italic uppercase underline decoration-orange-500 decoration-2 underline-offset-4">{t("executive_summary")}</h2>
                    </div>
                    <p className="text-sm font-medium text-gray-600 leading-relaxed max-w-4xl">
-                      {loading ? "Compiling latest telemetry from the forecasting engine..." : hasElevated ? (
+                      {loading ? t("ai_briefing_compiling") : hasElevated ? (
                         <>
-                          Of <span className="font-black text-zinc-900">{stats.totalMonitored}</span> monitored river stations, <span className="font-black text-zinc-900">{stats.atAlert}</span> are at or approaching alert thresholds and <span className="font-black text-zinc-900">{stats.flooding}</span> are showing flood-level readings.
-                          {topRisks[0] && <> The highest-priority station is <span className="font-black text-zinc-900">{topRisks[0].station}</span> on the <span className="font-black text-zinc-900">{topRisks[0].river}</span>, currently at {SEVERITY_LABEL[topRisks[0].currentLevel].toLowerCase()} level with a {SEVERITY_LABEL[topRisks[0].forecastLevel].toLowerCase()} forecast trajectory.</>}
-                          {stats.anomalies > 0 && <> {stats.anomalies} station reading(s) have been flagged as anomalous and warrant manual verification.</>}
+                          {t("ai_briefing_summary_of")} <span className="font-black text-zinc-900">{stats.totalMonitored}</span> {t("ai_briefing_summary_monitored")} <span className="font-black text-zinc-900">{stats.atAlert}</span> {t("ai_briefing_summary_alert")} <span className="font-black text-zinc-900">{stats.flooding}</span> {t("ai_briefing_summary_flooding")}
+                          {topRisks[0] && <> {t("ai_briefing_summary_highest")} <span className="font-black text-zinc-900">{topRisks[0].station}</span> {t("ai_briefing_summary_on")} <span className="font-black text-zinc-900">{topRisks[0].river}</span>, {t("ai_briefing_summary_currently")} {severityLabel(topRisks[0].currentLevel).toLowerCase()} {t("ai_briefing_summary_level_with")} {severityLabel(topRisks[0].forecastLevel).toLowerCase()} {t("ai_briefing_summary_trajectory")}</>}
+                          {stats.anomalies > 0 && <> {stats.anomalies} {t("ai_briefing_summary_anomaly_flag")}</>}
                         </>
                       ) : (
-                        <>All {stats.totalMonitored} monitored river stations are currently reporting water levels within safe thresholds, with no flood-level or forecasted major-flood readings across the network.</>
+                        <>{t("ai_briefing_summary_all_safe_prefix")} {stats.totalMonitored} {t("ai_briefing_summary_all_safe_suffix")}</>
                       )}
                    </p>
                 </section>
@@ -197,16 +201,16 @@ export default function IntelligenceBriefingPage() {
                            <div className="flex justify-between items-center">
                               <h3 className="text-sm font-black text-zinc-900 italic">{risk.station}</h3>
                               <span className={cn("text-[8px] font-black px-1.5 py-0.5 rounded tracking-widest", SEVERITY_COLOR[risk.currentLevel])}>
-                                 {SEVERITY_LABEL[risk.currentLevel]}
+                                 {severityLabel(risk.currentLevel)}
                               </span>
                            </div>
                            <p className="text-xs font-medium text-gray-500 leading-relaxed capitalize">
-                             {risk.river} — current level {risk.report?.water_level_now?.toFixed(2) ?? "--"}m against a major flood threshold of {risk.report?.major_flood?.toFixed(2) ?? "--"}m.
-                             {risk.isAnomaly && " Reading flagged as anomalous."}
+                             {risk.river} {t("ai_briefing_current_level_prefix")} {risk.report?.water_level_now?.toFixed(2) ?? "--"}m {t("ai_briefing_against_threshold")} {risk.report?.major_flood?.toFixed(2) ?? "--"}m.
+                             {risk.isAnomaly && ` ${t("ai_briefing_anomalous_reading")}`}
                            </p>
                            <div className="flex items-center gap-2 text-[9px] font-black uppercase italic text-orange-500">
                               <Activity className="w-3 h-3" />
-                              24h Forecast: {risk.report?.forecast_24h != null ? `${risk.report.forecast_24h.toFixed(2)}m` : "—"} ({SEVERITY_LABEL[risk.forecastLevel]})
+                              {t("ai_24h_forecast_label")} {risk.report?.forecast_24h != null ? `${risk.report.forecast_24h.toFixed(2)}m` : "—"} ({severityLabel(risk.forecastLevel)})
                            </div>
                         </div>
                       ))}
@@ -220,17 +224,17 @@ export default function IntelligenceBriefingPage() {
                       <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
                          <Building2 className="w-4 h-4 text-slate-500" />
                       </div>
-                      <h2 className="text-sm font-black text-zinc-900 italic uppercase">Stations At Risk</h2>
+                      <h2 className="text-sm font-black text-zinc-900 italic uppercase">{t("ai_stations_at_risk_title")}</h2>
                    </div>
 
                    <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                          <thead>
                             <tr className="border-b border-gray-100">
-                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Station</th>
-                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">River</th>
-                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Current Status</th>
-                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">24h Forecast</th>
+                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("ai_table_station")}</th>
+                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("ai_table_river")}</th>
+                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t("ai_table_current_status")}</th>
+                               <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">{t("ai_table_24h_forecast")}</th>
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-gray-50">
@@ -240,13 +244,13 @@ export default function IntelligenceBriefingPage() {
                                   <td className="py-5 text-xs font-bold text-gray-400 uppercase">{row.river}</td>
                                   <td className="py-5 text-center px-4">
                                      <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter whitespace-nowrap", SEVERITY_COLOR[row.currentLevel])}>
-                                        {SEVERITY_LABEL[row.currentLevel]}
+                                        {severityLabel(row.currentLevel)}
                                      </span>
                                   </td>
-                                  <td className="py-5 text-right font-black text-xs text-gray-500 italic uppercase">{SEVERITY_LABEL[row.forecastLevel]}</td>
+                                  <td className="py-5 text-right font-black text-xs text-gray-500 italic uppercase">{severityLabel(row.forecastLevel)}</td>
                                </tr>
                             )) : (
-                               <tr><td colSpan={4} className="py-8 text-center text-xs font-bold text-gray-300 uppercase tracking-widest">{loading ? "Loading telemetry..." : "No stations currently at risk"}</td></tr>
+                               <tr><td colSpan={4} className="py-8 text-center text-xs font-bold text-gray-300 uppercase tracking-widest">{loading ? t("ai_loading_telemetry") : t("ai_no_stations_at_risk")}</td></tr>
                             )}
                          </tbody>
                       </table>
@@ -264,11 +268,11 @@ export default function IntelligenceBriefingPage() {
 
                    <div className="space-y-4">
                       {(hasElevated ? [
-                        { title: "Escalate Monitoring", desc: `Increase observation frequency for ${riskStations.length} at-risk station(s), prioritizing ${topRisks[0]?.station ?? "the highest-ranked station"} on the ${topRisks[0]?.river ?? "affected river"}.` },
-                        ...(hasCritical ? [{ title: "Prepare Evacuation Readiness", desc: `Alert authorities in catchment areas of stations currently at major-flood level for potential evacuation of downstream communities.` }] : []),
-                        { title: "Verify Anomalous Readings", desc: stats.anomalies > 0 ? `${stats.anomalies} station reading(s) flagged as anomalous — dispatch field verification before issuing public alerts.` : "No anomalous readings detected; continue routine sensor integrity checks." },
+                        { title: t("ai_action_escalate_title"), desc: `${t("ai_action_escalate_desc_prefix")} ${riskStations.length} ${t("ai_action_escalate_desc_mid")} ${topRisks[0]?.station ?? t("ai_action_default_station")} ${t("ai_briefing_summary_on")} ${topRisks[0]?.river ?? t("ai_action_default_river")}.` },
+                        ...(hasCritical ? [{ title: t("ai_action_evacuation_title"), desc: t("ai_action_evacuation_desc") }] : []),
+                        { title: t("ai_action_verify_title"), desc: stats.anomalies > 0 ? `${stats.anomalies} ${t("ai_action_verify_desc_anomalous_suffix")}` : t("ai_action_verify_desc_none") },
                       ] : [
-                        { title: "Maintain Routine Monitoring", desc: "All stations within safe thresholds. Continue standard 3-hourly DMC data ingestion and forecasting cycle." },
+                        { title: t("ai_action_routine_title"), desc: t("ai_action_routine_desc") },
                       ]).map((action, i) => (
                         <div key={i} className="flex gap-6 p-6 rounded-2xl bg-gray-50/50 border border-gray-100 group hover:border-green-200 transition-all">
                            <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center text-[10px] font-black shrink-0">
@@ -288,10 +292,10 @@ export default function IntelligenceBriefingPage() {
                 {/* Footer Disclaimer */}
                 <div className="pt-12 border-t border-gray-50">
                     <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em] text-center italic">
-                       THIS DOCUMENT CONTAINS AUTOMATED INTELLIGENCE DERIVED FROM AI PREDICTIVE MODELS.
+                       {t("ai_footer_disclaimer")}
                     </p>
                     <p className="text-[8px] font-bold text-gray-400 mt-2 text-center uppercase">
-                       Outbreak Platform — Disaster Management Support System
+                       {t("ai_footer_platform_tagline")}
                     </p>
                 </div>
              </div>

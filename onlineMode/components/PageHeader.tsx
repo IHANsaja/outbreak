@@ -3,6 +3,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface PageHeaderProps {
   title: string;
@@ -19,6 +20,7 @@ export default function PageHeader({
   countLabel,
   className,
 }: PageHeaderProps) {
+  const { t } = useLanguage();
   return (
     <div className={cn("mb-8 md:mb-12", className)}>
       <motion.div
@@ -42,7 +44,7 @@ export default function PageHeader({
                 {count.toString().padStart(2, "0")}
               </span>
               <span className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-[0.2em] mt-1 md:mt-2">
-                {countLabel || "Total Records"}
+                {countLabel || t("c_total_records")}
               </span>
             </div>
           )}

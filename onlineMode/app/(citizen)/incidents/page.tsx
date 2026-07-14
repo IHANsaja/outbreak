@@ -7,8 +7,10 @@ import PageHeader from "@/components/PageHeader";
 import DataCard from "@/components/DataCard";
 import { Search, Filter, MapPin } from "lucide-react";
 import { getCityFromCoords } from "@/lib/geocoding";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function IncidentsPage() {
+  const { t } = useLanguage();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -67,16 +69,16 @@ export default function IncidentsPage() {
       <Navbar />
       
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-12 md:px-8 md:py-20 mt-16 md:mt-20">
-        <PageHeader 
-          title="Active Incidents" 
-          description="Real-time reports of hazards and emergencies across the affected sectors."
+        <PageHeader
+          title={t("c_active_incidents_title")}
+          description={t("c_active_incidents_desc")}
           count={incidents.length}
-          countLabel="Live Reports"
+          countLabel={t("c_live_reports")}
         />
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl mb-8 text-red-400 text-sm">
-            Failed to load live data. Showing connection error.
+            {t("c_load_error")}
           </div>
         )}
 
@@ -84,9 +86,9 @@ export default function IncidentsPage() {
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center mb-8">
           <div className="relative flex-1 w-full flex items-center">
             <Search className="absolute left-4 text-gray-400 w-5 h-5 pointer-events-none" />
-            <input 
-              type="text" 
-              placeholder="Search incidents..." 
+            <input
+              type="text"
+              placeholder={t("c_search_incidents_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red transition-all"
@@ -101,7 +103,7 @@ export default function IncidentsPage() {
               onChange={(e) => setFilterCity(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl text-sm font-bold text-zinc-900 focus:outline-none cursor-pointer"
             >
-              <option value="all">All Cities</option>
+              <option value="all">{t("c_all_cities")}</option>
               {uniqueCities.map(city => (
                 <option key={city} value={city}>{city}</option>
               ))}
@@ -116,10 +118,10 @@ export default function IncidentsPage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl text-sm font-bold text-zinc-900 focus:outline-none cursor-pointer"
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending Verification</option>
-              <option value="verified">Verified</option>
-              <option value="resolved">Resolved</option>
+              <option value="all">{t("c_all_status")}</option>
+              <option value="pending">{t("c_status_pending_verification")}</option>
+              <option value="verified">{t("c_status_verified")}</option>
+              <option value="resolved">{t("c_status_resolved")}</option>
             </select>
           </div>
         </div>
@@ -137,14 +139,14 @@ export default function IncidentsPage() {
                 status={incident.status}
                 timestamp={new Date(incident.created_at).toLocaleString()}
                 location={incident.distance_km != null ? `${incident.city} (${incident.distance_km} km away)` : incident.city}
-                category="Incident Type"
+                category={t("c_incident_type_category")}
                 imageUrl={incident.evidence_photo_url}
                 severity={incident.status === 'verified' ? 'high' : incident.status === 'resolved' ? 'info' : 'medium'}
               />
             ))
           ) : !error && (
             <div className="col-span-full py-20 text-center text-gray-400 font-medium bg-white rounded-3xl border border-dashed border-gray-200">
-              No matching incidents found for this filter.
+              {t("c_no_matching_incidents")}
             </div>
           )}
         </div>

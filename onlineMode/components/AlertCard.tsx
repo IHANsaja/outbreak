@@ -4,6 +4,7 @@ import { AlertTriangle, Clock, ChevronRight, Info, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface AlertCardProps {
   variant?: "detailed" | "compact";
@@ -28,6 +29,7 @@ export default function AlertCard({
   routesHref,
   detailsHref,
 }: AlertCardProps) {
+  const { t } = useLanguage();
   const isDetailed = variant === "detailed";
 
   const severityColors = {
@@ -38,10 +40,10 @@ export default function AlertCard({
   };
 
   const badgeText = {
-    severe: "SEVERE WARNING",
-    urgent: "URGENT ALERT",
-    moderate: "MODERATE ALERT",
-    low: "ADVISORY",
+    severe: t("c_severity_severe"),
+    urgent: t("c_severity_urgent"),
+    moderate: t("c_severity_moderate"),
+    low: t("c_severity_advisory"),
   };
 
   if (variant === "compact") {
@@ -61,7 +63,7 @@ export default function AlertCard({
               {badgeText[severity]}
             </span>
             <span className="text-[9px] md:text-[10px] opacity-80 flex items-center gap-1">
-              Issued {updatedTime}
+              {t("c_issued")} {updatedTime}
             </span>
           </div>
           <div>
@@ -78,13 +80,13 @@ export default function AlertCard({
             className="flex-1 md:flex-none bg-white text-zinc-900 px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-100 transition-all shadow-lg active:scale-95 group text-[11px] md:text-sm"
           >
             <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            View Safe Routes
+            {t("c_view_safe_routes")}
           </Link>
           <Link
             href={detailsHref || "#"}
             className="flex-1 md:flex-none bg-black/20 backdrop-blur-md text-white border border-white/30 px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black/30 transition-all active:scale-95 text-[11px] md:text-sm"
           >
-            Details
+            {t("c_details")}
           </Link>
         </div>
       </motion.div>
@@ -108,7 +110,7 @@ export default function AlertCard({
             </span>
             <div className="flex items-center gap-1.5 text-[9px] md:text-[10px] font-bold text-gray-400">
               <Clock className="w-3 h-3" />
-              Updated: {updatedTime}
+              {t("c_updated_label")}: {updatedTime}
             </div>
           </div>
 
@@ -122,7 +124,7 @@ export default function AlertCard({
         </div>
 
         <div className="md:w-48 bg-gray-50 rounded-xl p-4 md:p-5 flex flex-col items-center justify-center border border-gray-100">
-          <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Impact Level</span>
+          <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 md:mb-4">{t("c_impact_level")}</span>
           <div className="flex gap-1 md:gap-1.5 mb-2">
             {[1, 2, 3, 4].map((i) => (
               <div

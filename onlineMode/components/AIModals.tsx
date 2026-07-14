@@ -25,13 +25,23 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+// Clock time N minutes before now, e.g. "09:42 AM". Modals mount on user
+// interaction (client-side only), so reading the clock here is hydration-safe.
+const minutesAgoTime = (minutes: number) =>
+  new Date(Date.now() - minutes * 60000).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
+  const { t } = useLanguage();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -63,9 +73,9 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
                       <Search className="w-6 h-6 text-orange-500" />
                    </div>
                    <div className="space-y-1">
-                      <h2 className="text-2xl font-black text-zinc-900 italic tracking-tight uppercase leading-none">NLP Deep Dive Analysis</h2>
+                      <h2 className="text-2xl font-black text-zinc-900 italic tracking-tight uppercase leading-none">{t("ai_nlp_deep_dive_title")}</h2>
                       <div className="flex items-center gap-3">
-                         <span className="text-[10px] font-bold text-gray-400 uppercase">ID: NLP-992</span>
+                         <span className="text-[10px] font-bold text-gray-400 uppercase">{t("ai_id_label")} NLP-992</span>
                          <div className="flex items-center gap-1.5 text-[10px] font-black text-red-500 uppercase tracking-widest">
                             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
                             Flooding in Kalutara
@@ -80,7 +90,7 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
                       <div className="space-y-6">
                          <div className="flex items-center gap-2">
                             <TrendingUp className="w-4 h-4 text-orange-500" />
-                            <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Cluster Word Cloud</h3>
+                            <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">{t("ai_cluster_word_cloud")}</h3>
                          </div>
                          <div className="bg-orange-50/30 rounded-[2rem] p-10 border border-orange-100/50 flex flex-wrap items-center justify-center gap-x-6 gap-y-4 relative">
                             <span className="text-3xl font-black text-red-600 uppercase tracking-tighter">WATER LEVEL</span>
@@ -94,7 +104,7 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
                             <span className="text-sm font-bold text-gray-400">food</span>
                             <span className="text-xl font-black text-zinc-700 italic">first floor</span>
                             
-                            <div className="absolute bottom-4 right-6 text-[8px] font-black text-gray-300 uppercase tracking-widest">FREQUENCY MAP</div>
+                            <div className="absolute bottom-4 right-6 text-[8px] font-black text-gray-300 uppercase tracking-widest">{t("ai_frequency_map")}</div>
                          </div>
                       </div>
 
@@ -102,15 +112,15 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
                          <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                <MessageSquare className="w-4 h-4 text-orange-500" />
-                               <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Sample Raw Messages (Anonymized)</h3>
+                               <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">{t("ai_sample_raw_messages")}</h3>
                             </div>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase italic">Recent 5 of 452</span>
+                            <span className="text-[9px] font-bold text-gray-400 uppercase italic">{t("ai_recent_5_of_452")}</span>
                          </div>
                          <div className="space-y-3">
                             {[
-                              { text: '"Water is entering the kitchen now. We have moved to the roof. Please send a boat."', time: "09:42 AM", tag: "Panic" },
-                              { text: '"Galle road is completely blocked near the bridge. No vehicles can pass."', time: "09:38 AM", tag: "Warning" },
-                              { text: '"Can anyone hear us? Power is out and phone battery is dying."', time: "09:35 AM", tag: "Panic" }
+                              { text: '"Water is entering the kitchen now. We have moved to the roof. Please send a boat."', time: minutesAgoTime(3), tag: "Panic" },
+                              { text: '"Galle road is completely blocked near the bridge. No vehicles can pass."', time: minutesAgoTime(7), tag: "Warning" },
+                              { text: '"Can anyone hear us? Power is out and phone battery is dying."', time: minutesAgoTime(10), tag: "Panic" }
                             ].map((msg, i) => (
                               <div key={i} className="bg-gray-50 p-5 rounded-2xl border border-gray-100 flex flex-col gap-2 group transition-all hover:bg-white hover:shadow-sm">
                                  <p className="text-xs font-semibold text-gray-600 italic tracking-tight">{msg.text}</p>
@@ -119,7 +129,7 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
                                     <span className={cn(
                                        "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter",
                                        msg.tag === 'Panic' ? "bg-red-50 text-red-500" : "bg-orange-50 text-orange-500"
-                                    )}>{msg.tag}</span>
+                                    )}>{msg.tag === 'Panic' ? t("ai_tag_panic") : t("ai_tag_warning")}</span>
                                  </div>
                               </div>
                             ))}
@@ -132,7 +142,7 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
                       <div className="space-y-6">
                          <div className="flex items-center gap-2">
                             <Activity className="w-4 h-4 text-orange-500" />
-                            <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Sentiment Analysis</h3>
+                            <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">{t("ai_sentiment_analysis")}</h3>
                          </div>
                          <div className="bg-white border border-gray-100 rounded-[2rem] p-10 flex flex-col items-center justify-center shadow-sm">
                             <div className="relative w-40 h-40 flex items-center justify-center">
@@ -143,23 +153,23 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
                                </svg>
                                <div className="absolute inset-0 flex flex-col items-center justify-center pb-2">
                                   <span className="text-4xl font-black text-zinc-900 italic tracking-tighter leading-none">85%</span>
-                                  <span className="text-[9px] font-black text-red-500 uppercase tracking-widest mt-1">PANIC / FEAR</span>
+                                  <span className="text-[9px] font-black text-red-500 uppercase tracking-widest mt-1">{t("ai_panic_fear_label")}</span>
                                </div>
                             </div>
-                            <p className="text-[9px] font-bold text-gray-400 text-center uppercase tracking-tight mt-6 leading-relaxed">Based on keyword intensity and<br/>punctuation analysis.</p>
+                            <p className="text-[9px] font-bold text-gray-400 text-center uppercase tracking-tight mt-6 leading-relaxed">{t("ai_sentiment_basis_line1")}<br/>{t("ai_sentiment_basis_line2")}</p>
                          </div>
                       </div>
 
                       <div className="space-y-6">
                          <div className="flex items-center gap-2">
                             <Zap className="w-4 h-4 text-orange-500" />
-                            <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Report Sources</h3>
+                            <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">{t("ai_report_sources_title")}</h3>
                          </div>
                          <div className="space-y-4">
                             {[
-                              { source: "Social Media (Public)", count: 312, color: "bg-orange-500" },
-                              { source: "Emergency Hotline", count: 89, color: "bg-blue-500" },
-                              { source: "SMS Gateway", count: 49, color: "bg-green-500" }
+                              { source: t("ai_source_social_media"), count: 312, color: "bg-orange-500" },
+                              { source: t("ai_source_emergency_hotline"), count: 89, color: "bg-blue-500" },
+                              { source: t("ai_source_sms_gateway"), count: 49, color: "bg-green-500" }
                             ].map((s, i) => (
                               <div key={i} className="space-y-2">
                                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tight">
@@ -181,11 +191,11 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
                 </div>
 
                 <div className="pt-10 border-t border-gray-50 flex flex-col md:flex-row gap-4 items-center justify-between">
-                    <button onClick={onClose} className="px-8 py-4 text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-zinc-900 transition-colors italic">Cancel</button>
+                    <button onClick={onClose} className="px-8 py-4 text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-zinc-900 transition-colors italic">{t("ai_cancel")}</button>
                     <div className="flex gap-4 w-full md:w-auto">
                        <button className="flex-1 md:flex-none px-10 py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl text-xs font-black italic shadow-xl shadow-orange-900/20 flex items-center justify-center gap-3 transition-all active:scale-95">
                           <Download className="w-4 h-4" />
-                          Export to Insights
+                          {t("ai_export_to_insights")}
                        </button>
                     </div>
                 </div>
@@ -198,6 +208,7 @@ export function NLPDeepDiveModal({ isOpen, onClose }: ModalProps) {
 }
 
 export function DigitalSupportModal({ isOpen, onClose }: ModalProps) {
+  const { t } = useLanguage();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -230,14 +241,14 @@ export function DigitalSupportModal({ isOpen, onClose }: ModalProps) {
                    </div>
                    <div className="space-y-1">
                       <div className="flex items-center gap-3">
-                         <span className="text-[10px] font-black px-1.5 py-0.5 bg-blue-500 text-white rounded uppercase tracking-widest leading-none">DIGITAL RESPONSE</span>
-                         <span className="text-[10px] font-bold text-gray-400 uppercase leading-none">ID: SOS-2294</span>
+                         <span className="text-[10px] font-black px-1.5 py-0.5 bg-blue-500 text-white rounded uppercase tracking-widest leading-none">{t("ai_digital_response_badge")}</span>
+                         <span className="text-[10px] font-bold text-gray-400 uppercase leading-none">{t("ai_id_label")} SOS-2294</span>
                       </div>
                       <h2 className="text-2xl font-black text-zinc-900 italic tracking-tight uppercase leading-none flex items-center gap-2">
                         <Activity className="w-6 h-6 text-blue-500" />
-                        Initiate Digital Support
+                        {t("ai_initiate_digital_support")}
                       </h2>
-                      <p className="text-[11px] font-bold text-gray-400 uppercase">Trigger immediate online aid protocols for this location.</p>
+                      <p className="text-[11px] font-bold text-gray-400 uppercase">{t("ai_trigger_aid_protocols_desc")}</p>
                    </div>
                 </div>
 
@@ -257,7 +268,7 @@ export function DigitalSupportModal({ isOpen, onClose }: ModalProps) {
                          </div>
                          <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase italic">
                             <Clock className="w-3.5 h-3.5" />
-                            Reported 2m ago
+                            {t("ai_reported_2m_ago")}
                          </div>
                       </div>
                    </div>
@@ -267,15 +278,15 @@ export function DigitalSupportModal({ isOpen, onClose }: ModalProps) {
                    {/* Digital Channels List */}
                    <div className="space-y-6">
                       <div className="flex items-center justify-between">
-                         <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Support Channels</h3>
-                         <span className="text-[8px] font-black px-2 py-0.5 bg-blue-500 text-white rounded uppercase">4 Available</span>
+                         <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">{t("ai_support_channels_title")}</h3>
+                         <span className="text-[8px] font-black px-2 py-0.5 bg-blue-500 text-white rounded uppercase">4 {t("ai_available_suffix")}</span>
                       </div>
                       <div className="space-y-3">
                          {[
-                           { name: "SMS Alert Broadcast", dist: "Instant", info: "Radius: 5km • Targets: App Cache Users", selected: true },
-                           { name: "Evacuation Routing", dist: "Interactive", info: "Protocol: Smart Path • Format: Deep Link" },
-                           { name: "E-Relief Voucher", dist: "Secured", info: "Item: Food/Water Bundle • Auth: SMS Code" },
-                           { name: "Virtual ER (Tele-Med)", dist: "Synced", info: "Wait Time: <1 min • Channel: Encrypted Video" }
+                           { name: t("ai_channel_sms_broadcast"), dist: t("ai_dist_instant"), info: t("ai_channel_sms_info"), selected: true },
+                           { name: t("ai_channel_evac_routing"), dist: t("ai_dist_interactive"), info: t("ai_channel_evac_info") },
+                           { name: t("ai_channel_relief_voucher"), dist: t("ai_dist_secured"), info: t("ai_channel_voucher_info") },
+                           { name: t("ai_channel_virtual_er"), dist: t("ai_dist_synced"), info: t("ai_channel_telemed_info") }
                          ].map((unit, i) => (
                            <div key={i} className={cn(
                              "p-4 rounded-2xl border transition-all cursor-pointer group",
@@ -301,29 +312,29 @@ export function DigitalSupportModal({ isOpen, onClose }: ModalProps) {
 
                    {/* Notes & Actions */}
                    <div className="space-y-6 flex flex-col">
-                      <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Digital Directive Notes</h3>
+                      <h3 className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">{t("ai_digital_directive_notes_title")}</h3>
                       <div className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl p-6">
-                         <p className="text-[11px] font-medium text-gray-400 leading-relaxed uppercase italic">Enter specific instructions for digital aid delivery, map markers, or voucher amounts...</p>
+                         <p className="text-[11px] font-medium text-gray-400 leading-relaxed uppercase italic">{t("ai_directive_placeholder")}</p>
                          <div className="mt-20 flex flex-wrap gap-2">
-                             {["SMS Broadcast", "Route Optimized"].map(t => (
-                               <span key={t} className="px-3 py-1 bg-white shadow-sm border border-gray-100 rounded-lg text-[8px] font-black text-zinc-900 uppercase italic">{t}</span>
+                             {[t("ai_tag_sms_broadcast"), t("ai_tag_route_optimized")].map(tag => (
+                               <span key={tag} className="px-3 py-1 bg-white shadow-sm border border-gray-100 rounded-lg text-[8px] font-black text-zinc-900 uppercase italic">{tag}</span>
                              ))}
                          </div>
                       </div>
                       <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex gap-3">
                          <Info className="w-4 h-4 text-blue-500 shrink-0" />
                          <p className="text-[9px] font-bold text-blue-600 uppercase tracking-tighter leading-relaxed italic">
-                           AI Recommendation: Trigger Tele-Medicine hub and broadcast evacuation links. Multi-day rain predicted, prioritize digital vouchers for food.
+                           {t("ai_recommendation_label")} {t("ai_recommendation_note")}
                          </p>
                       </div>
                    </div>
                 </div>
 
                 <div className="pt-6 border-t border-gray-50 flex flex-col md:flex-row gap-4 items-center justify-between">
-                    <button onClick={onClose} className="px-8 py-4 text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-zinc-900 transition-colors italic">Cancel</button>
+                    <button onClick={onClose} className="px-8 py-4 text-[11px] font-black uppercase tracking-widest text-gray-400 hover:text-zinc-900 transition-colors italic">{t("ai_cancel")}</button>
                     <button className="w-full md:w-auto px-12 py-5 bg-blue-600 hover:bg-black text-white rounded-2xl text-xs font-black italic shadow-xl shadow-blue-900/20 flex items-center justify-center gap-3 transition-all active:scale-95 group/btn">
                        <Zap className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
-                       TRIGGER DIGITAL ACTION
+                       {t("ai_trigger_digital_action")}
                     </button>
                 </div>
              </div>
@@ -335,6 +346,7 @@ export function DigitalSupportModal({ isOpen, onClose }: ModalProps) {
 }
 
 export function WaterLevelAnalyticsModal({ isOpen, onClose }: ModalProps) {
+  const { t } = useLanguage();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -361,12 +373,12 @@ export function WaterLevelAnalyticsModal({ isOpen, onClose }: ModalProps) {
                    </div>
                    <div className="space-y-0.5">
                       <div className="flex items-center gap-3">
-                         <h2 className="text-xl font-black text-zinc-900 tracking-tight italic">Kelani River Historical Analytics</h2>
-                         <span className="text-[10px] font-black px-2 py-0.5 bg-red-50 text-red-500 border border-red-100 rounded uppercase tracking-widest">CRITICAL ZONE</span>
+                         <h2 className="text-xl font-black text-zinc-900 tracking-tight italic">{t("ai_kelani_historical_analytics_title")}</h2>
+                         <span className="text-[10px] font-black px-2 py-0.5 bg-red-50 text-red-500 border border-red-100 rounded uppercase tracking-widest">{t("ai_critical_zone_badge")}</span>
                       </div>
                       <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase italic">
                          <Activity className="w-3.5 h-3.5" />
-                         Comparing: Current Levels vs. 2016 Major Flood Event
+                         {t("ai_comparing_note")}
                       </div>
                    </div>
                 </div>
@@ -401,26 +413,26 @@ export function WaterLevelAnalyticsModal({ isOpen, onClose }: ModalProps) {
                    <div className="flex flex-wrap items-center gap-8 mb-12">
                       <div className="flex items-center gap-2">
                          <div className="w-3 h-3 rounded-full bg-blue-500" />
-                         <span className="text-[10px] font-black text-zinc-900 uppercase italic tracking-tight">Current Water Level (ft)</span>
+                         <span className="text-[10px] font-black text-zinc-900 uppercase italic tracking-tight">{t("ai_legend_current_water_level")}</span>
                       </div>
                       <div className="flex items-center gap-2">
                          <div className="w-4 h-0.5 border-t-2 border-dashed border-red-400" />
-                         <span className="text-[10px] font-black text-gray-400 uppercase italic tracking-tight">2016 Flood Benchmark</span>
+                         <span className="text-[10px] font-black text-gray-400 uppercase italic tracking-tight">{t("ai_legend_2016_benchmark")}</span>
                       </div>
                       <div className="flex items-center gap-2">
                          <div className="w-3 h-3 rounded bg-orange-100 border border-orange-200" />
-                         <span className="text-[10px] font-black text-gray-400 uppercase italic tracking-tight">Alert Threshold</span>
+                         <span className="text-[10px] font-black text-gray-400 uppercase italic tracking-tight">{t("ai_legend_alert_threshold")}</span>
                       </div>
-                      
+
                       <div className="ml-auto text-[10px] font-bold text-gray-300 uppercase italic">
-                        Updated: <span className="text-green-500">LIVE (Latency: 24ms)</span>
+                        {t("ai_updated_prefix")} <span className="text-green-500">{t("live")} {t("ai_latency_suffix")}</span>
                       </div>
                    </div>
 
                    <div className="flex-1 relative">
                       {/* Critical Threshold Zone */}
                       <div className="absolute top-[30%] left-0 right-0 h-[40%] bg-red-50/20 border-y border-red-100/50 flex items-center px-4">
-                         <span className="text-[12px] font-black text-red-400 uppercase tracking-[0.3em] opacity-60">CRITICAL THRESHOLD (9.0ft)</span>
+                         <span className="text-[12px] font-black text-red-400 uppercase tracking-[0.3em] opacity-60">{t("ai_critical_threshold_label")}</span>
                       </div>
 
                       <svg className="w-full h-full" viewBox="0 0 800 400" preserveAspectRatio="none">
@@ -461,7 +473,7 @@ export function WaterLevelAnalyticsModal({ isOpen, onClose }: ModalProps) {
 
                       {/* Tooltip */}
                       <div className="absolute top-[80px] left-[615px] bg-white border border-gray-100 shadow-xl rounded-2xl p-5 min-w-[160px] z-20">
-                         <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Level</div>
+                         <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t("ai_current_level_tooltip")}</div>
                          <div className="text-3xl font-black text-zinc-900 tracking-tighter leading-none mb-2">9.2 ft</div>
                          <div className="flex items-center gap-1.5 text-[10px] font-black text-red-500 uppercase italic">
                             <ArrowUpRight className="w-4 h-4" />
@@ -477,19 +489,19 @@ export function WaterLevelAnalyticsModal({ isOpen, onClose }: ModalProps) {
                          <span>12:00</span>
                          <span>16:00</span>
                          <span>20:00</span>
-                         <span className="text-blue-500">Now</span>
+                         <span className="text-blue-500">{t("ai_now_label")}</span>
                       </div>
                    </div>
 
                    <div className="mt-12 flex justify-between items-center text-[9px] font-bold text-gray-400 uppercase tracking-widest italic border-t border-gray-50 pt-6">
                       <div className="flex items-center gap-2">
-                        DATA SOURCE: <span className="text-zinc-900">IRRIGATION DEPT. REAL-TIME API</span>
+                        {t("ai_data_source_label")} <span className="text-zinc-900">IRRIGATION DEPT. REAL-TIME API</span>
                       </div>
                       <div className="flex items-center gap-4">
-                         <span>LAST SYNC: 12S AGO</span>
+                         <span>{t("ai_last_sync_label")} {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
                          <div className="flex items-center gap-1.5 text-green-500">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            SYSTEM LATENCY: 24MS
+                            {t("ai_system_latency_label")} 24MS
                          </div>
                       </div>
                    </div>
@@ -498,24 +510,24 @@ export function WaterLevelAnalyticsModal({ isOpen, onClose }: ModalProps) {
                 {/* Sensor Matrix Sidebar */}
                 <div className="w-full md:w-80 bg-gray-50/50 border-l border-gray-100 p-8 flex flex-col gap-8">
                    <div className="space-y-1">
-                      <h3 className="text-xs font-black text-zinc-900 italic uppercase">SENSOR MATRIX</h3>
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Kelani River Basin • Zone A</p>
+                      <h3 className="text-xs font-black text-zinc-900 italic uppercase">{t("ai_sensor_matrix_title")}</h3>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">{t("ai_kelani_basin_zone_a")}</p>
                    </div>
 
                    <div className="flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-hide">
                       {[
-                        { name: "Nagalagam Street", val: "7.2 ft", status: "Alert", color: "text-red-500", dot: "bg-green-500" },
-                        { name: "Hanwella Bridge", val: "4.1 ft", status: "Normal", color: "text-green-500", dot: "bg-green-500" },
-                        { name: "Glencourse", val: "3.8 ft", status: "Normal", color: "text-green-500", dot: "bg-green-500" },
-                        { name: "Kitulgala", val: "5.9 ft", status: "Rising", color: "text-orange-500", dot: "bg-green-500" },
-                        { name: "Norwood Station", val: "Maintenance", status: "Offline", color: "text-gray-400", dot: "bg-yellow-400", icon: Settings }
+                        { name: "Nagalagam Street", val: "7.2 ft", status: t("ai_sensor_status_alert"), color: "text-red-500", dot: "bg-green-500" },
+                        { name: "Hanwella Bridge", val: "4.1 ft", status: t("ai_risk_normal"), color: "text-green-500", dot: "bg-green-500" },
+                        { name: "Glencourse", val: "3.8 ft", status: t("ai_risk_normal"), color: "text-green-500", dot: "bg-green-500" },
+                        { name: "Kitulgala", val: "5.9 ft", status: t("ai_trend_rising"), color: "text-orange-500", dot: "bg-green-500" },
+                        { name: "Norwood Station", val: t("ai_maintenance_status"), status: t("ai_sensor_status_offline"), color: "text-gray-400", dot: "bg-yellow-400", icon: Settings }
                       ].map((item, i) => (
                         <div key={i} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm relative group hover:border-blue-200 transition-all">
                            <div className="flex justify-between items-start mb-2">
                               <h4 className="text-[11px] font-black text-zinc-900 italic uppercase tracking-tight">{item.name}</h4>
                               <div className={cn("w-1.5 h-1.5 rounded-full", item.dot)} />
                            </div>
-                           <span className="text-[9px] font-black text-gray-300 uppercase block mb-1">Water Level</span>
+                           <span className="text-[9px] font-black text-gray-300 uppercase block mb-1">{t("ai_stat_water_level")}</span>
                            <div className="flex justify-between items-baseline">
                               <div className="text-xl font-black text-zinc-900 tracking-tighter italic">{item.val}</div>
                               <div className={cn("text-[9px] font-black uppercase tracking-widest", item.color)}>{item.status}</div>
@@ -527,7 +539,7 @@ export function WaterLevelAnalyticsModal({ isOpen, onClose }: ModalProps) {
 
                    <button className="w-full py-4 bg-zinc-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest italic flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-zinc-900/10">
                       <Settings className="w-4 h-4" />
-                      Configure Sensors
+                      {t("ai_configure_sensors")}
                    </button>
                 </div>
              </div>

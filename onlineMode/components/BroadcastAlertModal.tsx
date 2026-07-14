@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/context/ToastContext";
 import { addOfficialUpdate, getRegions } from "@/app/actions/data";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface BroadcastAlertModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface BroadcastAlertModalProps {
 }
 
 export default function BroadcastAlertModal({ isOpen, onClose }: BroadcastAlertModalProps) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [alertLevel, setAlertLevel] = useState<"info" | "warning" | "error">("warning");
   const [content, setContent] = useState("FLASH FLOOD WARNING: Residents in low-lying areas of Kalutara District must evacuate immediately to higher ground.");
@@ -36,7 +38,7 @@ export default function BroadcastAlertModal({ isOpen, onClose }: BroadcastAlertM
 
   const handleBroadcast = async () => {
     if (!content.trim() || !title.trim()) {
-      showToast("Please provide both title and content", "error");
+      showToast(t("au_please_provide_title_content_toast"), "error");
       return;
     }
 
@@ -48,10 +50,10 @@ export default function BroadcastAlertModal({ isOpen, onClose }: BroadcastAlertM
       formData.append("severity", alertLevel);
 
       await addOfficialUpdate(formData);
-      showToast("Emergency Alert Broadcasted Successfully", "success");
+      showToast(t("au_alert_broadcasted_toast"), "success");
       onClose();
     } catch (err) {
-      showToast("Failed to broadcast alert", "error");
+      showToast(t("au_broadcast_failed_toast"), "error");
     } finally {
       setIsSending(false);
     }
@@ -82,10 +84,10 @@ export default function BroadcastAlertModal({ isOpen, onClose }: BroadcastAlertM
                  </div>
                  <div>
                     <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-                        {isSending ? "Broadcasting..." : "Broadcast Emergency Alert"}
+                        {isSending ? t("au_broadcasting_ellipsis") : t("au_broadcast_emergency_alert")}
                     </h2>
                     <p className="text-slate-500 text-sm mt-1">
-                        {isSending ? "Syncing with regional transmission towers..." : "Send critical notifications to citizens."}
+                        {isSending ? t("au_syncing_towers_desc") : t("au_send_critical_notifications_desc")}
                     </p>
                  </div>
               </div>
@@ -96,8 +98,8 @@ export default function BroadcastAlertModal({ isOpen, onClose }: BroadcastAlertM
 
             <div className={`p-8 pt-4 space-y-6 transition-opacity duration-300 ${isSending ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Alert Title</label>
-                  <input 
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_alert_title_label")}</label>
+                  <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -106,13 +108,13 @@ export default function BroadcastAlertModal({ isOpen, onClose }: BroadcastAlertM
                </div>
 
                <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Target Region (Notice only)</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_target_region_label")}</label>
                   <div className="relative group">
                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                         <MapPin className="w-5 h-5" />
                      </div>
                      <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-12 text-slate-700 font-bold appearance-none focus:outline-none cursor-pointer">
-                        <option>All Sri Lanka (National Alert)</option>
+                        <option>{t("au_all_sri_lanka")}</option>
                         {regions.map(r => <option key={r.id}>{r.name}</option>)}
                      </select>
                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -122,34 +124,34 @@ export default function BroadcastAlertModal({ isOpen, onClose }: BroadcastAlertM
                </div>
 
                <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Alert Level</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_alert_level_label")}</label>
                   <div className="grid grid-cols-3 gap-4">
-                     <AlertLevelButton 
-                        active={alertLevel === "info"} 
+                     <AlertLevelButton
+                        active={alertLevel === "info"}
                         onClick={() => setAlertLevel("info")}
                         icon={<Info className="w-5 h-5" />}
-                        label="ADVISORY" 
+                        label={t("au_advisory")}
                         color="yellow"
                      />
-                     <AlertLevelButton 
-                        active={alertLevel === "warning"} 
+                     <AlertLevelButton
+                        active={alertLevel === "warning"}
                         onClick={() => setAlertLevel("warning")}
                         icon={<Eye className="w-5 h-5" />}
-                        label="WATCH" 
+                        label={t("au_watch")}
                         color="orange"
                      />
-                     <AlertLevelButton 
-                        active={alertLevel === "error"} 
+                     <AlertLevelButton
+                        active={alertLevel === "error"}
                         onClick={() => setAlertLevel("error")}
                         icon={<AlertTriangle className="w-5 h-5" />}
-                        label="WARNING" 
+                        label={t("au_warning")}
                         color="red"
                      />
                   </div>
                </div>
 
                <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Emergency Message</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_emergency_message_label")}</label>
                   <textarea 
                      className="w-full h-32 bg-slate-50 border border-slate-200 rounded-[28px] p-6 text-slate-700 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all resize-none leading-relaxed"
                      value={content}
@@ -166,7 +168,7 @@ export default function BroadcastAlertModal({ isOpen, onClose }: BroadcastAlertM
                      <div className="p-1 bg-white/20 rounded-lg group-hover:scale-110 transition-transform">
                         {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 fill-white" />}
                      </div>
-                     {isSending ? "BROADCASTING..." : "CONFIRM & SEND TO ALL CITIZENS"}
+                     {isSending ? t("au_broadcasting_caps") : t("au_confirm_send_all")}
                   </button>
                </div>
             </div>

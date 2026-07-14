@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface QuickActionProps {
   icon: LucideIcon;
@@ -24,6 +25,7 @@ export default function QuickActionCard({
   className,
   onClick,
 }: QuickActionProps) {
+  const { t } = useLanguage();
   return (
     <button
       onClick={onClick}
@@ -51,12 +53,12 @@ export default function QuickActionCard({
         {count !== undefined && (
           <div className="mt-3 md:mt-4 inline-flex items-center gap-2">
             <span className="text-[9px] md:text-[10px] font-black uppercase text-brand-red tracking-widest border-b border-brand-red/20 pb-0.5">
-              {count} Active Alerts
+              {count} {t("alerts")}
             </span>
           </div>
         )}
 
-        {title === "Request Help" && showSOSBadge && (
+        {showSOSBadge && (
           <div className="absolute top-4 right-4 md:top-6 md:right-6">
             <div className="flex flex-col items-center">
               <span className="text-[8px] md:text-[10px] font-black text-brand-red uppercase mb-0.5 md:mb-1">SOS</span>

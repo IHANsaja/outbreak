@@ -7,8 +7,10 @@ import PageHeader from "@/components/PageHeader";
 import DataCard from "@/components/DataCard";
 import { Search, Filter, MapPin } from "lucide-react";
 import { getCityFromCoords } from "@/lib/geocoding";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function NewsPage() {
+  const { t } = useLanguage();
   const [updates, setUpdates] = useState<any[]>([]);
   const [hazards, setHazards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,9 +55,9 @@ export default function NewsPage() {
 
   const uniqueCities = useMemo(() => {
     const hazardCities = hazards.map(h => h.city).filter(Boolean);
-    const updateLocations = updates.map(() => "Command Center"); // Official updates are global
+    const updateLocations = updates.map(() => t("c_command_center")); // Official updates are global
     return Array.from(new Set([...hazardCities, ...updateLocations])).sort();
-  }, [hazards, updates]);
+  }, [hazards, updates, t]);
 
   const combinedData = useMemo(() => {
     const formattedHazards = hazards.map(h => ({
@@ -67,7 +69,7 @@ export default function NewsPage() {
       timestamp: new Date(h.created_at),
       location: h.distance_km != null ? `${h.city} (${h.distance_km} km away)` : h.city,
       city: h.city,
-      category: "Hazard Alert",
+      category: t("c_hazard_alert_category"),
       severity: h.severity === 'high' || h.severity === 'critical' || h.severity === 'Critical' ? 'urgent' : h.severity === 'medium' || h.severity === 'moderate' || h.severity === 'High' ? 'warning' : 'info'
     }));
 
@@ -76,11 +78,11 @@ export default function NewsPage() {
       variant: "update" as const,
       title: u.title,
       description: u.content,
-      status: "Verified",
+      status: t("c_status_verified"),
       timestamp: new Date(u.created_at),
-      location: "Command Center",
-      city: "Command Center", // Special City group for updates
-      category: "Official News",
+      location: t("c_command_center"),
+      city: t("c_command_center"), // Special City group for updates
+      category: t("c_official_news_category"),
       severity: u.severity === 'urgent' ? 'urgent' : u.severity === 'warning' ? 'warning' : 'info'
     }));
 
@@ -100,23 +102,23 @@ export default function NewsPage() {
       return matchesSearch && matchesFilter && matchesCity;
     });
 
-  }, [updates, hazards, searchQuery, filterType, filterCity]);
+  }, [updates, hazards, searchQuery, filterType, filterCity, t]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
       
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-12 md:px-8 md:py-20 mt-16 md:mt-20">
-        <PageHeader 
-          title="Official News & Alerts" 
-          description="Verified updates and hazard warnings from the disaster management command center."
+        <PageHeader
+          title={t("c_news_title")}
+          description={t("c_news_desc")}
           count={hazards.length}
-          countLabel="Active Hazards"
+          countLabel={t("c_active_hazards_label")}
         />
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl mb-8 text-red-400 text-sm">
-            Failed to load live data. Showing connection error.
+            {t("c_load_error")}
           </div>
         )}
 
@@ -124,9 +126,9 @@ export default function NewsPage() {
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center mb-8">
           <div className="relative flex-1 w-full flex items-center">
             <Search className="absolute left-4 text-gray-400 w-5 h-5 pointer-events-none" />
-            <input 
-              type="text" 
-              placeholder="Search news & alerts..." 
+            <input
+              type="text"
+              placeholder={t("c_search_news_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red transition-all"
@@ -141,7 +143,7 @@ export default function NewsPage() {
               onChange={(e) => setFilterCity(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl text-sm font-bold text-zinc-900 focus:outline-none cursor-pointer"
             >
-              <option value="all">All Locations</option>
+              <option value="all">{t("c_all_locations")}</option>
               {uniqueCities.map(city => (
                 <option key={city} value={city}>{city}</option>
               ))}
@@ -156,10 +158,10 @@ export default function NewsPage() {
               onChange={(e) => setFilterType(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl text-sm font-bold text-zinc-900 focus:outline-none cursor-pointer"
             >
-              <option value="all">All Updates</option>
-              <option value="hazards">Hazards Only</option>
-              <option value="updates">Official News Only</option>
-              <option value="urgent">Urgent Only</option>
+              <option value="all">{t("c_all_updates_filter")}</option>
+              <option value="hazards">{t("c_hazards_only")}</option>
+              <option value="updates">{t("c_official_news_only")}</option>
+              <option value="urgent">{t("c_urgent_only")}</option>
             </select>
           </div>
         </div>
@@ -183,7 +185,7 @@ export default function NewsPage() {
             ))
           ) : !error && (
             <div className="col-span-full py-20 text-center text-gray-400 font-medium bg-white rounded-3xl border border-dashed border-gray-200">
-              No matching news or alerts found for this filter.
+              {t("c_no_matching_news")}
             </div>
           )}
         </div>

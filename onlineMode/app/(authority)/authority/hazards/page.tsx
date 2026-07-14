@@ -6,8 +6,10 @@ import { useToast } from "@/context/ToastContext";
 import { getAllHazards, deleteHazard, resolveHazard } from "@/app/actions/data";
 import AddHazardModal from "@/components/AddHazardModal";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function HazardsPage() {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [hazards, setHazards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +23,7 @@ export default function HazardsPage() {
       const data = await getAllHazards();
       setHazards(data);
     } catch (err) {
-      showToast("Failed to fetch hazards", "error");
+      showToast(t("au_fetch_hazards_failed_toast"), "error");
     } finally {
       setLoading(false);
     }
@@ -43,21 +45,21 @@ export default function HazardsPage() {
   const handleResolve = async (id: string) => {
     try {
       await resolveHazard(id);
-      showToast("Hazard marked as resolved", "success");
+      showToast(t("au_hazard_resolved_toast"), "success");
       fetchHazards();
     } catch (err) {
-      showToast("Failed to resolve hazard", "error");
+      showToast(t("au_resolve_hazard_failed_toast"), "error");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this hazard permanently?")) return;
+    if (!confirm(t("au_delete_hazard_confirm"))) return;
     try {
       await deleteHazard(id);
-      showToast("Hazard deleted", "success");
+      showToast(t("au_hazard_deleted_toast"), "success");
       fetchHazards();
     } catch (err) {
-      showToast("Failed to delete hazard", "error");
+      showToast(t("au_delete_hazard_failed_toast"), "error");
     }
   };
 
@@ -66,15 +68,15 @@ export default function HazardsPage() {
       <div className="max-w-[1400px] mx-auto space-y-8">
         <div className="flex justify-between items-end">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Hazard Zones</h1>
-            <p className="text-slate-500 text-sm">Monitor and manage dangerous areas nationwide.</p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{t("au_hazard_zones")}</h1>
+            <p className="text-slate-500 text-sm">{t("au_monitor_manage_desc")}</p>
           </div>
-          <button 
+          <button
             onClick={() => setIsModalOpen(true)}
             className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-500/20"
           >
             <Plus className="w-5 h-5" />
-            Add Hazard Zone
+            {t("au_add_hazard_zone")}
           </button>
         </div>
 
@@ -82,25 +84,25 @@ export default function HazardsPage() {
         <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-3xl border border-auth-border auth-card-shadow">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input 
-              type="text" 
-              placeholder="Search hazards..." 
+            <input
+              type="text"
+              placeholder={t("au_search_hazards_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/10 transition-all"
             />
           </div>
           <div className="flex gap-2 w-full md:w-auto">
-            <select 
+            <select
               value={filterSeverity}
               onChange={(e) => setFilterSeverity(e.target.value)}
               className="bg-slate-50 border border-slate-100 px-4 py-3 rounded-2xl text-sm font-bold text-slate-600 focus:outline-none"
             >
-              <option value="all">All Severities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="moderate">Moderate</option>
-              <option value="low">Low</option>
+              <option value="all">{t("au_all_severities")}</option>
+              <option value="critical">{t("critical")}</option>
+              <option value="high">{t("high")}</option>
+              <option value="moderate">{t("au_moderate")}</option>
+              <option value="low">{t("au_low")}</option>
             </select>
           </div>
         </div>
@@ -120,7 +122,7 @@ export default function HazardsPage() {
             ))
           ) : (
             <div className="col-span-full py-20 text-center text-slate-300 font-bold uppercase tracking-widest italic">
-              No matching hazards found
+              {t("au_no_matching_hazards")}
             </div>
           )}
         </div>
@@ -136,6 +138,7 @@ export default function HazardsPage() {
 }
 
 function HazardCard({ hazard, onResolve, onDelete }: { hazard: any, onResolve: () => void, onDelete: () => void }) {
+  const { t } = useLanguage();
   const isResolved = hazard.status === 'cleared';
 
   return (
@@ -151,18 +154,18 @@ function HazardCard({ hazard, onResolve, onDelete }: { hazard: any, onResolve: (
         </div>
         <div className="flex gap-2">
            {!isResolved && (
-             <button 
+             <button
                onClick={onResolve}
                className="p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors shadow-sm"
-               title="Mark as Resolved"
+               title={t("au_mark_resolved_tooltip")}
              >
                 <CheckCircle className="w-4 h-4" />
              </button>
            )}
-           <button 
+           <button
              onClick={onDelete}
              className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors shadow-sm"
-             title="Delete Permanently"
+             title={t("au_delete_permanently_tooltip")}
            >
               <Trash2 className="w-4 h-4" />
            </button>
@@ -178,14 +181,14 @@ function HazardCard({ hazard, onResolve, onDelete }: { hazard: any, onResolve: (
                 {hazard.status}
               </span>
            </div>
-           <p className="text-xs text-slate-500 mt-1 line-clamp-2">{hazard.description || "No hazards details provided for this location."}</p>
+           <p className="text-xs text-slate-500 mt-1 line-clamp-2">{hazard.description || t("au_no_hazard_details")}</p>
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
            <div className="flex items-center gap-2 text-slate-400">
               <MapPin className="w-3 h-3" />
               {hazard.distance_km != null ? (
-                <span className="text-[10px] font-bold tracking-tighter text-orange-500 uppercase">{hazard.distance_km} km away</span>
+                <span className="text-[10px] font-bold tracking-tighter text-orange-500 uppercase">{hazard.distance_km} {t("au_km_away")}</span>
               ) : (
                 <span className="text-[10px] font-bold font-mono tracking-tighter uppercase">{hazard.latitude}, {hazard.longitude}</span>
               )}

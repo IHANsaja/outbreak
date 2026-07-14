@@ -5,8 +5,10 @@ import { Waves, TrendingUp, TrendingDown, Minus, AlertTriangle, Droplets, Activi
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./Skeleton";
 import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
 
 function HelpTooltip({ text }: { text: string }) {
+  const { t } = useLanguage();
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -27,7 +29,7 @@ function HelpTooltip({ text }: { text: string }) {
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
         className="text-gray-300 hover:text-blue-400 transition-colors ml-1"
-        aria-label="Help"
+        aria-label={t("c_help")}
       >
         <HelpCircle className="w-3 h-3" />
       </button>
@@ -68,11 +70,11 @@ interface DMCBriefStats {
   lastUpdated: string | null;
 }
 
-const statusConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  flood: { label: "FLOOD", color: "text-white", bg: "bg-red-500", border: "border-red-200" },
-  minor_flood: { label: "MINOR", color: "text-white", bg: "bg-orange-500", border: "border-orange-200" },
-  alert: { label: "ALERT", color: "text-white", bg: "bg-yellow-500", border: "border-yellow-200" },
-  safe: { label: "SAFE", color: "text-white", bg: "bg-emerald-500", border: "border-emerald-200" },
+const statusConfig: Record<string, { color: string; bg: string; border: string }> = {
+  flood: { color: "text-white", bg: "bg-red-500", border: "border-red-200" },
+  minor_flood: { color: "text-white", bg: "bg-orange-500", border: "border-orange-200" },
+  alert: { color: "text-white", bg: "bg-yellow-500", border: "border-yellow-200" },
+  safe: { color: "text-white", bg: "bg-emerald-500", border: "border-emerald-200" },
 };
 
 function TrendIcon({ delta }: { delta: number }) {
@@ -94,6 +96,7 @@ function StatCard({ label, value, icon: Icon, accent }: { label: string; value: 
 }
 
 export default function WaterLevelBrief() {
+  const { t } = useLanguage();
   const [stations, setStations] = useState<StationReport[]>([]);
   const [stats, setStats] = useState<DMCBriefStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -154,12 +157,12 @@ export default function WaterLevelBrief() {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Waves className="w-5 h-5 text-gray-400" />
-          <h3 className="font-black text-zinc-900 italic text-base md:text-lg">River Water Level Data</h3>
+          <h3 className="font-black text-zinc-900 italic text-base md:text-lg">{t("c_river_water_level_data")}</h3>
         </div>
         <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
           <Radio className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-          <p className="text-xs font-bold text-gray-400">No water level data available from the DMC pipeline yet.</p>
-          <p className="text-[10px] text-gray-300 mt-1">The data pipeline will populate this section automatically.</p>
+          <p className="text-xs font-bold text-gray-400">{t("c_no_water_data")}</p>
+          <p className="text-[10px] text-gray-300 mt-1">{t("c_pipeline_populate_note")}</p>
         </div>
       </section>
     );
@@ -174,64 +177,70 @@ export default function WaterLevelBrief() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Waves className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
-          <h3 className="font-black text-zinc-900 italic text-base md:text-lg">River Water Level Data</h3>
+          <h3 className="font-black text-zinc-900 italic text-base md:text-lg">{t("c_river_water_level_data")}</h3>
           {hasHighRisk && (
             <span className="ml-2 px-2 py-0.5 bg-red-50 border border-red-100 rounded text-[8px] font-black text-red-500 uppercase tracking-widest animate-pulse">
-              Active Floods
+              {t("c_active_floods_badge")}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
           {stats.lastUpdated && hasMounted && (
             <span className="text-[9px] font-bold text-gray-400 hidden md:inline">
-              Updated {new Date(stats.lastUpdated).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+              {t("c_updated_prefix")} {new Date(stats.lastUpdated).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
             </span>
           )}
           <Link
             href="/ai/report?stationId=21"
             className="text-[9px] md:text-[10px] font-black text-blue-500 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-0.5"
           >
-            Full Report <ChevronRight className="w-3 h-3" />
+            {t("c_full_report")} <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
       </div>
 
       {/* National Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Monitored" value={stats.totalMonitored} icon={Radio} accent="text-zinc-900" />
-        <StatCard label="At Alert" value={stats.atAlert} icon={AlertTriangle} accent={stats.atAlert > 0 ? "text-orange-500" : "text-zinc-900"} />
-        <StatCard label="Flood Events" value={stats.flooding} icon={Droplets} accent={stats.flooding > 0 ? "text-red-500" : "text-zinc-900"} />
-        <StatCard label="AI Anomalies" value={stats.anomalies} icon={Zap} accent={stats.anomalies > 0 ? "text-purple-500" : "text-zinc-900"} />
+        <StatCard label={t("c_stat_monitored")} value={stats.totalMonitored} icon={Radio} accent="text-zinc-900" />
+        <StatCard label={t("c_stat_at_alert")} value={stats.atAlert} icon={AlertTriangle} accent={stats.atAlert > 0 ? "text-orange-500" : "text-zinc-900"} />
+        <StatCard label={t("c_stat_flood_events")} value={stats.flooding} icon={Droplets} accent={stats.flooding > 0 ? "text-red-500" : "text-zinc-900"} />
+        <StatCard label={t("c_stat_ai_anomalies")} value={stats.anomalies} icon={Zap} accent={stats.anomalies > 0 ? "text-purple-500" : "text-zinc-900"} />
       </div>
 
       {/* Station Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {/* Table Header */}
         <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-3 bg-gray-50/80 border-b border-gray-100">
-          <span className="col-span-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Station</span>
-          <span className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-widest">River</span>
+          <span className="col-span-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t("c_th_station")}</span>
+          <span className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t("c_th_river")}</span>
           <span className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right flex items-center justify-end">
-            Level (m)
-            <HelpTooltip text="Current water height in meters at this station. When it rises above safe levels, flooding may occur nearby." />
+            {t("c_th_level_m")}
+            <HelpTooltip text={t("c_tooltip_level")} />
           </span>
           <span className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right flex items-center justify-end">
-            AI 1h
-            <HelpTooltip text="Our AI (XGBoost model) predicts what the water level will be in 1 hour. If this number is higher than the current level, the water is expected to keep rising." />
+            {t("c_th_ai_1h")}
+            <HelpTooltip text={t("c_tooltip_ai_1h")} />
           </span>
-          <span className="col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Status</span>
-          <span className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Updated</span>
+          <span className="col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">{t("c_th_status")}</span>
+          <span className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">{t("c_updated_prefix")}</span>
         </div>
 
         {/* Rows */}
         <div className="divide-y divide-gray-50">
           {displayStations.map((station, idx) => {
             const cfg = statusConfig[station.status];
+            const statusLabels: Record<string, string> = {
+              flood: t("c_status_flood"),
+              minor_flood: t("c_status_minor"),
+              alert: t("c_status_alert"),
+              safe: t("c_status_safe"),
+            };
             return (
               <Link
                 key={station.station_id}
                 href={`/ai/report?stationId=${station.station_id}`}
                 className="grid grid-cols-12 gap-2 px-5 py-3.5 items-center hover:bg-blue-50/40 transition-all group cursor-pointer"
-                title={`Last updated: ${new Date(station.created_at).toLocaleString()}`}
+                title={`${t("c_last_updated_prefix")} ${new Date(station.created_at).toLocaleString()}`}
               >
                 {/* Station Name */}
                 <div className="col-span-5 md:col-span-3 flex items-center gap-2.5">
@@ -293,12 +302,12 @@ export default function WaterLevelBrief() {
                     "px-2 py-0.5 rounded text-[7px] md:text-[8px] font-black uppercase tracking-[0.08em]",
                     cfg.color, cfg.bg
                   )}>
-                    {cfg.label}
+                    {statusLabels[station.status]}
                   </span>
                   {station.is_anomaly && (
                     <span
                       className="ml-1.5 px-1 py-0.5 bg-purple-100 text-purple-600 text-[7px] font-black rounded uppercase cursor-help"
-                      title="This reading was flagged as statistically unusual by the forecasting engine (e.g. an implausible jump). Verify manually before acting on it."
+                      title={t("c_anomaly_tooltip")}
                     >
                       AI
                     </span>
@@ -321,13 +330,13 @@ export default function WaterLevelBrief() {
         {stations.length > 6 && (
           <div className="px-5 py-3 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
             <span className="text-[9px] font-bold text-gray-400 italic">
-              Showing top 6 of {stations.length} monitored stations
+              {t("c_showing_top")} 6 {t("c_of")} {stations.length} {t("c_monitored_stations_suffix")}
             </span>
             <Link
               href="/ai/report?stationId=21"
               className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:text-blue-700 transition-colors flex items-center gap-0.5"
             >
-              View All <ChevronRight className="w-3 h-3" />
+              {t("c_view_all")} <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
         )}
@@ -337,7 +346,7 @@ export default function WaterLevelBrief() {
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[9px] font-bold text-gray-400">Data Source: DMC Sri Lanka — dmc.gov.lk</span>
+          <span className="text-[9px] font-bold text-gray-400">{t("c_data_source_label")}: DMC Sri Lanka — dmc.gov.lk</span>
         </div>
         <span className="text-[9px] font-bold text-gray-300 italic">Outbreak Data Pipeline v2</span>
       </div>

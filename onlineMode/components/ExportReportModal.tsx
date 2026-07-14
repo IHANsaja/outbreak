@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/context/ToastContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ExportReportModalProps {
   isOpen: boolean;
@@ -22,17 +23,18 @@ interface ExportReportModalProps {
 }
 
 export default function ExportReportModal({ isOpen, onClose }: ExportReportModalProps) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [isExporting, setIsExporting] = useState<"pdf" | "excel" | null>(null);
 
   const handleExport = (format: "pdf" | "excel") => {
     setIsExporting(format);
-    showToast(`Generating ${format.toUpperCase()} report...`, "info");
-    
+    showToast(`${t("au_generating_prefix")} ${format.toUpperCase()} ${t("au_report_suffix")}`, "info");
+
     // Simulate generation and download
     setTimeout(() => {
       setIsExporting(null);
-      showToast(`${format.toUpperCase()} report downloaded successfully.`, "success");
+      showToast(`${format.toUpperCase()} ${t("au_report_downloaded_suffix")}`, "success");
     }, 2500);
   };
 
@@ -61,8 +63,8 @@ export default function ExportReportModal({ isOpen, onClose }: ExportReportModal
                     <FileText className="w-6 h-6 text-auth-accent-teal" />
                  </div>
                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">Export Analysis Report</h2>
-                    <p className="text-slate-500 text-xs mt-0.5">Preview and generate comprehensive situational data.</p>
+                    <h2 className="text-xl font-bold text-slate-900">{t("au_export_analysis_report")}</h2>
+                    <p className="text-slate-500 text-xs mt-0.5">{t("au_preview_generate_desc")}</p>
                  </div>
               </div>
               <button 
@@ -88,11 +90,11 @@ export default function ExportReportModal({ isOpen, onClose }: ExportReportModal
                               </div>
                               OUTBREAK AUTHORITY
                            </div>
-                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Confidential Situational Report</p>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("au_confidential_situational_report")}</p>
                         </div>
                         <div className="text-right space-y-1">
-                           <p className="text-xs font-bold text-slate-900">Report ID: #SR-2026-0307</p>
-                           <p className="text-[10px] text-slate-400 font-medium">Generated: March 7, 2026 • 18:15 SLT</p>
+                           <p className="text-xs font-bold text-slate-900">{t("au_report_id_mock")}</p>
+                           <p className="text-[10px] text-slate-400 font-medium">{t("au_generated_mock")}</p>
                         </div>
                      </div>
 
@@ -100,44 +102,44 @@ export default function ExportReportModal({ isOpen, onClose }: ExportReportModal
                      <div className="grid grid-cols-3 gap-8">
                         <div className="space-y-3">
                            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                              <Calendar size={12} /> Reporting Period
+                              <Calendar size={12} /> {t("au_reporting_period_label")}
                            </h4>
-                           <p className="text-sm font-bold text-slate-900">Last 24 Hours (Active)</p>
+                           <p className="text-sm font-bold text-slate-900">{t("au_last_24h_active")}</p>
                         </div>
                         <div className="space-y-3">
                            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                              <Map size={12} /> Coverage
+                              <Map size={12} /> {t("au_coverage_label")}
                            </h4>
-                           <p className="text-sm font-bold text-slate-900">9 Active Provinces (Sri Lanka)</p>
+                           <p className="text-sm font-bold text-slate-900">{t("au_active_provinces_mock")}</p>
                         </div>
                         <div className="space-y-3">
                            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                              <BarChart3 size={12} /> Data Fidelity
+                              <BarChart3 size={12} /> {t("au_data_fidelity_label")}
                            </h4>
                            <div className="flex items-center gap-1.5">
                               <CheckCircle2 size={12} className="text-green-500" />
-                              <span className="text-sm font-bold text-slate-900">Verified AI Model</span>
+                              <span className="text-sm font-bold text-slate-900">{t("au_verified_ai_model")}</span>
                            </div>
                         </div>
                      </div>
 
                      {/* Key Indicators Table */}
                      <div className="space-y-6">
-                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Critical Performance Indicators</h4>
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">{t("au_critical_performance_indicators")}</h4>
                         <div className="border border-slate-100 rounded-2xl overflow-hidden">
                            <table className="w-full text-left text-xs">
                               <thead className="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider">
                                  <tr>
-                                    <th className="px-6 py-4">Metric</th>
-                                    <th className="px-6 py-4">Value</th>
-                                    <th className="px-6 py-4">Threshold</th>
-                                    <th className="px-6 py-4 text-right">Status</th>
+                                    <th className="px-6 py-4">{t("au_metric_col")}</th>
+                                    <th className="px-6 py-4">{t("au_value_col")}</th>
+                                    <th className="px-6 py-4">{t("au_threshold_col")}</th>
+                                    <th className="px-6 py-4 text-right">{t("au_status_col")}</th>
                                  </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
-                                 <ReportRow metric="Avg. Response Latency" value="4.2 mins" threshold="< 5.0 mins" status="Normal" color="text-green-600" />
-                                 <ReportRow metric="Incident Resolution Rate" value="82.4%" threshold="> 75.0%" status="Optimal" color="text-green-600" />
-                                 <ReportRow metric="Resource Utilization" value="94.1%" threshold="< 90.0%" status="Critical" color="text-red-600" />
+                                 <ReportRow metric={t("au_avg_response_latency")} value="4.2 mins" threshold="< 5.0 mins" status={t("au_normal_status")} color="text-green-600" />
+                                 <ReportRow metric={t("au_incident_resolution_rate")} value="82.4%" threshold="> 75.0%" status={t("au_optimal")} color="text-green-600" />
+                                 <ReportRow metric={t("au_resource_utilization_label")} value="94.1%" threshold="< 90.0%" status={t("critical")} color="text-red-600" />
                               </tbody>
                            </table>
                         </div>
@@ -145,7 +147,7 @@ export default function ExportReportModal({ isOpen, onClose }: ExportReportModal
 
                      {/* Chart Visual Placeholder */}
                      <div className="space-y-4">
-                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Incident Distribution Trend</h4>
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">{t("au_incident_distribution_trend")}</h4>
                         <div className="h-48 bg-slate-50 border border-slate-100 rounded-[28px] relative flex flex-col items-center justify-center">
                            <div className="flex gap-4 items-end h-32 w-full px-12">
                               {[35, 65, 45, 85, 55, 95, 75].map((h, i) => (
@@ -162,9 +164,9 @@ export default function ExportReportModal({ isOpen, onClose }: ExportReportModal
                      <div className="pt-10 border-t border-slate-100 flex justify-between items-center opacity-50">
                         <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
                            <Clock size={10} />
-                           AUTOMATED SYSTEM EXPORT
+                           {t("au_automated_system_export")}
                         </div>
-                        <p className="text-[10px] font-bold text-slate-400">PAGE 1 OF 1</p>
+                        <p className="text-[10px] font-bold text-slate-400">{t("au_page_1_of_1")}</p>
                      </div>
                   </div>
                </div>
@@ -178,15 +180,15 @@ export default function ExportReportModal({ isOpen, onClose }: ExportReportModal
                   className="px-8 py-4 rounded-2xl border-2 border-slate-100 font-bold text-slate-600 flex items-center gap-3 hover:bg-slate-50 transition-all active:scale-[0.98] disabled:opacity-50"
                >
                   {isExporting === "excel" ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5 text-green-600" />}
-                  Download Excel
+                  {t("au_download_excel")}
                </button>
-               <button 
+               <button
                   onClick={() => handleExport("pdf")}
                   disabled={!!isExporting}
                   className="px-10 py-4 rounded-2xl bg-auth-accent-teal hover:bg-auth-accent-teal/90 text-white font-bold flex items-center gap-3 shadow-xl shadow-auth-accent-teal/20 transition-all active:scale-[0.98] disabled:opacity-50"
                >
                   {isExporting === "pdf" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                  Export as PDF
+                  {t("au_export_as_pdf")}
                </button>
             </div>
           </motion.div>

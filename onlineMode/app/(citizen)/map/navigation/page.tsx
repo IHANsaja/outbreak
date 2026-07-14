@@ -20,17 +20,19 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-
-const directions = [
-  { id: 1, type: "start", text: "Your Location", subtext: "Start moving North", icon: MapPin, color: "text-green-500" },
-  { id: 2, type: "turn-right", text: "Turn Right", subtext: "Onto Galle Rd (Avoid low lands)", icon: CornerUpRight, color: "text-zinc-900", badge: "SAFE ZONE" },
-  { id: 3, type: "straight", text: "Continue Straight", subtext: "2.5km towards Temple Rd", icon: ArrowUp, color: "text-gray-400" },
-  { id: 4, type: "turn-left", text: "Turn Left", subtext: "Into School Lane", icon: CornerUpLeft, color: "text-gray-400" },
-  { id: 5, type: "end", text: "Destination", subtext: "Panadura North Relief Center", icon: Flag, color: "text-blue-500" },
-];
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function NavigationPage() {
+  const { t } = useLanguage();
   const [activeStep, setActiveStep] = useState(2);
+
+  const directions = [
+    { id: 1, type: "start", text: t("c_your_location"), subtext: t("c_start_moving_north"), icon: MapPin, color: "text-green-500" },
+    { id: 2, type: "turn-right", text: t("c_turn_right"), subtext: "Onto Galle Rd (Avoid low lands)", icon: CornerUpRight, color: "text-zinc-900", badge: t("c_safe_zone_badge") },
+    { id: 3, type: "straight", text: t("c_continue_straight"), subtext: "2.5km towards Temple Rd", icon: ArrowUp, color: "text-gray-400" },
+    { id: 4, type: "turn-left", text: t("c_turn_left"), subtext: "Into School Lane", icon: CornerUpLeft, color: "text-gray-400" },
+    { id: 5, type: "end", text: t("c_destination"), subtext: "Panadura North Relief Center", icon: Flag, color: "text-blue-500" },
+  ];
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -43,15 +45,15 @@ export default function NavigationPage() {
              </div>
              <div className="flex flex-col">
                 <span className="text-sm font-black tracking-tight text-zinc-900 leading-none">OUTBREAK</span>
-                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">Safe Route Navigation</span>
+                <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">{t("c_safe_route_navigation")}</span>
              </div>
           </Link>
         </div>
         
         <div className="flex items-center gap-4">
            <div className="flex bg-gray-50 rounded-lg p-1 border border-gray-100">
-             <button className="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md bg-white text-zinc-900 shadow-sm">Map View</button>
-             <button className="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md text-gray-400 hover:text-zinc-900">Satellite</button>
+             <button className="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md bg-white text-zinc-900 shadow-sm">{t("c_map_view")}</button>
+             <button className="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-md text-gray-400 hover:text-zinc-900">{t("c_satellite")}</button>
            </div>
            <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
               <X className="w-5 h-5 text-gray-400" />
@@ -66,18 +68,18 @@ export default function NavigationPage() {
               <div className="flex items-center justify-between mb-4">
                  <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Safe Route Active</span>
+                    <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">{t("c_safe_route_active")}</span>
                  </div>
-                 <span className="text-[10px] font-bold text-gray-400 uppercase">ETA: 18 min</span>
+                 <span className="text-[10px] font-bold text-gray-400 uppercase">{t("c_eta_label")}: 18 min</span>
               </div>
-              
-              <h2 className="text-xl font-black text-zinc-900 italic tracking-tight mb-1">To: Panadura North Relief Center</h2>
+
+              <h2 className="text-xl font-black text-zinc-900 italic tracking-tight mb-1">{t("c_to_label")}: Panadura North Relief Center</h2>
               <p className="text-[10px] font-medium text-gray-400 mb-6">Via Kalutara-Matugama Rd (Flood-free zone)</p>
-              
+
               <div className="flex gap-2">
                  <button className="flex-1 bg-brand-red hover:bg-red-600 text-white font-black py-3 rounded-xl shadow-lg shadow-red-900/10 transition-all flex items-center justify-center gap-2 italic text-sm">
                     <Navigation2 className="w-4 h-4 fill-white" />
-                    Start Navigation
+                    {t("c_start_navigation")}
                  </button>
                  <button className="p-3 bg-gray-50 text-zinc-900 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
                     <Share2 className="w-4 h-4" />
@@ -122,7 +124,7 @@ export default function NavigationPage() {
               <div className="flex gap-3">
                  <AlertTriangle className="w-4 h-4 text-brand-red shrink-0" />
                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-brand-red uppercase tracking-widest">Blocked Route Alert</span>
+                    <span className="text-[10px] font-black text-brand-red uppercase tracking-widest">{t("c_blocked_route_alert")}</span>
                     <p className="text-[9px] font-medium text-gray-500 leading-relaxed mt-1">
                       Main highway bridge is submerged. Route automatically rerouted to avoid sector 4.
                     </p>
@@ -175,7 +177,7 @@ export default function NavigationPage() {
            {/* Map Tooltip */}
            <div className="absolute bottom-[35%] right-[25%] -translate-x-1/2">
               <div className="bg-[#1e293b] text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-2xl flex items-center gap-2">
-                 Turn Left <ChevronRight className="w-3 h-3 text-brand-red" />
+                 {t("c_turn_left")} <ChevronRight className="w-3 h-3 text-brand-red" />
               </div>
            </div>
            
@@ -185,13 +187,13 @@ export default function NavigationPage() {
                  <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                        <div className="w-2 h-2 bg-green-500 rounded-full" />
-                       <span className="text-[10px] font-bold text-gray-600">Safe Route</span>
+                       <span className="text-[10px] font-bold text-gray-600">{t("c_legend_safe_route")}</span>
                     </div>
                  </div>
                  <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                        <div className="w-2 h-2 bg-red-500 rounded-full" />
-                       <span className="text-[10px] font-bold text-gray-600">Blocked / Danger</span>
+                       <span className="text-[10px] font-bold text-gray-600">{t("c_blocked_danger")}</span>
                     </div>
                  </div>
                  <div className="flex items-center justify-between gap-4">
@@ -199,7 +201,7 @@ export default function NavigationPage() {
                        <div className="w-5 h-5 bg-blue-50 rounded-md flex items-center justify-center">
                           <Flag className="w-3 h-3 text-blue-500" />
                        </div>
-                       <span className="text-[10px] font-bold text-gray-600">Relief Center</span>
+                       <span className="text-[10px] font-bold text-gray-600">{t("c_relief_center")}</span>
                     </div>
                  </div>
               </div>

@@ -11,6 +11,7 @@ import { getMapStations } from "@/app/actions/forecasting";
 import { useToast } from "@/context/ToastContext";
 import { useLiveLocation } from "@/hooks/useLiveLocation";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 // Fix for default marker icons in Leaflet with Next.js
 const defaultIcon = L.icon({
@@ -92,6 +93,7 @@ function RecenterMap({ coords }: { coords: Coordinates }) {
 }
 
 export default function SituationMapInner({ hazards, incidents, needs, news, userLocation: initialLocation, selectedStationId }: MapInnerProps) {
+  const { t } = useLanguage();
   const { location: liveLocation, error: locationError } = useLiveLocation(true);
   const [userLocation, setUserLocation] = useState<Coordinates>(initialLocation);
   const [isLocating, setIsLocating] = useState(false);
@@ -112,7 +114,7 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
 
   const handleLocateMe = () => {
     if (!navigator.geolocation) {
-      showToast("Geolocation is not supported by your browser", "error");
+      showToast(t("au_geolocation_unsupported_toast"), "error");
       return;
     }
 
@@ -122,8 +124,8 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
         const newCoords: Coordinates = [position.coords.latitude, position.coords.longitude];
         setUserLocation(newCoords);
         setIsLocating(false);
-        showToast("Location updated successfully", "success");
-        
+        showToast(t("au_location_updated_toast"), "success");
+
         // Persist to database
         try {
           await updateUserLocation(newCoords[0], newCoords[1]);
@@ -133,7 +135,7 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
       },
       (error) => {
         setIsLocating(false);
-        showToast("Could not retrieve your location", "error");
+        showToast(t("au_location_retrieve_failed_toast"), "error");
         console.error("Geolocation error:", error);
       },
       { enableHighAccuracy: true }
@@ -233,7 +235,7 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
         {/* User Location */}
         <Marker position={userLocation} icon={userIcon}>
           <Popup className="custom-popup">
-            <div className="p-1 font-bold">You are here</div>
+            <div className="p-1 font-bold">{t("au_you_are_here")}</div>
           </Popup>
         </Marker>
         <Circle 
@@ -250,9 +252,9 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
             <Marker key={`h-${h.id}`} position={pos} icon={hazardIcon}>
               <Popup>
                 <div className="space-y-1">
-                  <h4 className="font-bold text-red-600">{h.title || 'Hazard'}</h4>
+                  <h4 className="font-bold text-red-600">{h.title || t("au_hazard_fallback")}</h4>
                   <p className="text-xs">{h.description}</p>
-                  {h.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{h.distance_km}km away</p>}
+                  {h.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{h.distance_km} {t("au_km_away")}</p>}
                 </div>
               </Popup>
             </Marker>
@@ -267,9 +269,9 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
             <Marker key={`i-${i.id}`} position={pos} icon={incidentIcon}>
               <Popup>
                 <div className="space-y-1">
-                  <h4 className="font-bold text-orange-500">{i.itype || 'Incident'}</h4>
+                  <h4 className="font-bold text-orange-500">{i.itype || t("au_incident_fallback")}</h4>
                   <p className="text-xs">{i.description}</p>
-                  {i.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{i.distance_km}km away</p>}
+                  {i.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{i.distance_km} {t("au_km_away")}</p>}
                 </div>
               </Popup>
             </Marker>
@@ -284,9 +286,9 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
             <Marker key={`n-${n.id}`} position={pos} icon={needIcon}>
               <Popup>
                 <div className="space-y-1">
-                  <h4 className="font-bold text-purple-600">{n.stype || 'Need'}</h4>
+                  <h4 className="font-bold text-purple-600">{n.stype || t("au_need_fallback")}</h4>
                   <p className="text-xs">{n.additional_info}</p>
-                  {n.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{n.distance_km}km away</p>}
+                  {n.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{n.distance_km} {t("au_km_away")}</p>}
                 </div>
               </Popup>
             </Marker>
@@ -302,11 +304,11 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
               <Popup>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span className="bg-yellow-100 text-yellow-700 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full">Official Update</span>
+                    <span className="bg-yellow-100 text-yellow-700 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full">{t("au_official_update_badge")}</span>
                   </div>
                   <h4 className="font-bold text-yellow-600">{nw.title}</h4>
                   <p className="text-xs line-clamp-3">{nw.content}</p>
-                  {nw.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{nw.distance_km}km away</p>}
+                  {nw.distance_km && <p className="text-[10px] font-bold uppercase text-gray-500">{nw.distance_km} {t("au_km_away")}</p>}
                 </div>
               </Popup>
             </Marker>
@@ -381,7 +383,7 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
                         <span style={{
                           fontSize: 9, fontWeight: 900, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', color: 'white',
                           backgroundColor: markerColor
-                        }}>{status === 'normal' ? 'SAFE' : status.toUpperCase()} LEVEL</span>
+                        }}>{status === 'normal' ? t("au_safe_status") : status.toUpperCase()} {t("au_level_suffix")}</span>
                         <span style={{ fontSize: 16, fontWeight: 900, color: '#18181b' }}>{wl.toFixed(2)}m</span>
                       </div>
 
@@ -391,17 +393,17 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
                           <span style={{ color: wl > s.water_level_lag1 ? '#ef4444' : '#10b981', fontWeight: 900 }}>
                             {wl > s.water_level_lag1 ? '▲' : '▼'} {Math.abs(wl - s.water_level_lag1).toFixed(2)}m
                           </span>
-                          <span>from last reading</span>
+                          <span>{t("au_from_last_reading")}</span>
                         </div>
                       )}
 
                       {/* AI Forecasts */}
                       <div style={{ backgroundColor: '#fafafa', borderRadius: 8, padding: 8, marginBottom: 8 }}>
-                        <div style={{ fontSize: 9, fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>🧠 AI Predictions</div>
+                        <div style={{ fontSize: 9, fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>🧠 {t("au_ai_predictions_header")}</div>
                         {[
-                          { label: '1H Forecast', val: f1h },
-                          { label: '12H Forecast', val: f12h },
-                          { label: '24H Strategic', val: f24h },
+                          { label: t("au_forecast_1h"), val: f1h },
+                          { label: t("au_forecast_12h"), val: f12h },
+                          { label: t("au_forecast_24h_strategic"), val: f24h },
                         ].map(f => (
                           <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, fontWeight: 700, padding: '3px 0', borderBottom: '1px solid #f4f4f5' }}>
                             <span style={{ color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{f.label}</span>
@@ -419,23 +421,23 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
                       {/* Rainfall + Thresholds */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                         <div style={{ backgroundColor: '#eff6ff', borderRadius: 6, padding: '6px 8px', textAlign: 'center' }}>
-                          <div style={{ fontSize: 8, fontWeight: 900, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Rainfall 3h</div>
+                          <div style={{ fontSize: 8, fontWeight: 900, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t("au_rainfall_3h")}</div>
                           <div style={{ fontSize: 14, fontWeight: 900, color: '#1d4ed8' }}>{s.rainfall_roll3 != null ? `${s.rainfall_roll3.toFixed(1)}mm` : '—'}</div>
                         </div>
                         <div style={{ backgroundColor: s.is_anomaly ? '#fef2f2' : '#f0fdf4', borderRadius: 6, padding: '6px 8px', textAlign: 'center' }}>
-                          <div style={{ fontSize: 8, fontWeight: 900, color: s.is_anomaly ? '#ef4444' : '#10b981', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{s.is_anomaly ? 'Anomaly' : 'Sensor'}</div>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: s.is_anomaly ? '#dc2626' : '#16a34a' }}>{s.is_anomaly ? '⚠ FLAGGED' : '✓ OK'}</div>
+                          <div style={{ fontSize: 8, fontWeight: 900, color: s.is_anomaly ? '#ef4444' : '#10b981', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{s.is_anomaly ? t("au_anomaly_label") : t("au_sensor_label")}</div>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: s.is_anomaly ? '#dc2626' : '#16a34a' }}>{s.is_anomaly ? `⚠ ${t("au_flagged")}` : `✓ ${t("au_ok_status")}`}</div>
                         </div>
                       </div>
 
                       {/* Flood thresholds */}
                       {(s.alert_level || s.minor_flood || s.major_flood) && (
                         <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid #f4f4f5' }}>
-                          <div style={{ fontSize: 8, fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Flood Thresholds</div>
+                          <div style={{ fontSize: 8, fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{t("au_flood_thresholds")}</div>
                           <div style={{ display: 'flex', gap: 6, fontSize: 9, fontWeight: 800 }}>
-                            {s.alert_level != null && <span style={{ color: '#eab308' }}>⚡ Alert: {s.alert_level}m</span>}
-                            {s.minor_flood != null && <span style={{ color: '#f97316' }}>▲ Minor: {s.minor_flood}m</span>}
-                            {s.major_flood != null && <span style={{ color: '#ef4444' }}>⚠ Major: {s.major_flood}m</span>}
+                            {s.alert_level != null && <span style={{ color: '#eab308' }}>⚡ {t("au_alert_colon")} {s.alert_level}m</span>}
+                            {s.minor_flood != null && <span style={{ color: '#f97316' }}>▲ {t("au_minor_colon")} {s.minor_flood}m</span>}
+                            {s.major_flood != null && <span style={{ color: '#ef4444' }}>⚠ {t("au_major_colon")} {s.major_flood}m</span>}
                           </div>
                         </div>
                       )}
@@ -443,22 +445,22 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
                       {/* Timestamp */}
                       {s.timestamp && (
                         <div style={{ marginTop: 6, fontSize: 8, fontWeight: 700, color: '#d4d4d8', textAlign: 'right' }}>
-                          Updated: {new Date(s.timestamp).toLocaleString()}
+                          {t("au_updated_colon")} {new Date(s.timestamp).toLocaleString()}
                         </div>
                       )}
                     </>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '12px 0', color: '#a1a1aa', fontSize: 11, fontWeight: 700 }}>
                       <div style={{ fontSize: 24, marginBottom: 4 }}>📡</div>
-                      No live telemetry data
-                      <div style={{ fontSize: 9, color: '#d4d4d8', marginTop: 4 }}>Station not currently monitored by AI pipeline</div>
+                      {t("au_no_live_telemetry")}
+                      <div style={{ fontSize: 9, color: '#d4d4d8', marginTop: 4 }}>{t("au_station_not_monitored")}</div>
                     </div>
                   )}
 
                   {isSelected && (
                     <div style={{ marginTop: 8, paddingTop: 6, borderTop: '2px dashed #dbeafe', display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, fontWeight: 900, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
                       <div style={{ width: 6, height: 6, backgroundColor: '#3b82f6', borderRadius: '50%' }} />
-                      Dashboard Target
+                      {t("au_dashboard_target")}
                     </div>
                   )}
                 </div>
@@ -473,12 +475,12 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
         <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/50 pointer-events-auto">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-[10px] font-black tracking-widest uppercase text-slate-800">Situation Map | Sri Lanka</span>
+            <span className="text-[10px] font-black tracking-widest uppercase text-slate-800">{t("au_situation_map_sri_lanka")}</span>
           </div>
         </div>
 
         {/* Locate Me Button */}
-        <button 
+        <button
           onClick={handleLocateMe}
           disabled={isLocating}
           className="bg-white/90 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl border border-white/50 pointer-events-auto flex items-center gap-3 active:scale-95 transition-all text-slate-700 hover:text-blue-600 disabled:opacity-50"
@@ -489,7 +491,7 @@ export default function SituationMapInner({ hazards, incidents, needs, news, use
             <LocateFixed className="w-4 h-4" />
           )}
           <span className="text-[10px] font-black tracking-widest uppercase">
-            {isLocating ? "Locating..." : "Update My GPS"}
+            {isLocating ? t("au_locating") : t("au_update_my_gps")}
           </span>
         </button>
       </div>

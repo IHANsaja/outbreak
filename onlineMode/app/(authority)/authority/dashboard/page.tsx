@@ -8,8 +8,10 @@ import { getGlobalAIInsights } from "@/app/actions/forecasting";
 import { cn } from "@/lib/utils";
 import SituationMap from "@/components/SituationMap";
 import EdgeMessagesFeed from "@/components/EdgeMessagesFeed";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function AuthorityDashboard() {
+  const { t } = useLanguage();
   const [stats, setStats] = useState({ activeIncidents: 0, criticalNeeds: 0, activeHazards: 0, activeSos: 0 });
   const [incidents, setIncidents] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
@@ -62,32 +64,32 @@ export default function AuthorityDashboard() {
     <AuthorityLayout>
       <div className="max-w-[1400px] mx-auto space-y-8">
         <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Authority Dashboard</h1>
-          <p className="text-slate-500 text-sm mt-1">Real-time disaster management overview.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">{t("au_authority_dashboard")}</h1>
+          <p className="text-slate-500 text-sm mt-1">{t("au_realtime_overview")}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard
-            title="ACTIVE INCIDENTS"
+            title={t("au_active_incidents")}
             value={stats.activeIncidents.toString()}
-            trend={stats.activeIncidents > 0 ? `+${stats.activeIncidents} live` : "Zero"}
-            description="Verified reports requiring immediate intervention."
+            trend={stats.activeIncidents > 0 ? `+${stats.activeIncidents} ${t("au_live_word")}` : t("au_zero")}
+            description={t("au_verified_reports_desc")}
             icon={<Activity className="w-5 h-5" />}
           />
           <StatCard
-            title="PENDING SOS"
+            title={t("au_pending_sos")}
             value={stats.activeSos.toString()}
-            trend={stats.activeSos > 5 ? "High Load" : "Stable"}
+            trend={stats.activeSos > 5 ? t("au_high_load") : t("stable")}
             trendColor={stats.activeSos > 5 ? "red" : "slate"}
-            description="Emergency requests in the last 24 hours."
+            description={t("au_emergency_24h_desc")}
             icon={<Bell className="w-5 h-5" />}
           />
           <StatCard
-            title="CRITICAL NEEDS"
+            title={t("au_critical_needs")}
             value={stats.criticalNeeds.toString()}
-            trend={stats.criticalNeeds > 0 ? "Shortage" : "Supplied"}
+            trend={stats.criticalNeeds > 0 ? t("au_shortage") : t("au_supplied")}
             trendColor={stats.criticalNeeds > 0 ? "orange" : "slate"}
-            description="Resource deficits across all active regions."
+            description={t("au_resource_deficit_desc")}
             icon={<Package className="w-5 h-5" />}
           />
         </div>
@@ -145,6 +147,7 @@ function StatCard({ title, value, trend, description, icon, trendColor = "red" }
 }
 
 function AIInsightsPanel({ incidents, resources }: { incidents: any[], resources: any[] }) {
+  const { t } = useLanguage();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const criticalResources = resources.filter(r => r.status === 'critical');
   const pendingIncidents = incidents.filter(i => i.status === 'pending');
@@ -158,8 +161,8 @@ function AIInsightsPanel({ incidents, resources }: { incidents: any[], resources
               <Radio className={`w-6 h-6 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white tracking-tight">AI Telemetry Dashboard</h3>
-              <p className="text-slate-400 text-sm font-medium">Predictive analysis of system load.</p>
+              <h3 className="text-xl font-bold text-white tracking-tight">{t("au_ai_telemetry_dashboard")}</h3>
+              <p className="text-slate-400 text-sm font-medium">{t("au_predictive_load_desc")}</p>
             </div>
           </div>
         </div>
@@ -167,26 +170,26 @@ function AIInsightsPanel({ incidents, resources }: { incidents: any[], resources
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-slate-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 space-y-4 hover:border-red-500/30 transition-colors">
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold bg-red-500 text-white px-3 py-1 rounded-full uppercase tracking-widest">Incident Alert</span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">LIVE</span>
+              <span className="text-[10px] font-bold bg-red-500 text-white px-3 py-1 rounded-full uppercase tracking-widest">{t("au_incident_alert")}</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t("live")}</span>
             </div>
             <div>
-              <h4 className="text-lg font-bold text-white leading-tight">{pendingIncidents.length} Pending Reports</h4>
+              <h4 className="text-lg font-bold text-white leading-tight">{pendingIncidents.length} {t("au_pending_reports")}</h4>
               <p className="text-sm text-slate-400 mt-1 leading-relaxed">
-                {pendingIncidents.length > 0 ? "Immediate verification required for reports in active zones." : "System clear. No pending incidents requiring verification."}
+                {pendingIncidents.length > 0 ? t("au_verification_required_desc") : t("au_no_pending_incidents")}
               </p>
             </div>
           </div>
 
           <div className="bg-slate-800/40 backdrop-blur-md rounded-2xl p-6 border border-white/5 space-y-4 hover:border-yellow-500/30 transition-colors">
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold bg-yellow-500 text-white px-3 py-1 rounded-full uppercase tracking-widest">Resource Low</span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">STOCK</span>
+              <span className="text-[10px] font-bold bg-yellow-500 text-white px-3 py-1 rounded-full uppercase tracking-widest">{t("au_resource_low")}</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t("au_stock")}</span>
             </div>
             <div>
-              <h4 className="text-lg font-bold text-white leading-tight">{criticalResources.length} Critical Stockouts</h4>
+              <h4 className="text-lg font-bold text-white leading-tight">{criticalResources.length} {t("au_critical_stockouts")}</h4>
               <p className="text-sm text-slate-400 mt-1 leading-relaxed">
-                {criticalResources.length > 0 ? `Supplies for ${criticalResources[0].name} are low in the hub.` : "Inventory levels are stable across all regions."}
+                {criticalResources.length > 0 ? `${t("au_supplies_for")} ${criticalResources[0].name} ${t("au_low_in_hub")}` : t("au_inventory_stable_desc")}
               </p>
             </div>
           </div>
@@ -198,8 +201,9 @@ function AIInsightsPanel({ incidents, resources }: { incidents: any[], resources
 }
 
 function MessageVolumeChart() {
+  const { t } = useLanguage();
   const [chartData, setChartData] = useState<any[]>([]);
-  
+
   useEffect(() => {
     async function fetchChart() {
       const data = await getHourlyActivityStats();
@@ -212,13 +216,13 @@ function MessageVolumeChart() {
     <div className="bg-white p-8 rounded-[32px] border border-auth-border auth-card-shadow flex flex-col gap-6">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="text-lg font-bold text-slate-900 tracking-tight">System Activity</h3>
-          <p className="text-xs text-slate-400 font-medium">Hourly message volume</p>
+          <h3 className="text-lg font-bold text-slate-900 tracking-tight">{t("au_system_activity")}</h3>
+          <p className="text-xs text-slate-400 font-medium">{t("au_hourly_message_volume")}</p>
         </div>
       </div>
       <div className="h-48 w-full flex items-end justify-between gap-1">
         {chartData.length > 0 ? chartData.map((d, i) => (
-          <div key={i} className="flex-1 bg-slate-100 rounded-t-lg relative group overflow-hidden" title={`${d.count} events at ${d.hour}:00`}>
+          <div key={i} className="flex-1 bg-slate-100 rounded-t-lg relative group overflow-hidden" title={`${d.count} ${t("au_events_at")} ${d.hour}:00`}>
             <div 
               className="absolute bottom-0 w-full bg-auth-accent-red/20 group-hover:bg-auth-accent-red/40 transition-all rounded-t-md" 
               style={{ height: `${Math.min(100, (d.count / (Math.max(...chartData.map(cd => cd.count)) || 1)) * 100)}%` }} 
@@ -243,6 +247,7 @@ function MessageVolumeChart() {
 }
 
 function RegionalSeverityCard() {
+  const { t } = useLanguage();
   const [regions, setRegions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -252,9 +257,9 @@ function RegionalSeverityCard() {
 
   return (
     <div className="bg-white p-8 rounded-[32px] border border-auth-border auth-card-shadow min-h-[400px]">
-      <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-8">Regional Severity</h3>
+      <h3 className="text-lg font-bold text-slate-900 tracking-tight mb-8">{t("au_regional_severity")}</h3>
       <div className="space-y-6">
-        {loading ? <p className="animate-pulse">Loading...</p> : regions.map((region) => (
+        {loading ? <p className="animate-pulse">{t("au_loading")}</p> : regions.map((region) => (
           <div key={region.id} className="space-y-2">
             <div className="flex justify-between text-xs font-bold uppercase tracking-tight">
               <span className="text-slate-500">{region.name}</span>
@@ -279,17 +284,18 @@ function RegionalSeverityCard() {
 }
 
 function LiveOperationsMap({ incidents, sos, stations, hazards, news, center }: { incidents: any[], sos: any[], stations: any[], hazards: any[], news: any[], center: [number, number] }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-white rounded-[32px] border border-auth-border auth-card-shadow overflow-hidden group">
       <div className="p-6 border-b border-auth-border flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          Situation Map
+          {t("situation_map")}
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
         </h3>
-        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded">High Risk Focus</span>
+        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-50 px-2 py-0.5 rounded">{t("au_high_risk_focus")}</span>
       </div>
       <div className="h-[400px] bg-slate-50 relative">
-         <SituationMap 
+         <SituationMap
             hazards={hazards}
             incidents={incidents}
             news={news}
@@ -298,13 +304,14 @@ function LiveOperationsMap({ incidents, sos, stations, hazards, news, center }: 
          />
       </div>
       <div className="p-4 bg-zinc-900 text-[10px] font-black text-white/40 uppercase tracking-widest text-center">
-        National Disaster Intelligence Grid
+        {t("au_national_disaster_grid")}
       </div>
     </div>
   );
 }
 
 function RecentActivityCard({ activities, onResolve }: { activities: any[], onResolve: () => void }) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
@@ -312,10 +319,10 @@ function RecentActivityCard({ activities, onResolve }: { activities: any[], onRe
     setResolvingId(id);
     try {
       await resolveSOS(id);
-      showToast("SOS request marked as resolved", "success");
+      showToast(t("au_sos_resolved_toast"), "success");
       onResolve();
     } catch (err) {
-      showToast("Failed to resolve SOS", "error");
+      showToast(t("au_sos_resolve_failed_toast"), "error");
     } finally {
       setResolvingId(null);
     }
@@ -323,11 +330,11 @@ function RecentActivityCard({ activities, onResolve }: { activities: any[], onRe
 
   return (
     <div className="bg-white p-8 rounded-[32px] border border-auth-border auth-card-shadow">
-      <h3 className="text-lg font-bold text-slate-900 mb-8 tracking-tight">Recent SOS Priority</h3>
+      <h3 className="text-lg font-bold text-slate-900 mb-8 tracking-tight">{t("au_recent_sos_priority")}</h3>
       <div className="space-y-6">
         {activities.length > 0 ? activities.map((sos) => (
           <div key={sos.id} className="flex gap-4 items-start pb-6 border-b border-slate-50 last:border-0 last:pb-0 group">
-            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm", 
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
               sos.status === 'active' ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-400")}>
               <Bell className="w-5 h-5" />
             </div>
@@ -335,22 +342,22 @@ function RecentActivityCard({ activities, onResolve }: { activities: any[], onRe
               <div className="flex justify-between items-start">
                 <h4 className="text-sm font-bold text-slate-900 group-hover:text-auth-accent-red transition-colors uppercase">{sos.stype}</h4>
                 {sos.status === 'active' && (
-                  <button 
+                  <button
                     disabled={resolvingId === sos.id}
                     onClick={() => handleResolve(sos.id)}
                     className="text-auth-accent-red text-[10px] font-black uppercase tracking-widest hover:underline disabled:opacity-50"
                   >
-                    {resolvingId === sos.id ? "Solving..." : "RESOLVE"}
+                    {resolvingId === sos.id ? t("au_solving") : t("au_resolve")}
                   </button>
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-1 line-clamp-1 italic">
-                "{sos.additional_info || "Urgent assistance needed"}" 
-                {sos.distance_km != null && <span className="font-bold text-auth-accent-red ml-1">({sos.distance_km}km away)</span>}
+                "{sos.additional_info || t("au_urgent_assistance_needed")}"
+                {sos.distance_km != null && <span className="font-bold text-auth-accent-red ml-1">({sos.distance_km} {t("au_km_away")})</span>}
               </p>
             </div>
           </div>
-        )) : <p className="text-center py-10 text-slate-300 font-bold uppercase tracking-widest text-xs">No active alerts</p>}
+        )) : <p className="text-center py-10 text-slate-300 font-bold uppercase tracking-widest text-xs">{t("au_no_active_alerts")}</p>}
       </div>
     </div>
   );

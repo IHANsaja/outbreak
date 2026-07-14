@@ -6,8 +6,10 @@ import { useToast } from "@/context/ToastContext";
 import { getAllIncidents, getActiveSosRequests, getActiveHazards, getOfficialUpdates } from "@/app/actions/data";
 import { cn } from "@/lib/utils";
 import SituationMap from "@/components/SituationMap";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function MapViewPage() {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [sosRequests, setSosRequests] = useState<any[]>([]);
@@ -29,7 +31,7 @@ export default function MapViewPage() {
         setHazards(haz);
         setNews(nws);
       } catch (err) {
-        showToast("Error syncing map data", "error");
+        showToast(t("au_error_syncing_map_toast"), "error");
       } finally {
         setLoading(false);
       }
@@ -55,12 +57,12 @@ export default function MapViewPage() {
         <div className="absolute top-6 left-6 flex gap-3 z-[1001]">
            <div className="bg-[#0f172a] text-white p-6 rounded-3xl shadow-2xl border border-white/10 backdrop-blur-md w-80">
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                 <Globe className="w-3 h-3" /> GIS COMMAND
+                 <Globe className="w-3 h-3" /> {t("au_gis_command")}
               </div>
-              <h3 className="text-xl font-bold tracking-tight">National Situation Map</h3>
+              <h3 className="text-xl font-bold tracking-tight">{t("au_national_situation_map")}</h3>
               <div className="flex items-center gap-2 mt-2">
                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                 <span className="text-xs text-slate-400 font-medium truncate">Live Feed Active • {incidents.length + sosRequests.length + hazards.length + news.length} Events</span>
+                 <span className="text-xs text-slate-400 font-medium truncate">{t("au_live_feed_active")} • {incidents.length + sosRequests.length + hazards.length + news.length} {t("au_events_word")}</span>
               </div>
            </div>
         </div>
@@ -70,9 +72,9 @@ export default function MapViewPage() {
               <div className="flex justify-between items-center text-white">
                  <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-red-500 animate-pulse" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Active Alerts</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">{t("alerts")}</span>
                  </div>
-                 <span className="text-[10px] font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/20 uppercase tracking-widest">Real-time</span>
+                 <span className="text-[10px] font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/20 uppercase tracking-widest">{t("au_real_time")}</span>
               </div>
            </div>
            
@@ -81,30 +83,30 @@ export default function MapViewPage() {
                 [1,2,3].map(i => <div key={i} className="h-20 bg-white/5 animate-pulse rounded-2xl" />)
                ) : sosRequests.length > 0 ? (
                  sosRequests.map(sos => (
-                   <ReportCard 
+                   <ReportCard
                      key={sos.id}
-                     type="SOS" 
-                     title={sos.stype} 
-                     sub={sos.additional_info || "Urgent assistance requested."} 
-                     time={new Date(sos.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
-                     location={`${parseFloat(sos.latitude).toFixed(2)}, ${parseFloat(sos.longitude).toFixed(2)}`} 
-                     color="bg-red-500/20 text-red-400 border-red-500/30" 
+                     type="SOS"
+                     title={sos.stype}
+                     sub={sos.additional_info || t("au_urgent_assistance_requested")}
+                     time={new Date(sos.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                     location={`${parseFloat(sos.latitude).toFixed(2)}, ${parseFloat(sos.longitude).toFixed(2)}`}
+                     color="bg-red-500/20 text-red-400 border-red-500/30"
                    />
                  ))
                ) : (
-                <div className="text-center py-10 text-slate-500 text-[10px] font-bold uppercase tracking-widest">No active SOS reports</div>
+                <div className="text-center py-10 text-slate-500 text-[10px] font-bold uppercase tracking-widest">{t("au_no_active_sos_reports")}</div>
               )}
            </div>
         </div>
 
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#0f172a]/95 backdrop-blur-xl px-10 py-3 rounded-full border border-white/10 shadow-2xl flex items-center gap-12 text-white z-[1001]">
             <div className="flex items-center gap-2">
-               <span className="text-[10px] font-bold text-slate-500 uppercase">Center:</span>
+               <span className="text-[10px] font-bold text-slate-500 uppercase">{t("au_center_label")}</span>
                <span className="text-xs font-mono">6.9271°N, 79.8612°E</span>
             </div>
             <div className="flex items-center gap-2 border-l border-white/10 pl-12">
                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">PostgreSQL Realtime Sync</span>
+               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("au_postgresql_sync")}</span>
             </div>
         </div>
       </div>
@@ -113,9 +115,10 @@ export default function MapViewPage() {
 }
 
 function ReportCard({ type, title, sub, time, location, color }: any) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   return (
-    <div onClick={() => showToast(`Locating Report: ${title}`, "info")} className="bg-white/5 border border-white/5 p-4 rounded-2xl hover:bg-white/10 transition-colors cursor-pointer group">
+    <div onClick={() => showToast(`${t("au_locating_report_toast")} ${title}`, "info")} className="bg-white/5 border border-white/5 p-4 rounded-2xl hover:bg-white/10 transition-colors cursor-pointer group">
        <div className="flex justify-between items-start mb-2">
           <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest", color)}>
              {type}

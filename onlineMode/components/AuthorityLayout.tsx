@@ -1,17 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AuthoritySidebar from "@/components/AuthoritySidebar";
 import { Bell, Calendar, ChevronRight, Globe, Search, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage, Language } from "@/context/LanguageContext";
 
 export default function AuthorityLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { language, setLanguage, t } = useLanguage();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Rendered after mount (and refreshed each minute) to avoid an SSR
+  // hydration mismatch on the clock.
+  const [currentDate, setCurrentDate] = useState("");
+  useEffect(() => {
+    const update = () =>
+      setCurrentDate(
+        new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      );
+    update();
+    const timer = setInterval(update, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="min-h-screen bg-auth-bg font-outfit relative">
@@ -45,21 +64,39 @@ export default function AuthorityLayout({
             </button>
 
             <div className="hidden sm:flex items-center gap-2 text-sm text-slate-400">
-              <span className="hidden md:inline">Command Center</span>
+              <span className="hidden md:inline">{t("au_command_center")}</span>
               <ChevronRight className="w-4 h-4 hidden md:inline" />
-              <span className="text-slate-600 font-medium">Overview</span>
+              <span className="text-slate-600 font-medium">{t("au_overview")}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
             <div className="hidden md:flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
               <Calendar className="w-4 h-4 text-slate-400" />
-              <span className="text-sm font-semibold text-slate-600">Oct 24, 2023</span>
+              <span className="text-sm font-semibold text-slate-600">{currentDate || "…"}</span>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-50 pl-3 pr-1.5 py-1.5 rounded-xl border border-slate-100">
+              <Globe className="w-4 h-4 text-slate-400" />
+              <div className="flex bg-white p-1 rounded-lg border border-slate-100">
+                {(["en", "si", "ta"] as Language[]).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => setLanguage(lang)}
+                    className={cn(
+                      "px-2 py-1 text-[10px] font-black rounded-md transition-all",
+                      language === lang ? "bg-slate-900 text-white shadow-sm" : "text-slate-400 hover:text-slate-900"
+                    )}
+                  >
+                    {lang.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-center gap-3 bg-green-50 px-3 md:px-4 py-2 rounded-xl border border-green-100">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-[10px] md:text-sm font-semibold text-green-700 uppercase md:normal-case">System Operational</span>
+              <span className="text-[10px] md:text-sm font-semibold text-green-700 uppercase md:normal-case">{t("au_system_operational")}</span>
             </div>
 
             <div className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-50 transition-colors cursor-pointer border border-transparent hover:border-slate-200">

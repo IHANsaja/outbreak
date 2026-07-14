@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/context/ToastContext";
 import { addResource } from "@/app/actions/data";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface NewShipmentModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface NewShipmentModalProps {
 }
 
 export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalProps) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,11 +47,11 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
 
     try {
       await addResource(finalData);
-      showToast("Shipment registered and tracking initiated.", "success");
+      showToast(t("au_shipment_registered_toast"), "success");
       onClose();
     } catch (err) {
       console.error(err);
-      showToast("Failed to register shipment. Please check connectivity.", "error");
+      showToast(t("au_shipment_register_failed_toast"), "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -80,8 +82,8 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                     <Package className="w-7 h-7 text-blue-500" />
                  </div>
                  <div>
-                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">New Resource Shipment</h2>
-                    <p className="text-slate-500 text-sm mt-1">Register supply chain movement and logistics.</p>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t("au_new_resource_shipment")}</h2>
+                    <p className="text-slate-500 text-sm mt-1">{t("au_register_supply_desc")}</p>
                  </div>
               </div>
               <button 
@@ -96,9 +98,9 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
             {/* Progress Steps */}
             <div className="px-8 mt-4">
                <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-                  <StepIndicator icon={<Layers size={14}/>} active={step === 1} done={step > 1} label="Items" />
+                  <StepIndicator icon={<Layers size={14}/>} active={step === 1} done={step > 1} label={t("au_step_items")} />
                   <ArrowRight size={14} className="text-slate-300" />
-                  <StepIndicator icon={<Truck size={14}/>} active={step === 2} done={isSubmitting} label="Logistics" />
+                  <StepIndicator icon={<Truck size={14}/>} active={step === 2} done={isSubmitting} label={t("au_step_logistics")} />
                </div>
             </div>
 
@@ -106,32 +108,32 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                {step === 1 ? (
                   <div className="space-y-6">
                      <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Resource Category</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_resource_category_label")}</label>
                         <div className="relative">
                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                               <Box className="w-5 h-5" />
                            </div>
                            <select name="category" required className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-12 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
-                              <option value="Medical Supplies">Medical Supplies</option>
-                              <option value="Food & Water">Food & Water</option>
-                              <option value="Infrastructure Equipment">Infrastructure Equipment</option>
-                              <option value="Personnel Gear">Personnel Gear</option>
+                              <option value="Medical Supplies">{t("au_medical_supplies")}</option>
+                              <option value="Food & Water">{t("au_food_water")}</option>
+                              <option value="Infrastructure Equipment">{t("au_infrastructure_equipment")}</option>
+                              <option value="Personnel Gear">{t("au_personnel_gear")}</option>
                            </select>
                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
                         </div>
                      </div>
                      <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-3">
-                           <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Quantity</label>
+                           <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_quantity_label")}</label>
                            <input name="quantity" type="number" required placeholder="0" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
                         </div>
                         <div className="space-y-3">
-                           <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Unit</label>
+                           <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_unit_label")}</label>
                            <select name="unit" className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
-                              <option value="Kits">Kits</option>
-                              <option value="Metric Tons">Metric Tons</option>
-                              <option value="Units">Units</option>
-                              <option value="Pallets">Pallets</option>
+                              <option value="Kits">{t("au_kits")}</option>
+                              <option value="Metric Tons">{t("au_metric_tons")}</option>
+                              <option value="Units">{t("au_units_word")}</option>
+                              <option value="Pallets">{t("au_pallets")}</option>
                            </select>
                         </div>
                      </div>
@@ -139,21 +141,21 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                ) : (
                   <div className="space-y-6">
                      <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Destination Facility</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_destination_facility_label")}</label>
                         <div className="relative">
                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                               <MapPin className="w-5 h-5" />
                            </div>
                            <select name="destination" required className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-12 text-slate-700 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all cursor-pointer">
-                              <option value="Regional Hub A (Colombo)">Regional Hub A (Colombo)</option>
-                              <option value="Field Hospital Beta (Kandy)">Field Hospital Beta (Kandy)</option>
-                              <option value="Distribution Center (Galle)">Distribution Center (Galle)</option>
+                              <option value="Regional Hub A (Colombo)">{t("au_regional_hub_colombo")}</option>
+                              <option value="Field Hospital Beta (Kandy)">{t("au_field_hospital_kandy")}</option>
+                              <option value="Distribution Center (Galle)">{t("au_distribution_center_galle")}</option>
                            </select>
                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
                         </div>
                      </div>
                      <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Estimated Arrival</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t("au_estimated_arrival_label")}</label>
                         <div className="relative">
                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                               <Calendar className="w-5 h-5" />
@@ -167,15 +169,15 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                {/* Actions */}
                <div className="flex gap-4 pt-2">
                   {step === 2 ? (
-                     <button 
+                     <button
                         type="button"
                         onClick={() => setStep(1)}
                         className="px-8 py-5 rounded-[24px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest text-xs"
                      >
-                        Back
+                        {t("au_back_btn")}
                      </button>
                   ) : null}
-                  <button 
+                  <button
                     type={step === 2 ? "submit" : "button"}
                     onClick={step === 1 ? () => setStep(2) : undefined}
                     disabled={isSubmitting}
@@ -184,14 +186,14 @@ export default function NewShipmentModal({ isOpen, onClose }: NewShipmentModalPr
                      {isSubmitting ? (
                         <>
                            <Loader2 className="w-5 h-5 animate-spin" />
-                           REGISTERING...
+                           {t("au_registering")}
                         </>
                      ) : (
                         <>
                            {step === 1 ? (
-                               <>Next Step <ArrowRight className="w-5 h-5" /></>
+                               <>{t("au_next_step")} <ArrowRight className="w-5 h-5" /></>
                            ) : (
-                               <>Initiate Shipment <Truck className="w-5 h-5" /></>
+                               <>{t("au_initiate_shipment")} <Truck className="w-5 h-5" /></>
                            )}
                         </>
                      )}

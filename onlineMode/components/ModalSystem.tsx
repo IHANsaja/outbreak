@@ -4,6 +4,7 @@ import { X, MapPin, Camera, ChevronRight, AlertTriangle, Info, Send, LifeBuoy, H
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ModalProps {
   isOpen: boolean;
@@ -59,6 +60,7 @@ export function Modal({ isOpen, onClose, title, children, subtitle, icon }: Moda
 }
 
 export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const { t } = useLanguage();
   const [hazards, setHazards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,8 +83,8 @@ export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Nearby Active Hazards"
-      subtitle="Within 5km of your location"
+      title={t("c_nearby_hazards_title")}
+      subtitle={t("c_within_5km")}
       icon={<AlertTriangle className="w-6 h-6" />}
     >
       <div className="space-y-4">
@@ -110,7 +112,7 @@ export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                     hazard.severity === "high" || hazard.severity === 'critical' || hazard.severity === 'Critical' ? "bg-red-100 text-brand-red" :
                       hazard.severity === "medium" || hazard.severity === 'moderate' || hazard.severity === 'High' ? "bg-orange-100 text-brand-orange" : "bg-yellow-100 text-brand-yellow"
                   )}>
-                    {hazard.severity} severity
+                    {hazard.severity} {t("c_severity_word")}
                   </span>
                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">
                     {new Date(hazard.created_at).toLocaleString()}
@@ -118,7 +120,7 @@ export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                 </div>
                 <div className="flex items-center gap-1 text-[9px] font-black text-gray-500 uppercase tracking-widest">
                   <MapPin className="w-3 h-3" />
-                  {hazard.distance_km != null ? `${hazard.distance_km}km away` : `${hazard.radius_km || 1.5}km radius`}
+                  {hazard.distance_km != null ? `${hazard.distance_km}${t("c_km_away_suffix")}` : `${hazard.radius_km || 1.5}${t("c_km_radius_suffix")}`}
                 </div>
               </div>
 
@@ -127,29 +129,29 @@ export function HazardsModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
 
               <div className="flex gap-2">
                 <button className="flex-1 bg-brand-red text-white py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors">
-                  Evacuation Map
+                  {t("c_evacuation_map")}
                 </button>
                 <button className="flex-1 bg-white border border-gray-200 py-2 rounded-lg text-[10px] font-black text-gray-600 uppercase tracking-widest hover:bg-gray-50 transition-colors">
-                  Details
+                  {t("c_details")}
                 </button>
               </div>
             </div>
           ))
         ) : (
           <div className="p-8 text-center border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 font-medium">
-            No active hazards in your immediate vicinity.
+            {t("c_no_hazards_vicinity")}
           </div>
         )}
 
         <div className="pt-4 flex items-center justify-between">
           <button className="text-[10px] font-black text-brand-red uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
-            View Full Map <ChevronRight className="w-3 h-3" />
+            {t("c_view_full_map")} <ChevronRight className="w-3 h-3" />
           </button>
           <button
             onClick={onClose}
             className="px-6 py-2.5 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold border border-gray-100"
           >
-            Close
+            {t("c_close")}
           </button>
         </div>
       </div>
@@ -161,6 +163,7 @@ import { submitIncident, submitSOS } from "@/app/actions/data";
 import { useToast } from "@/context/ToastContext";
 
 export function ReportModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -171,7 +174,7 @@ export function ReportModal({ isOpen, onClose }: { isOpen: boolean, onClose: () 
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        showToast("Image must be under 5MB.", "warning");
+        showToast(t("c_image_size_limit"), "warning");
         return;
       }
       setImageFile(file);
@@ -205,12 +208,12 @@ export function ReportModal({ isOpen, onClose }: { isOpen: boolean, onClose: () 
 
     try {
       await submitIncident(formData);
-      showToast("Incident report submitted successfully.", "success");
+      showToast(t("c_incident_submitted_success"), "success");
       removeImage();
       onClose();
     } catch (err) {
       console.error(err);
-      showToast("Failed to submit report. Please try again.", "error");
+      showToast(t("c_incident_submit_error"), "error");
     } finally {
       setLoading(false);
     }
@@ -221,35 +224,35 @@ export function ReportModal({ isOpen, onClose }: { isOpen: boolean, onClose: () 
       isOpen={isOpen}
       onClose={onClose}
       title="OUTBREAK"
-      subtitle="REPORT INCIDENT"
+      subtitle={t("report_incident")}
       icon={<Camera className="w-6 h-6" />}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-3">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Location</span>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("c_location_label")}</span>
           <button type="button" className="w-full py-4 bg-blue-50 text-blue-600 border border-blue-100 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-100 transition-all active:scale-[0.98]">
             <MapPin className="w-4 h-4" />
-            <span className="font-bold text-sm italic">Detect My Location</span>
+            <span className="font-bold text-sm italic">{t("c_detect_location")}</span>
           </button>
           <div className="flex items-center gap-2 px-2">
             <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[10px] text-gray-400 font-medium italic">GPS accuracy: ~5 meters</span>
+            <span className="text-[10px] text-gray-400 font-medium italic">{t("c_gps_accuracy")}</span>
           </div>
         </div>
 
         <div className="space-y-3">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Incident Type</span>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("c_incident_type_label")}</span>
           <select name="itype" required className="w-full p-4 rounded-2xl border border-gray-100 bg-white font-bold text-zinc-900 text-sm italic focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none appearance-none">
-            <option value="">Select Damage Type...</option>
-            <option value="Flooding">Flooding</option>
-            <option value="Landslide">Landslide</option>
-            <option value="Structural Damage">Structural Damage</option>
-            <option value="Road Block">Road Block</option>
+            <option value="">{t("c_select_damage_type")}</option>
+            <option value="Flooding">{t("c_damage_flooding")}</option>
+            <option value="Landslide">{t("c_damage_landslide")}</option>
+            <option value="Structural Damage">{t("c_damage_structural")}</option>
+            <option value="Road Block">{t("c_damage_road_block")}</option>
           </select>
         </div>
 
         <div className="space-y-3">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Evidence Photo</span>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("c_evidence_photo")}</span>
           <input
             ref={fileInputRef}
             type="file"
@@ -261,7 +264,7 @@ export function ReportModal({ isOpen, onClose }: { isOpen: boolean, onClose: () 
           
           {imagePreview ? (
             <div className="relative rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
-              <img src={imagePreview} alt="Preview" className="w-full aspect-video object-cover" />
+              <img src={imagePreview} alt={t("c_preview_alt")} className="w-full aspect-video object-cover" />
               <button
                 type="button"
                 onClick={removeImage}
@@ -283,34 +286,34 @@ export function ReportModal({ isOpen, onClose }: { isOpen: boolean, onClose: () 
                 <Camera className="w-6 h-6" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-zinc-900 italic">Tap to take photo</p>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">or upload from gallery (max 5MB)</p>
+                <p className="text-sm font-bold text-zinc-900 italic">{t("c_tap_to_take_photo")}</p>
+                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">{t("c_upload_gallery_hint")}</p>
               </div>
             </button>
           )}
         </div>
 
         <div className="space-y-3">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</span>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("c_description_label")}</span>
           <textarea
             name="description"
             required
-            placeholder="Describe the damage or situation briefly..."
+            placeholder={t("c_describe_damage_placeholder")}
             className="w-full h-32 p-4 rounded-2xl border border-gray-100 bg-white shadow-sm focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none transition-all placeholder:text-gray-300 font-medium text-sm"
           />
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={loading}
           className="w-full py-5 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl shadow-xl shadow-orange-500/20 font-black text-xl italic tracking-tight uppercase flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-70"
         >
           {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
-          {loading ? "Uploading..." : "Submit Report"}
+          {loading ? t("c_uploading") : t("c_submit_report")}
         </button>
 
         <p className="text-[9px] text-gray-400 text-center font-bold italic">
-          False reporting is a punishable offense under Emergency Regulations.
+          {t("c_false_reporting_warning")}
         </p>
       </form>
     </Modal>
@@ -318,6 +321,7 @@ export function ReportModal({ isOpen, onClose }: { isOpen: boolean, onClose: () 
 }
 
 export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -326,18 +330,18 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
   const [description, setDescription] = useState("");
 
   const needTypes = [
-    { id: "medical", title: "Medical Aid", icon: Heart, color: "text-red-500", bg: "bg-red-50" },
-    { id: "rescue", title: "Rescue", icon: Anchor, color: "text-blue-500", bg: "bg-blue-50" },
-    { id: "supplies", title: "Food / Water", icon: Package, color: "text-orange-500", bg: "bg-orange-50" },
-    { id: "fire", title: "Fire / Hazard", icon: Flame, color: "text-amber-600", bg: "bg-amber-50" },
-    { id: "shelter", title: "Shelter", icon: PlusSquare, color: "text-emerald-500", bg: "bg-emerald-50" },
-    { id: "other", title: "Other Need", icon: Info, color: "text-violet-500", bg: "bg-violet-50" },
+    { id: "medical", title: t("c_need_medical"), icon: Heart, color: "text-red-500", bg: "bg-red-50" },
+    { id: "rescue", title: t("c_need_rescue"), icon: Anchor, color: "text-blue-500", bg: "bg-blue-50" },
+    { id: "supplies", title: t("c_need_supplies"), icon: Package, color: "text-orange-500", bg: "bg-orange-50" },
+    { id: "fire", title: t("c_need_fire"), icon: Flame, color: "text-amber-600", bg: "bg-amber-50" },
+    { id: "shelter", title: t("c_need_shelter"), icon: PlusSquare, color: "text-emerald-500", bg: "bg-emerald-50" },
+    { id: "other", title: t("c_need_other"), icon: Info, color: "text-violet-500", bg: "bg-violet-50" },
   ];
 
   const urgencyOptions = [
-    { id: "critical", label: "Critical — Life threatening", color: "border-red-500 bg-red-50 text-red-700" },
-    { id: "high", label: "High — Urgent help needed", color: "border-orange-500 bg-orange-50 text-orange-700" },
-    { id: "medium", label: "Medium — Can wait some time", color: "border-yellow-500 bg-yellow-50 text-yellow-700" },
+    { id: "critical", label: t("c_urgency_critical"), color: "border-red-500 bg-red-50 text-red-700" },
+    { id: "high", label: t("c_urgency_high"), color: "border-orange-500 bg-orange-50 text-orange-700" },
+    { id: "medium", label: t("c_urgency_medium"), color: "border-yellow-500 bg-yellow-50 text-yellow-700" },
   ];
 
   const handleSend = async () => {
@@ -358,7 +362,7 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
 
     try {
       await submitSOS(formData);
-      showToast("Help request broadcasted successfully.", "success");
+      showToast(t("c_sos_submitted_success"), "success");
       setSelected(null);
       setUrgency("critical");
       setPeopleCount("");
@@ -366,7 +370,7 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
       onClose();
     } catch (err) {
       console.error(err);
-      showToast("Failed to send help request. Please try again.", "error");
+      showToast(t("c_sos_submit_error"), "error");
     } finally {
       setLoading(false);
     }
@@ -376,18 +380,18 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Request Help"
-      subtitle="Broadcast your need to the community"
+      title={t("c_request_help")}
+      subtitle={t("c_broadcast_need")}
       icon={<LifeBuoy className="w-6 h-6" />}
     >
       <div className="space-y-5">
         <p className="text-[13px] font-medium text-gray-500 leading-relaxed text-center px-4">
-          Describe what you need. Your request will be visible on the Community Needs board so nearby responders and volunteers can help.
+          {t("c_sos_intro")}
         </p>
 
         {/* Need Type */}
         <div className="space-y-2">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">What do you need?</span>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t("c_what_do_you_need")}</span>
           <div className="grid grid-cols-3 gap-2">
             {needTypes.map((action) => (
               <button
@@ -420,7 +424,7 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
 
         {/* Urgency Level */}
         <div className="space-y-2">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Urgency Level</span>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t("c_urgency_level")}</span>
           <div className="flex flex-col gap-2">
             {urgencyOptions.map((opt) => (
               <button
@@ -446,27 +450,27 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
         {/* Quantity */}
         <div className="space-y-2">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-            {{ 
-              medical: "People Injured (optional)",
-              rescue: "People Trapped (optional)",
-              supplies: "Packets / Portions Needed (optional)",
-              fire: "People to Evacuate (optional)",
-              shelter: "People Needing Shelter (optional)",
-              other: "Quantity Needed (optional)"
-            }[selected || "other"] || "Quantity Needed (optional)"}
+            {{
+              medical: t("c_qty_medical"),
+              rescue: t("c_qty_rescue"),
+              supplies: t("c_qty_supplies"),
+              fire: t("c_qty_fire"),
+              shelter: t("c_qty_shelter"),
+              other: t("c_qty_other")
+            }[selected || "other"] || t("c_qty_other")}
           </span>
           <input
             type="number"
             value={peopleCount}
             onChange={(e) => setPeopleCount(e.target.value)}
-            placeholder={{ 
-              medical: "e.g. 3 people",
-              rescue: "e.g. 2 people",
-              supplies: "e.g. 10 packets",
-              fire: "e.g. 5 people",
-              shelter: "e.g. 4 families",
-              other: "e.g. 5"
-            }[selected || "other"] || "e.g. 5"}
+            placeholder={{
+              medical: t("c_qty_ph_medical"),
+              rescue: t("c_qty_ph_rescue"),
+              supplies: t("c_qty_ph_supplies"),
+              fire: t("c_qty_ph_fire"),
+              shelter: t("c_qty_ph_shelter"),
+              other: t("c_qty_ph_other")
+            }[selected || "other"] || t("c_qty_ph_other")}
             min="1"
             className="w-full p-3 rounded-xl border border-gray-100 bg-white shadow-sm focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none transition-all placeholder:text-gray-300 font-bold text-sm"
           />
@@ -474,11 +478,11 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
 
         {/* Description */}
         <div className="space-y-2">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Describe Your Situation</span>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t("c_describe_situation")}</span>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What happened? What supplies or assistance do you need? Any access issues to reach you?"
+            placeholder={t("c_sos_description_placeholder")}
             className="w-full h-24 p-4 rounded-2xl border border-gray-100 bg-white shadow-sm focus:ring-4 focus:ring-brand-red/5 focus:border-brand-red outline-none transition-all placeholder:text-gray-300 font-medium text-sm resize-none"
           />
         </div>
@@ -488,9 +492,9 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-red-500">Broadcasting GPS</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-red-500">{t("c_broadcasting_gps")}</span>
             </div>
-            <span className="text-[9px] font-bold text-white/40 tracking-wider">Auto-detected location</span>
+            <span className="text-[9px] font-bold text-white/40 tracking-wider">{t("c_auto_detected_location")}</span>
           </div>
 
           <button
@@ -503,13 +507,13 @@ export function SOSModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => 
                 : "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
             )}
           >
-            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "SEND REQUEST"}
-            <span className="text-[8px] tracking-[0.2em] font-black opacity-60 normal-case">{loading ? "Broadcasting..." : "Visible on Community Needs board"}</span>
+            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : t("c_send_request")}
+            <span className="text-[8px] tracking-[0.2em] font-black opacity-60 normal-case">{loading ? t("c_broadcasting") : t("c_visible_community_board")}</span>
           </button>
         </div>
 
         <p className="text-[10px] text-gray-400 text-center font-medium leading-relaxed italic px-2">
-          Your request will be visible to nearby volunteers and authorities. Your GPS location will be shared.
+          {t("c_sos_footer_notice")}
         </p>
       </div>
     </Modal>

@@ -6,12 +6,14 @@ import { AlertTriangle, ShieldAlert, Info, X, ChevronRight } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { useLanguage } from "@/context/LanguageContext";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export default function FloodAlertBanner() {
+  const { t } = useLanguage();
   const [alerts, setAlerts] = useState<any[]>([]);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -52,7 +54,7 @@ export default function FloodAlertBanner() {
       border: "border-red-500/40",
       text: "text-red-400",
       icon: <ShieldAlert className="w-5 h-5 text-red-500 animate-pulse" />,
-      label: "MAJOR FLOOD WARNING",
+      label: t("banner_major_flood_warning"),
       glow: "shadow-[0_0_20px_rgba(239,68,68,0.25)]"
     },
     minor: {
@@ -60,7 +62,7 @@ export default function FloodAlertBanner() {
       border: "border-orange-500/40",
       text: "text-orange-400",
       icon: <AlertTriangle className="w-5 h-5 text-orange-500" />,
-      label: "MINOR FLOOD WARNING",
+      label: t("banner_minor_flood_warning"),
       glow: ""
     },
     alert: {
@@ -68,7 +70,7 @@ export default function FloodAlertBanner() {
       border: "border-yellow-500/40",
       text: "text-yellow-400",
       icon: <Info className="w-5 h-5 text-yellow-500" />,
-      label: "FLOOD ADVISORY",
+      label: t("banner_flood_advisory"),
       glow: ""
     }
   };
@@ -115,7 +117,7 @@ export default function FloodAlertBanner() {
               onClick={() => window.location.href = "/ai"}
               className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all text-white border border-white/20 active:scale-95"
             >
-              PREDICT TRENDS <ChevronRight className="w-3 h-3" />
+              {t("banner_predict_trends")} <ChevronRight className="w-3 h-3" />
             </button>
             <button 
               onClick={() => setIsVisible(false)}

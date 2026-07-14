@@ -45,6 +45,7 @@ import { FORECAST_MODEL_META, formatForecast } from "@/lib/forecastMeta";
  * a real thing we already know rather than showing nothing. Renders
  * nothing when there's no forecast to have an opinion about. */
 function ConfidenceBadge({ value, dampened }: { value: number | null | undefined; dampened: boolean | null | undefined }) {
+   const { t } = useLanguage();
    if (value == null) return null;
    return (
       <div className={cn(
@@ -52,16 +53,16 @@ function ConfidenceBadge({ value, dampened }: { value: number | null | undefined
          dampened ? "bg-amber-100 text-amber-700" : "bg-emerald-50 text-emerald-600"
       )}>
          {dampened ? <ShieldAlert className="w-2.5 h-2.5" /> : <ShieldCheck className="w-2.5 h-2.5" />}
-         {dampened ? "Safety-Capped" : "Model Output"}
+         {dampened ? t("ai_safety_capped") : t("ai_model_output")}
       </div>
    );
 }
 
 const RISK_TIER_META = {
-   major: { label: "CRITICAL", sub: "Major flood risk detected", color: "text-red-600", bg: "bg-red-50", border: "border-red-100" },
-   minor: { label: "WARNING", sub: "Minor flood risk detected", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
-   alert: { label: "ADVISORY", sub: "Approaching safety limits", color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-100" },
-   safe: { label: "STABLE", sub: "Current and forecast levels safe", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+   major: { labelKey: "ai_risk_tier_critical", subKey: "ai_risk_major_sub", color: "text-red-600", bg: "bg-red-50", border: "border-red-100" },
+   minor: { labelKey: "ai_risk_tier_warning", subKey: "ai_risk_minor_sub", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
+   alert: { labelKey: "ai_risk_tier_advisory", subKey: "ai_risk_alert_sub", color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-100" },
+   safe: { labelKey: "ai_risk_tier_stable", subKey: "ai_risk_safe_sub", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
 } as const;
 
 /** Classifies flood risk using the current level AND the max forecast
@@ -344,44 +345,44 @@ export default function AIDashboard() {
       .filter((v): v is number => v != null);
    const maxForecast = forecastVals.length ? Math.max(...forecastVals) : null;
    const riskTier = latestReport ? classifyRisk(latestReport.water_level_now, maxForecast, latestReport.major_flood, latestReport.minor_flood, latestReport.alert_level) : null;
-   const riskMeta = riskTier ? RISK_TIER_META[riskTier] : null;
+   const riskMeta = riskTier ? { ...RISK_TIER_META[riskTier], label: t(RISK_TIER_META[riskTier].labelKey), sub: t(RISK_TIER_META[riskTier].subKey) } : null;
    const forecastDelta = (maxForecast != null && latestReport) ? maxForecast - latestReport.water_level_now : null;
 
    // Human-readable metric cards
    const statsData = [
       {
-         label: "Water Level",
+         label: t("ai_stat_water_level"),
          value: latestReport ? `${latestReport.water_level_now.toFixed(2)}m` : "--",
          sub: latestReport && latestReport.water_level_lag1
-            ? `${latestReport.water_level_now > latestReport.water_level_lag1 ? '▲' : '▼'} from ${latestReport.water_level_lag1.toFixed(2)}m`
-            : "Current reading",
+            ? `${latestReport.water_level_now > latestReport.water_level_lag1 ? '▲' : '▼'} ${t("ai_from")} ${latestReport.water_level_lag1.toFixed(2)}m`
+            : t("ai_current_reading"),
          icon: Waves,
          color: "text-sky-600",
          bg: "bg-sky-50",
          border: "border-sky-100"
       },
       {
-         label: "Predictive Status",
-         value: riskMeta ? riskMeta.label : "—",
-         sub: riskMeta ? riskMeta.sub : "Awaiting station data",
+         label: t("ai_stat_predictive_status"),
+         value: riskMeta ? riskMeta.label.toUpperCase() : "—",
+         sub: riskMeta ? riskMeta.sub : t("ai_awaiting_station_data"),
          icon: ShieldAlert,
          color: riskMeta ? riskMeta.color : "text-zinc-400",
          bg: riskMeta ? riskMeta.bg : "bg-zinc-50",
          border: riskMeta ? riskMeta.border : "border-zinc-100"
       },
       {
-         label: "Rainfall (3h avg)",
+         label: t("ai_stat_rainfall_avg"),
          value: latestReport ? `${latestReport.rainfall_roll3.toFixed(1)}mm` : "--",
-         sub: "Rolling 3-hour average",
+         sub: t("ai_rolling_3h_avg"),
          icon: CloudRain,
          color: "text-orange-600",
          bg: "bg-orange-50",
          border: "border-orange-100"
       },
       {
-         label: "Forecast Impact",
-         value: forecastDelta == null ? "—" : forecastDelta > 0.5 ? "RISING" : forecastDelta < -0.5 ? "RECEDING" : "STABLE",
-         sub: forecastDelta == null ? "No forecast available yet" : forecastDelta > 0 ? `Projected +${forecastDelta.toFixed(2)}m rise` : `Projected ${forecastDelta.toFixed(2)}m fall`,
+         label: t("ai_stat_forecast_impact"),
+         value: forecastDelta == null ? "—" : forecastDelta > 0.5 ? t("ai_trend_rising").toUpperCase() : forecastDelta < -0.5 ? t("ai_trend_receding").toUpperCase() : t("stable").toUpperCase(),
+         sub: forecastDelta == null ? t("ai_no_forecast_available") : forecastDelta > 0 ? `${t("ai_projected_rise")} +${forecastDelta.toFixed(2)}m` : `${t("ai_projected_fall")} ${forecastDelta.toFixed(2)}m`,
          icon: Gauge,
          color: "text-violet-600",
          bg: "bg-violet-50",
@@ -402,35 +403,48 @@ export default function AIDashboard() {
       const anomalyCount = globalReports.filter(r => r.is_anomaly).length;
 
       return [
-         { 
-            id: "INS-1", 
-            type: atRiskCount > 0 ? "HIGH PANIC" : "NORMAL", 
-            title: "Flood Level Alerts", 
-            count: atRiskCount, 
-            topics: ["Critical Stations", "Exceeding Thresholds"], 
-            color: atRiskCount > 0 ? "border-red-500" : "border-emerald-500" 
+         {
+            id: "INS-1",
+            type: atRiskCount > 0 ? "HIGH PANIC" : "NORMAL",
+            title: t("ai_insight_title_flood_alerts"),
+            count: atRiskCount,
+            topics: [t("ai_topic_critical_stations"), t("ai_topic_exceeding_thresholds")],
+            color: atRiskCount > 0 ? "border-red-500" : "border-emerald-500"
          },
-         { 
-            id: "INS-2", 
-            type: forecastRiskCount > 0 ? "WARNING" : "STABLE", 
-            title: "Strategic Risk Path", 
-            count: forecastRiskCount, 
-            topics: ["Major Flood Forecast", "12h Window"], 
-            color: forecastRiskCount > 0 ? "border-orange-500" : "border-blue-500", 
-            active: true 
+         {
+            id: "INS-2",
+            type: forecastRiskCount > 0 ? "WARNING" : "STABLE",
+            title: t("ai_insight_title_risk_path"),
+            count: forecastRiskCount,
+            topics: [t("ai_topic_major_flood_forecast"), t("ai_topic_12h_window")],
+            color: forecastRiskCount > 0 ? "border-orange-500" : "border-blue-500",
+            active: true
          },
-         { 
-            id: "INS-3", 
-            type: anomalyCount > 0 ? "WARNING" : "OPERATIONAL", 
-            title: "Anomaly Detection", 
-            count: anomalyCount, 
-            topics: ["Pattern Detection", "Sensor Integrity"], 
-            color: anomalyCount > 0 ? "border-violet-500" : "border-zinc-500" 
+         {
+            id: "INS-3",
+            type: anomalyCount > 0 ? "WARNING" : "OPERATIONAL",
+            title: t("ai_insight_title_anomaly_detection"),
+            count: anomalyCount,
+            topics: [t("ai_topic_pattern_detection"), t("ai_topic_sensor_integrity")],
+            color: anomalyCount > 0 ? "border-violet-500" : "border-zinc-500"
          },
       ];
-   }, [globalReports]);
+   }, [globalReports, t]);
 
    const messages = aiInsights;
+
+   // msg.type carries a stable English code used for color-branch logic;
+   // this maps it to a translated display label without touching the code.
+   const insightTypeLabel = (type: string) => {
+      switch (type) {
+         case "HIGH PANIC": return t("ai_insight_high_panic");
+         case "WARNING": return t("ai_insight_warning");
+         case "NORMAL": return t("ai_insight_normal");
+         case "STABLE": return t("stable");
+         case "OPERATIONAL": return t("ai_insight_operational");
+         default: return type;
+      }
+   };
 
    // Regional severity per river, derived from the latest report per station
    // (peak of current level / 24h forecast vs. major flood threshold).
@@ -439,7 +453,7 @@ export default function AIDashboard() {
 
       const byRiver = new Map<string, any[]>();
       globalReports.forEach(r => {
-         const key = r.river || "Unknown River";
+         const key = r.river || t("ai_unknown_river");
          if (!byRiver.has(key)) byRiver.set(key, []);
          byRiver.get(key)!.push(r);
       });
@@ -453,11 +467,11 @@ export default function AIDashboard() {
          });
          const risk = Math.max(0, Math.min(100, Math.round(maxRatio * 100)));
          const status = risk >= 80 ? "Critical" : risk >= 55 ? "High" : risk >= 30 ? "Elevated" : "Stable";
-         return { name: `${river} Basin`, risk, status };
+         return { name: `${river} ${t("ai_basin_suffix")}`, risk, status };
       });
 
       return rows.sort((a, b) => b.risk - a.risk).slice(0, 4);
-   }, [globalReports]);
+   }, [globalReports, t]);
 
     // Format timestamp for X-axis with day context
     const formatTime = (ts: string, prevTs?: string) => {
@@ -488,7 +502,7 @@ export default function AIDashboard() {
                <div className="space-y-1">
                   <div className="flex items-center gap-2 text-orange-500 font-black text-[10px] tracking-[0.2em] uppercase mb-1">
                      <div className="w-4 h-0.5 bg-orange-500" />
-                     Forecast Engine Active
+                     {t("ai_forecast_engine_active")}
                   </div>
                   <h1 className="text-4xl font-black text-zinc-900 tracking-tighter flex items-center gap-3 italic">
                      <Brain className="w-10 h-10 text-zinc-900" />
@@ -503,29 +517,29 @@ export default function AIDashboard() {
                         onChange={(e) => setFilterRiver(e.target.value)}
                         className="w-full sm:w-auto appearance-none bg-white border-2 border-zinc-100 hover:border-zinc-300 px-4 py-3 rounded-2xl text-xs font-bold text-zinc-600 transition-all cursor-pointer focus:outline-none shadow-sm"
                      >
-                        <option value="All">All Rivers</option>
+                        <option value="All">{t("ai_all_rivers")}</option>
                         {rivers.map(r => (
                            <option key={r} value={r}>{r}</option>
                         ))}
                      </select>
                      <label className="flex items-center gap-2 bg-white border-2 border-zinc-100 hover:border-zinc-300 px-4 py-3 rounded-2xl text-xs font-bold text-zinc-600 cursor-pointer shadow-sm select-none transition-all">
-                        <input 
-                           type="checkbox" 
-                           checked={filterAI} 
+                        <input
+                           type="checkbox"
+                           checked={filterAI}
                            onChange={(e) => setFilterAI(e.target.checked)}
                            className="rounded text-orange-500 focus:ring-orange-500 border-zinc-300 w-4 h-4 cursor-pointer"
                         />
-                        AI Live
+                        {t("ai_ai_live_filter")}
                      </label>
                   </div>
 
                   <div className="relative w-full sm:w-64">
-                     <select 
+                     <select
                         value={selectedStationId}
                         onChange={(e) => setSelectedStationId(Number(e.target.value))}
                         className="w-full appearance-none bg-white border-2 border-zinc-100 hover:border-zinc-900 px-5 py-3 rounded-2xl text-xs font-black italic tracking-tight text-zinc-900 transition-all cursor-pointer focus:outline-none shadow-sm"
                      >
-                        {filteredStations.length === 0 && <option value={-1}>No stations found</option>}
+                        {filteredStations.length === 0 && <option value={-1}>{t("ai_no_stations_found")}</option>}
                         {filteredStations.map(s => (
                            <option key={s.id} value={s.id}>
                               {s.hasData ? "🟢 " : ""}{s.river} - {s.name}
@@ -573,16 +587,16 @@ export default function AIDashboard() {
                         <div className="flex items-center gap-2">
                            <div className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100 flex items-center gap-2">
                               <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                              Live Telemetry
+                              {t("ai_live_telemetry")}
                            </div>
                            {latestReport?.water_level_now >= latestReport?.alert_level && (
                               <div className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-100 flex items-center gap-2">
-                                 AI Alert: {latestReport.water_level_now >= latestReport.major_flood ? 'Major Flood' : 'Alert Level'}
+                                 {t("ai_alert_prefix")} {latestReport.water_level_now >= latestReport.major_flood ? t("ai_major_flood_label") : t("ai_alert_level_label")}
                               </div>
                            )}
                         </div>
                         <h2 className="text-xl font-black text-zinc-900 tracking-tight italic">
-                           {currentStation?.river} • {currentStation?.name} <span className="text-zinc-300 ml-2">Water Level Monitor</span>
+                           {currentStation?.river} • {currentStation?.name} <span className="text-zinc-300 ml-2">{t("ai_water_level_monitor")}</span>
                         </h2>
                      </div>
 
@@ -590,15 +604,15 @@ export default function AIDashboard() {
                      <div className="flex items-center gap-5 flex-wrap">
                         <div className="flex items-center gap-2">
                            <div className="w-6 h-[3px] rounded-full bg-sky-500" />
-                           <span className="text-[10px] font-bold text-zinc-500">Actual Level</span>
+                           <span className="text-[10px] font-bold text-zinc-500">{t("ai_actual_level")}</span>
                         </div>
                         <div className="flex items-center gap-2">
                            <div className="w-6 h-[3px] rounded-full bg-rose-500" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #f43f5e 0px, #f43f5e 4px, transparent 4px, transparent 8px)' }} />
-                           <span className="text-[10px] font-bold text-zinc-500">AI Forecast</span>
+                           <span className="text-[10px] font-bold text-zinc-500">{t("ai_forecast_legend")}</span>
                         </div>
                         <div className="flex items-center gap-2">
                            <div className="w-6 h-[2px] rounded-full bg-red-300" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #fca5a5 0px, #fca5a5 6px, transparent 6px, transparent 10px)' }} />
-                           <span className="text-[10px] font-bold text-zinc-500">Flood Limits</span>
+                           <span className="text-[10px] font-bold text-zinc-500">{t("ai_flood_limits")}</span>
                         </div>
                      </div>
                   </div>
@@ -609,15 +623,15 @@ export default function AIDashboard() {
                         <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
                            <div className="flex flex-col items-center gap-4">
                               <div className="w-10 h-10 border-4 border-zinc-100 border-t-orange-500 rounded-full animate-spin" />
-                              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Compiling Forecasts...</span>
+                              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{t("ai_compiling_forecasts")}</span>
                            </div>
                         </div>
                      ) : !chartConfig || reports.length === 0 ? (
                         <div className="absolute inset-0 flex items-center justify-center">
                            <div className="text-center space-y-3">
                               <Waves className="w-12 h-12 text-zinc-200 mx-auto" />
-                              <p className="text-sm font-bold text-zinc-400">No telemetry data available for this station</p>
-                              <p className="text-xs text-zinc-300">Data will appear after the next scraper cycle</p>
+                              <p className="text-sm font-bold text-zinc-400">{t("ai_no_telemetry_station")}</p>
+                              <p className="text-xs text-zinc-300">{t("ai_data_after_scraper")}</p>
                            </div>
                         </div>
                      ) : (
@@ -668,7 +682,7 @@ export default function AIDashboard() {
                                  />
                                  <rect x={chartConfig.padLeft + 4} y={chartConfig.scaleY(latestReport.major_flood) - 14} width="90" height="16" rx="4" fill="#fef2f2" />
                                  <text x={chartConfig.padLeft + 8} y={chartConfig.scaleY(latestReport.major_flood) - 3} className="text-[9px] font-black" fill="#ef4444">
-                                    ⚠ MAJOR {latestReport.major_flood.toFixed(1)}m
+                                    ⚠ {t("ai_major_short")} {latestReport.major_flood.toFixed(1)}m
                                  </text>
                                  
                                  {/* Minor Flood */}
@@ -679,7 +693,7 @@ export default function AIDashboard() {
                                  />
                                  <rect x={chartConfig.padLeft + 4} y={chartConfig.scaleY(latestReport.minor_flood) - 14} width="86" height="16" rx="4" fill="#fff7ed" />
                                  <text x={chartConfig.padLeft + 8} y={chartConfig.scaleY(latestReport.minor_flood) - 3} className="text-[9px] font-black" fill="#f97316">
-                                    ▲ MINOR {latestReport.minor_flood.toFixed(1)}m
+                                    ▲ {t("ai_minor_short")} {latestReport.minor_flood.toFixed(1)}m
                                  </text>
 
                                  {/* Alert Level */}
@@ -803,7 +817,7 @@ export default function AIDashboard() {
                      <div className="mt-4 pt-4 border-t border-zinc-50 grid grid-cols-3 gap-4">
                         <div className="text-center p-3 rounded-xl bg-sky-50/50">
                            <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
-                              Next 1h <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_1h.model}</span>
+                              {t("ai_next_1h")} <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_1h.model}</span>
                            </div>
                            <div className="text-lg font-black italic tracking-tighter text-sky-600">
                               {formatForecast(latestReport.forecast_1h)}
@@ -812,7 +826,7 @@ export default function AIDashboard() {
                         </div>
                         <div className="text-center p-3 rounded-xl bg-orange-50/50">
                            <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
-                              Next 12h <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_12h.model}</span>
+                              {t("ai_next_12h")} <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_12h.model}</span>
                            </div>
                            <div className="text-lg font-black italic tracking-tighter text-orange-600">
                               {formatForecast(latestReport.forecast_12h)}
@@ -821,7 +835,7 @@ export default function AIDashboard() {
                         </div>
                         <div className="text-center p-3 rounded-xl bg-amber-50/50">
                            <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">
-                              Strategic 24h <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_24h.model}</span>
+                              {t("ai_strategic_24h")} <span className="text-zinc-300 font-bold normal-case">· {FORECAST_MODEL_META.forecast_24h.model}</span>
                            </div>
                            <div className="text-lg font-black italic tracking-tighter text-amber-600">
                               {formatForecast(latestReport.forecast_24h)}
@@ -841,12 +855,12 @@ export default function AIDashboard() {
                         <Activity className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />
                         <div>
                            <p className="text-xs font-bold text-zinc-700 leading-relaxed">
-                              There is a {Math.round(latestReport.forecast_24h_confidence_pct ?? 0)}% chance the water level will be
-                              between <span className="font-black text-rose-600">{latestReport.forecast_24h_lower.toFixed(2)}m</span> and{" "}
-                              <span className="font-black text-rose-600">{latestReport.forecast_24h_upper.toFixed(2)}m</span> in 24 hours.
+                              {t("ai_confidence_prefix")} {Math.round(latestReport.forecast_24h_confidence_pct ?? 0)}{t("ai_confidence_chance")}
+                              {" "}<span className="font-black text-rose-600">{latestReport.forecast_24h_lower.toFixed(2)}m</span> {t("ai_confidence_and")}{" "}
+                              <span className="font-black text-rose-600">{latestReport.forecast_24h_upper.toFixed(2)}m</span> {t("ai_confidence_suffix")}
                            </p>
                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
-                              {FORECAST_MODEL_META.forecast_24h.model} Confidence Range
+                              {FORECAST_MODEL_META.forecast_24h.model} {t("ai_confidence_range_label")}
                            </p>
                         </div>
                      </div>
@@ -866,11 +880,11 @@ export default function AIDashboard() {
                         <div>
                            <p className="text-xs font-bold text-zinc-700 leading-relaxed">
                               {latestReport.dampened_24h
-                                 ? "The raw model output exceeded a physically plausible rate of change and was capped by the safety limit — treat this 24h number as lower-confidence."
-                                 : "This is a clean, uncapped model output — no safety override was triggered."}
+                                 ? t("ai_dampened_note")
+                                 : t("ai_clean_output_note")}
                            </p>
                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
-                              {FORECAST_MODEL_META.forecast_24h.model} · A precise confidence range isn&apos;t available for this model yet
+                              {FORECAST_MODEL_META.forecast_24h.model} · {t("ai_no_confidence_range_yet")}
                            </p>
                         </div>
                      </div>
@@ -890,8 +904,8 @@ export default function AIDashboard() {
                                     <Brain className="w-8 h-8 text-white animate-pulse" />
                                  </div>
                                  <div>
-                                    <h3 className="text-2xl font-black text-white tracking-tighter italic">AI Strategic Insights</h3>
-                                    <p className="text-slate-400 text-sm font-medium">Real-time predictive telemetry & system load.</p>
+                                    <h3 className="text-2xl font-black text-white tracking-tighter italic">{t("ai_strategic_insights_title")}</h3>
+                                    <p className="text-slate-400 text-sm font-medium">{t("ai_strategic_insights_sub")}</p>
                                  </div>
                               </div>
                            </div>
@@ -899,30 +913,30 @@ export default function AIDashboard() {
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="bg-slate-800/40 backdrop-blur-md rounded-3xl p-8 border border-white/5 space-y-4 hover:border-red-500/30 transition-all group">
                                  <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black bg-red-500 text-white px-4 py-1 rounded-full uppercase tracking-widest">Risk Projection</span>
-                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">LIVE</span>
+                                    <span className="text-[10px] font-black bg-red-500 text-white px-4 py-1 rounded-full uppercase tracking-widest">{t("ai_risk_projection_label")}</span>
+                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t("live")}</span>
                                  </div>
                                  <div>
                                     <h4 className="text-xl font-black text-white italic tracking-tight mb-2">
-                                       {globalReports.filter(r => r.water_level_now >= r.alert_level).length} Active Alerts
+                                       {globalReports.filter(r => r.water_level_now >= r.alert_level).length} {t("ai_active_alerts_suffix")}
                                     </h4>
                                     <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                                       Predictive models identified critical risk zones. Immediate verification recommended for {globalReports.filter(r => r.forecast_12h >= r.major_flood).length} major flood paths.
+                                       {t("ai_risk_projection_desc_prefix")} {globalReports.filter(r => r.forecast_12h >= r.major_flood).length} {t("ai_major_flood_paths_suffix")}
                                     </p>
                                  </div>
                               </div>
 
                               <div className="bg-slate-800/40 backdrop-blur-md rounded-3xl p-8 border border-white/5 space-y-4 hover:border-orange-500/30 transition-all group">
                                  <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black bg-orange-500 text-white px-4 py-1 rounded-full uppercase tracking-widest">System Health</span>
-                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">TELEMETRY</span>
+                                    <span className="text-[10px] font-black bg-orange-500 text-white px-4 py-1 rounded-full uppercase tracking-widest">{t("ai_system_health_label")}</span>
+                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t("ai_telemetry_badge")}</span>
                                  </div>
                                  <div>
                                     <h4 className="text-xl font-black text-white italic tracking-tight mb-2">
-                                       {globalReports.filter(r => r.is_anomaly).length} Detected Anomalies
+                                       {globalReports.filter(r => r.is_anomaly).length} {t("ai_detected_anomalies_suffix")}
                                     </h4>
                                     <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                                       Sensor integrity is verified at 98.4%. {globalReports.filter(r => r.is_anomaly).length} pattern deviations currently under automated analysis.
+                                       {t("ai_sensor_integrity_prefix")} {globalReports.filter(r => r.is_anomaly).length} {t("ai_pattern_deviations_suffix")}
                                     </p>
                                  </div>
                               </div>
@@ -944,7 +958,7 @@ export default function AIDashboard() {
                      {/* Recent SOS Priority Widget */}
                      <div className="bg-white p-10 rounded-[2.5rem] border border-zinc-100 shadow-xl group">
                         <div className="flex justify-between items-center mb-8">
-                           <h3 className="text-xl font-black text-zinc-900 italic tracking-tight">Recent SOS Priority</h3>
+                           <h3 className="text-xl font-black text-zinc-900 italic tracking-tight">{t("priority_sos_feed")}</h3>
                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                         </div>
                         <div className="space-y-6">
@@ -957,7 +971,7 @@ export default function AIDashboard() {
                                  <div className="flex-1">
                                     <div className="flex justify-between items-start">
                                        <h4 className="text-sm font-black text-zinc-900 group-hover/item:text-red-500 transition-colors uppercase italic tracking-tighter">
-                                          {item.feedType === 'sos' ? (item.stype || 'SOS') : (item.title || 'Hazard')}
+                                          {item.feedType === 'sos' ? (item.stype || t("ai_sos_fallback")) : (item.title || t("ai_hazard_fallback"))}
                                        </h4>
                                        <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">
                                           {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -969,11 +983,11 @@ export default function AIDashboard() {
                                  </div>
                               </div>
                            )) : (
-                              <div className="py-10 text-center text-zinc-300 font-black uppercase tracking-widest text-[10px]">No active priority alerts</div>
+                              <div className="py-10 text-center text-zinc-300 font-black uppercase tracking-widest text-[10px]">{t("ai_no_priority_alerts")}</div>
                            )}
                         </div>
                         <Link href="/sos" className="mt-8 flex items-center justify-center gap-3 w-full py-4 bg-zinc-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-600 transition-all">
-                           Open Rescue Hub
+                           {t("ai_open_rescue_hub")}
                            <ChevronRight className="w-5 h-5" />
                         </Link>
                      </div>
@@ -987,8 +1001,8 @@ export default function AIDashboard() {
                <div className="bg-white p-10 rounded-[2.5rem] border border-zinc-100 shadow-xl flex flex-col gap-8 group">
                   <div className="flex justify-between items-start">
                      <div>
-                        <h3 className="text-xl font-black text-zinc-900 italic tracking-tight mb-1">System Activity</h3>
-                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Neural Network Inference Load</p>
+                        <h3 className="text-xl font-black text-zinc-900 italic tracking-tight mb-1">{t("ai_system_activity_title")}</h3>
+                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest">{t("ai_neural_network_load")}</p>
                      </div>
                      <div className="w-10 h-10 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400 group-hover:text-blue-500 transition-colors">
                         <Activity className="w-5 h-5" />
@@ -1015,8 +1029,8 @@ export default function AIDashboard() {
                <div className="bg-white p-10 rounded-[2.5rem] border border-zinc-100 shadow-xl group">
                   <div className="flex justify-between items-start mb-8">
                      <div>
-                        <h3 className="text-xl font-black text-zinc-900 italic tracking-tight mb-1">Regional Severity</h3>
-                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Risk Distribution Matrix</p>
+                        <h3 className="text-xl font-black text-zinc-900 italic tracking-tight mb-1">{t("ai_regional_severity_title")}</h3>
+                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest">{t("ai_risk_distribution_matrix")}</p>
                      </div>
                      <div className="w-10 h-10 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400 group-hover:text-orange-500 transition-colors">
                         <ShieldAlert className="w-5 h-5" />
@@ -1030,7 +1044,7 @@ export default function AIDashboard() {
                               <span className={cn(
                                  region.status === 'Critical' ? "text-red-500" :
                                  region.status === 'High' ? "text-orange-500" : "text-blue-500"
-                              )}>{region.risk}% RISK</span>
+                              )}>{region.risk}% {t("ai_risk_suffix")}</span>
                            </div>
                            <div className="h-2.5 bg-zinc-50 rounded-full overflow-hidden border border-zinc-100/50">
                               <motion.div
@@ -1045,7 +1059,7 @@ export default function AIDashboard() {
                            </div>
                         </div>
                      )) : (
-                        <p className="text-center py-6 text-zinc-300 font-bold uppercase tracking-widest text-[10px]">No telemetry data yet</p>
+                        <p className="text-center py-6 text-zinc-300 font-bold uppercase tracking-widest text-[10px]">{t("ai_no_telemetry_data_yet")}</p>
                      )}
                   </div>
                </div>
@@ -1062,7 +1076,7 @@ export default function AIDashboard() {
                            {t("nlp_analysis_title")}
                         </h2>
                         <button onClick={() => setIsNLPModalOpen(true)} className="px-5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-900 hover:text-white transition-all">
-                           Analysis Deep-Dive
+                           {t("ai_analysis_deep_dive")}
                         </button>
                      </div>
 
@@ -1077,11 +1091,11 @@ export default function AIDashboard() {
                                     "text-[8px] font-black px-2 py-0.5 rounded tracking-widest uppercase",
                                     msg.type === 'HIGH PANIC' ? "bg-red-500 text-white" :
                                        msg.type === 'WARNING' ? "bg-orange-500 text-white" : "bg-green-500 text-white"
-                                 )}>{msg.type}</span>
+                                 )}>{insightTypeLabel(msg.type)}</span>
                                  <Settings className="w-3.5 h-3.5 text-zinc-200 group-hover:text-zinc-900" />
                               </div>
                               <h4 className="text-lg font-black text-zinc-900 italic leading-tight mb-2">{msg.title}</h4>
-                              <p className="text-[10px] font-bold text-zinc-400 uppercase mb-6">{msg.count}+ Shared sentiments</p>
+                              <p className="text-[10px] font-bold text-zinc-400 uppercase mb-6">{msg.count}+ {t("ai_shared_sentiments_suffix")}</p>
                               <div className="flex flex-wrap gap-1.5">
                                  {msg.topics.map(t => (
                                     <span key={t} className="px-3 py-1 bg-zinc-50 text-[10px] font-black text-zinc-500 rounded-xl group-hover:bg-zinc-100">{t}</span>

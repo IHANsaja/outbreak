@@ -123,9 +123,9 @@ export default function Home() {
           <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <p className="text-sm font-bold text-emerald-900 tracking-tight">System Status: No immediate hazards in your sector.</p>
+              <p className="text-sm font-bold text-emerald-900 tracking-tight">{t("c_no_hazards_status")}</p>
             </div>
-            <Link href="/news" className="text-[10px] font-black uppercase text-emerald-600 hover:underline">View History</Link>
+            <Link href="/news" className="text-[10px] font-black uppercase text-emerald-600 hover:underline">{t("c_view_history")}</Link>
           </div>
         )}
 
@@ -136,8 +136,8 @@ export default function Home() {
             <QuickActionCard
               icon={LifeBuoy}
               bgIcon={LifeBuoy}
-              title="Request Help"
-              description="Medical, Rescue, or Supplies needed immediately."
+              title={t("c_request_help")}
+              description={t("c_request_help_desc")}
               showSOSBadge={stats.activeSos > 0}
               className="h-full"
               onClick={() => setIsSOSOpen(true)}
@@ -145,8 +145,8 @@ export default function Home() {
             <QuickActionCard
               icon={Camera}
               bgIcon={Camera}
-              title="Report Damage"
-              description="Submit photos of infrastructure issues or hazards."
+              title={t("c_report_damage")}
+              description={t("c_report_damage_desc")}
               count={stats.activeIncidents > 0 ? stats.activeIncidents : undefined}
               className="h-full"
               onClick={() => setIsReportOpen(true)}
@@ -154,8 +154,8 @@ export default function Home() {
             <QuickActionCard
               icon={Bell}
               bgIcon={Activity}
-              title="View Nearby Alerts"
-              description="See active hazard zones in your proximity."
+              title={t("c_view_nearby_alerts")}
+              description={t("c_view_nearby_alerts_desc")}
               count={stats.activeHazards > 0 ? stats.activeHazards : undefined}
               className="h-full"
               onClick={() => setIsHazardsOpen(true)}
@@ -163,8 +163,8 @@ export default function Home() {
             <QuickActionCard
               icon={Brain}
               bgIcon={Brain}
-              title="AI Flood Forecast"
-              description="View live water-level predictions and risk outlook for your river."
+              title={t("c_ai_flood_forecast")}
+              description={t("c_ai_flood_forecast_desc")}
               className="h-full"
               onClick={() => router.push('/ai')}
             />
@@ -183,7 +183,7 @@ export default function Home() {
               className="inline-flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-900 shadow-sm transition hover:bg-gray-50 active:scale-95"
             >
               <Maximize2 className="h-3.5 w-3.5" />
-              Open Full Map
+              {t("c_open_full_map")}
             </Link>
           </div>
 

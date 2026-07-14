@@ -1,6 +1,7 @@
 "use client";
 
 import { Info, Map as MapIcon } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Instruction {
   step: number;
@@ -15,13 +16,14 @@ export default function EvacuationInstructions({
   instructions: Instruction[],
   affectedAreas: string[]
 }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-red-50/30 rounded-2xl p-6 md:p-8 border border-red-100">
       <div className="flex items-center gap-3 mb-8">
         <div className="w-8 h-8 rounded-full bg-brand-red text-white flex items-center justify-center">
           <Info className="w-5 h-5" />
         </div>
-        <h3 className="text-xl font-bold text-zinc-900 italic">Evacuation Instructions</h3>
+        <h3 className="text-xl font-bold text-zinc-900 italic">{t("c_evacuation_instructions")}</h3>
       </div>
       
       <div className="space-y-8 mb-12">
@@ -43,7 +45,7 @@ export default function EvacuationInstructions({
       <div className="pt-8 border-t border-red-100">
         <div className="flex items-center gap-2 mb-4">
            <MapIcon className="w-4 h-4 text-gray-400" />
-           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Affected Areas (GN Divisions)</span>
+           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("c_affected_areas")}</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {affectedAreas.map((area) => (

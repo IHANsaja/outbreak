@@ -6,8 +6,10 @@ import { useToast } from "@/context/ToastContext";
 import NewShipmentModal from "@/components/NewShipmentModal";
 import { getResources, updateResourceStock, deleteResource } from "@/app/actions/data";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function ResourcesPage() {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [resources, setResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export default function ResourcesPage() {
       const data = await getResources();
       setResources(data);
     } catch (err) {
-      showToast("Failed to fetch resources", "error");
+      showToast(t("au_fetch_resources_failed_toast"), "error");
     } finally {
       setLoading(false);
     }
@@ -34,15 +36,15 @@ export default function ResourcesPage() {
       <div className="max-w-[1400px] mx-auto space-y-8">
         <div className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Authority Resource Management</h1>
-            <p className="text-slate-500 mt-1">Inventory management and essential supply status.</p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{t("au_authority_resource_management")}</h1>
+            <p className="text-slate-500 mt-1">{t("au_inventory_mgmt_desc")}</p>
           </div>
-          <button 
+          <button
             onClick={() => setIsShipmentModalOpen(true)}
             className="bg-auth-accent-red hover:bg-red-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-red-500/20"
           >
             <Plus className="w-5 h-5" />
-            New Shipment
+            {t("au_new_shipment")}
           </button>
         </div>
 
@@ -59,7 +61,7 @@ export default function ResourcesPage() {
                />
              ))
            ) : (
-             <div className="lg:col-span-2 py-20 text-center opacity-30 font-bold uppercase">No resources found</div>
+             <div className="lg:col-span-2 py-20 text-center opacity-30 font-bold uppercase">{t("au_no_resources_found")}</div>
            )}
         </div>
 
@@ -67,25 +69,25 @@ export default function ResourcesPage() {
            {/* Recent Dispatches - Keeping static for now as per user request focus on management */}
            <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-auth-border auth-card-shadow">
               <div className="flex justify-between items-center mb-10">
-                 <h3 className="text-lg font-bold text-slate-900 tracking-tight">Digital Support Analytics</h3>
-                 <button className="text-auth-accent-red text-xs font-bold uppercase tracking-widest hover:underline">View Analytics</button>
+                 <h3 className="text-lg font-bold text-slate-900 tracking-tight">{t("au_digital_support_analytics")}</h3>
+                 <button className="text-auth-accent-red text-xs font-bold uppercase tracking-widest hover:underline">{t("au_view_analytics")}</button>
               </div>
               <div className="space-y-6">
-                 <p className="text-slate-400 text-sm italic">Online logs tracking digital resource distribution and AI support metrics.</p>
+                 <p className="text-slate-400 text-sm italic">{t("au_online_logs_desc")}</p>
               </div>
            </div>
 
            {/* Supply Chain Alerts - Dynamic based on stock level */}
            <div className="space-y-6">
-              <h3 className="text-lg font-bold text-slate-900 tracking-tight px-2">System Alerts</h3>
+              <h3 className="text-lg font-bold text-slate-900 tracking-tight px-2">{t("au_system_alerts")}</h3>
               {resources.filter(r => r.status === 'critical').map(r => (
                 <div key={r.id} className="bg-red-50 p-6 rounded-3xl border border-red-100 flex gap-4">
                   <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0 shadow-sm border border-red-100">
                     <AlertTriangle className="w-5 h-5 text-red-500" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-red-900">Critical: {r.name}</h4>
-                    <p className="text-xs text-red-700 mt-1 leading-relaxed">Levels reaching critical in {r.regions?.name}. Immediate resupply advised.</p>
+                    <h4 className="text-sm font-bold text-red-900">{t("au_critical_colon")} {r.name}</h4>
+                    <p className="text-xs text-red-700 mt-1 leading-relaxed">{t("au_levels_reaching_critical")} {r.regions?.name}. {t("au_immediate_resupply_advised")}</p>
                   </div>
                 </div>
               ))}
@@ -101,37 +103,38 @@ export default function ResourcesPage() {
 }
 
 function ResourceCard({ resource, onUpdate }: { resource: any, onUpdate: () => void }) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleUpdateStock = async () => {
-    const newQty = prompt("Enter new quantity:", resource.quantity.toString());
+    const newQty = prompt(t("au_enter_new_quantity_prompt"), resource.quantity.toString());
     if (newQty === null || isNaN(Number(newQty))) return;
-    
+
     setIsUpdating(true);
     try {
       const qty = Number(newQty);
       const status = qty < 50 ? 'critical' : qty < 200 ? 'low' : 'available';
       await updateResourceStock(resource.id, qty, status);
-      showToast("Stock updated successfully", "success");
+      showToast(t("au_stock_updated_toast"), "success");
       onUpdate();
     } catch (err) {
-      showToast("Failed to update stock", "error");
+      showToast(t("au_update_stock_failed_toast"), "error");
     } finally {
       setIsUpdating(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Delete ${resource.name} from inventory?`)) return;
+    if (!confirm(`${t("au_delete_resource_confirm")} ${resource.name} ${t("au_from_inventory_confirm")}`)) return;
     setIsDeleting(true);
     try {
       await deleteResource(resource.id);
-      showToast("Resource removed", "success");
+      showToast(t("au_resource_removed_toast"), "success");
       onUpdate();
     } catch (err) {
-      showToast("Failed to delete resource", "error");
+      showToast(t("au_delete_resource_failed_toast"), "error");
     } finally {
       setIsDeleting(false);
     }
@@ -155,17 +158,17 @@ function ResourceCard({ resource, onUpdate }: { resource: any, onUpdate: () => v
                         'bg-green-100 text-green-700'
                       )}>{resource.status}</span>
                    </div>
-                   <p className="text-xs text-slate-400 font-medium">Located: {resource.regions?.name || "Global Hub"}</p>
+                   <p className="text-xs text-slate-400 font-medium">{t("au_located_label")} {resource.regions?.name || t("au_global_hub")}</p>
                 </div>
              </div>
 
              <div className="grid grid-cols-2 gap-4">
                 <div>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inventory</p>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("au_inventory_label")}</p>
                    <p className="text-lg font-bold text-slate-900 mt-1">{resource.quantity} {resource.unit}</p>
                 </div>
                 <div className="flex flex-col items-end">
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Category</p>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("au_category_label")}</p>
                    <p className="text-xs font-bold text-slate-500 mt-1 uppercase">{resource.rtype}</p>
                 </div>
              </div>
@@ -177,7 +180,7 @@ function ResourceCard({ resource, onUpdate }: { resource: any, onUpdate: () => v
                   className="flex-1 flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 text-slate-700 py-3 rounded-xl border border-slate-200 text-sm font-bold transition-all active:scale-95"
                >
                   {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Edit2 className="w-4 h-4" />}
-                  Update Stock
+                  {t("au_update_stock_btn")}
                </button>
                <button 
                   disabled={isDeleting}
@@ -196,7 +199,7 @@ function ResourceCard({ resource, onUpdate }: { resource: any, onUpdate: () => v
                    <div className="absolute bottom-0 w-full bg-slate-300" style={{ height: '70%' }}></div>
                 </div>
              </div>
-             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center mt-3">Utilization</p>
+             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center mt-3">{t("au_utilization_label")}</p>
           </div>
        </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { Droplets, Info, Ban, Waves, CircleCheck, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface GaugeProps {
   name: string;
@@ -12,15 +13,16 @@ interface GaugeProps {
 }
 
 export function WaterLevels({ gauges }: { gauges: GaugeProps[] }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex-1">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Droplets className="w-5 h-5 text-blue-500" />
-          <h3 className="font-bold text-zinc-900">Water Levels</h3>
+          <h3 className="font-bold text-zinc-900">{t("c_water_levels_label")}</h3>
         </div>
         <span className="bg-red-50 text-brand-red text-[10px] font-black px-2 py-0.5 rounded tracking-widest animate-pulse">
-          RISING
+          {t("c_rising")}
         </span>
       </div>
       
@@ -56,6 +58,7 @@ interface RoadProp {
 }
 
 export function RoadStatus({ roads }: { roads: RoadProp[] }) {
+  const { t } = useLanguage();
   const icons = {
     restricted: <Ban className="w-4 h-4 text-red-500" />,
     submerged: <Waves className="w-4 h-4 text-orange-500" />,
@@ -66,7 +69,7 @@ export function RoadStatus({ roads }: { roads: RoadProp[] }) {
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex-1">
       <div className="flex items-center gap-2 mb-6">
         <AlertTriangle className="w-5 h-5 text-orange-500" />
-        <h3 className="font-bold text-zinc-900">Road Status</h3>
+        <h3 className="font-bold text-zinc-900">{t("c_road_status")}</h3>
       </div>
       
       <div className="space-y-5">

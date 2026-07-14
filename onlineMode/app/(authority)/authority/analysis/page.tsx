@@ -6,8 +6,10 @@ import { useToast } from "@/context/ToastContext";
 import ExportReportModal from "@/components/ExportReportModal";
 import { getRegions, getAllIncidents } from "@/app/actions/data";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function AnalysisPage() {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [regions, setRegions] = useState<any[]>([]);
@@ -21,7 +23,7 @@ export default function AnalysisPage() {
         setRegions(r);
         setIncidents(i);
       } catch (err) {
-        showToast("Error fetching analysis data", "error");
+        showToast(t("au_error_fetching_analysis_data"), "error");
       } finally {
         setLoading(false);
       }
@@ -47,23 +49,23 @@ export default function AnalysisPage() {
       <div className="max-w-[1400px] mx-auto space-y-8 pb-12">
         <div className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Data Analytics</h1>
-            <p className="text-slate-500 mt-1">Deep analysis and predictive modeling of disaster metrics.</p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{t("au_data_analytics")}</h1>
+            <p className="text-slate-500 mt-1">{t("au_deep_analysis_desc")}</p>
           </div>
           <div className="flex gap-4">
-             <div 
-                onClick={() => showToast("Opening Date Range Selector", "info")}
+             <div
+                onClick={() => showToast(t("au_opening_date_range_toast"), "info")}
                 className="bg-white border border-auth-border rounded-xl px-4 py-3 flex items-center gap-3 auth-card-shadow cursor-pointer hover:bg-slate-50 transition-colors"
              >
                 <Calendar className="w-4 h-4 text-slate-400" />
-                <span className="text-sm font-bold text-slate-700">Last 30 Days</span>
+                <span className="text-sm font-bold text-slate-700">{t("au_last_30_days")}</span>
              </div>
-             <button 
+             <button
                onClick={() => setIsExportModalOpen(true)}
                className="bg-[#0f172a] hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
              >
                <Download className="w-5 h-5 text-slate-400" />
-               Export Report
+               {t("au_export_report")}
              </button>
           </div>
         </div>
@@ -73,17 +75,17 @@ export default function AnalysisPage() {
            <div className="lg:col-span-2 bg-white p-10 rounded-[40px] border border-auth-border auth-card-shadow relative overflow-hidden group">
               <div className="flex justify-between items-start mb-12">
                  <div>
-                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Historical Impact vs Current Trends</h3>
-                    <p className="text-sm text-slate-400 mt-1">Comparing 5-year average disaster frequency with live data.</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">{t("au_historical_vs_current_trends")}</h3>
+                    <p className="text-sm text-slate-400 mt-1">{t("au_comparing_5yr_desc")}</p>
                  </div>
                  <div className="flex gap-6">
                     <div className="flex items-center gap-2">
                        <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current</span>
+                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t("au_current")}</span>
                     </div>
                     <div className="flex items-center gap-2">
                        <span className="w-2 h-2 bg-slate-300 rounded-full"></span>
-                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Historical Avg</span>
+                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t("au_historical_avg")}</span>
                     </div>
                  </div>
               </div>
@@ -117,19 +119,19 @@ export default function AnalysisPage() {
                     {/* Annotation */}
                     <g transform="translate(450, 45)">
                        <rect width="100" height="30" rx="15" fill="#1e293b" />
-                       <text x="50" y="20" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">+24% Increase</text>
+                       <text x="50" y="20" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">{t("au_increase_24pct")}</text>
                        <line x1="50" y1="30" x2="50" y2="65" stroke="#1e293b" strokeWidth="2" strokeDasharray="4" />
                     </g>
                  </svg>
               </div>
 
               <div className="flex justify-between px-2 text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em]">
-                 <span>Jan</span>
-                 <span>Mar</span>
-                 <span>May</span>
-                 <span>Jul</span>
-                 <span>Sep</span>
-                 <span>Nov</span>
+                 <span>{t("au_month_jan")}</span>
+                 <span>{t("au_month_mar")}</span>
+                 <span>{t("au_month_may")}</span>
+                 <span>{t("au_month_jul")}</span>
+                 <span>{t("au_month_sep")}</span>
+                 <span>{t("au_month_nov")}</span>
               </div>
            </div>
 
@@ -137,10 +139,10 @@ export default function AnalysisPage() {
            <div className="bg-white p-10 rounded-[40px] border border-auth-border auth-card-shadow flex flex-col group">
               <div className="flex justify-between items-start mb-8">
                  <div>
-                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Incident Distribution</h3>
-                    <p className="text-sm text-slate-400 mt-1">By disaster type (Active Cases)</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">{t("au_incident_distribution")}</h3>
+                    <p className="text-sm text-slate-400 mt-1">{t("au_by_disaster_type_desc")}</p>
                  </div>
-                 <HelpCircle className="w-5 h-5 text-slate-200 cursor-pointer hover:text-auth-accent-red transition-colors" onClick={() => showToast("Showing distribution methodology", "info")} />
+                 <HelpCircle className="w-5 h-5 text-slate-200 cursor-pointer hover:text-auth-accent-red transition-colors" onClick={() => showToast(t("au_showing_distribution_methodology_toast"), "info")} />
               </div>
 
               <div className="flex-1 flex flex-col justify-center items-center py-6">
@@ -154,12 +156,12 @@ export default function AnalysisPage() {
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                        <span className="text-4xl font-bold text-slate-900 tracking-tighter">{incidents.length}</span>
-                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
+                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("au_total")}</span>
                     </div>
                  </div>
 
                   <div className="w-full space-y-4">
-                    {loading ? <p className="text-slate-400 text-xs animate-pulse">Calculating distribution...</p> : 
+                    {loading ? <p className="text-slate-400 text-xs animate-pulse">{t("au_calculating_distribution")}</p> :
                       distribution.slice(0, 4).map((d, i) => (
                         <DistributionLegned 
                           key={d.label} 
@@ -179,24 +181,24 @@ export default function AnalysisPage() {
            <div className="bg-white p-8 rounded-[40px] border border-auth-border auth-card-shadow flex flex-col">
               <div className="flex justify-between items-start mb-8">
                  <div>
-                    <h3 className="text-lg font-bold text-slate-900 tracking-tight">Predictive Heatmap (24h)</h3>
-                    <p className="text-xs text-slate-400 mt-1">Projected impact zones based on weather models.</p>
+                    <h3 className="text-lg font-bold text-slate-900 tracking-tight">{t("au_predictive_heatmap_24h")}</h3>
+                    <p className="text-xs text-slate-400 mt-1">{t("au_projected_impact_zones_desc")}</p>
                  </div>
-                 <button 
-                  onClick={() => showToast("Transferring to GIS View", "info")}
+                 <button
+                  onClick={() => showToast(t("au_transferring_gis_toast"), "info")}
                   className="text-auth-accent-red font-bold text-[10px] uppercase tracking-widest hover:underline"
                  >
-                    Full Map View
+                    {t("au_full_map_view")}
                  </button>
               </div>
-              <div className="flex-1 min-h-[300px] bg-slate-50 rounded-[32px] relative overflow-hidden flex items-center justify-center border border-slate-100 group cursor-pointer" onClick={() => showToast("Capturing Segment for Analysis", "info")}>
+              <div className="flex-1 min-h-[300px] bg-slate-50 rounded-[32px] relative overflow-hidden flex items-center justify-center border border-slate-100 group cursor-pointer" onClick={() => showToast(t("au_capturing_segment_toast"), "info")}>
                  {/* Mock Heatmap Pattern */}
                  <div className="absolute inset-0 bg-[#f1f5f9] opacity-40" style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                  <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-red-500/20 blur-[40px] rounded-full animate-pulse"></div>
                  <div className="absolute top-1/3 left-1/2 w-32 h-32 bg-orange-500/20 blur-[30px] rounded-full animate-pulse delay-700"></div>
-                 
+
                  <div className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/50 shadow-xl relative z-10 transition-transform group-hover:scale-110">
-                    <p className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">High Risk: Western Province</p>
+                    <p className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">{t("au_high_risk_western_province")}</p>
                  </div>
               </div>
            </div>
@@ -204,14 +206,14 @@ export default function AnalysisPage() {
            {/* Efficiency Metrics */}
            <div className="bg-white p-8 rounded-[40px] border border-auth-border auth-card-shadow">
               <div className="flex justify-between items-center mb-10">
-                 <h3 className="text-lg font-bold text-slate-900 tracking-tight">Resource Utilization Efficiency</h3>
-                 <span className="text-[10px] font-bold bg-green-50 text-green-600 px-3 py-1 rounded-full border border-green-100 uppercase tracking-widest">Optimal</span>
+                 <h3 className="text-lg font-bold text-slate-900 tracking-tight">{t("au_resource_utilization_efficiency")}</h3>
+                 <span className="text-[10px] font-bold bg-green-50 text-green-600 px-3 py-1 rounded-full border border-green-100 uppercase tracking-widest">{t("au_optimal")}</span>
               </div>
 
               <div className="space-y-10">
-                 <EfficiencyBar label="Emergency Personnel Deployed" value="84%" sub="420 / 500 active" />
-                 <EfficiencyBar label="Medical Supplies Stock" value="45%" sub="Re-stocking in 12h" color="bg-orange-500" />
-                 <EfficiencyBar label="Transport Vehicles Available" value="12%" sub="Critical shortage warning" color="bg-red-500" warning={true} />
+                 <EfficiencyBar label={t("au_emergency_personnel_deployed")} value="84%" sub={t("au_personnel_active_sub")} />
+                 <EfficiencyBar label={t("au_medical_supplies_stock")} value="45%" sub={t("au_restocking_12h")} color="bg-orange-500" />
+                 <EfficiencyBar label={t("au_transport_vehicles_available")} value="12%" sub={t("au_critical_shortage_warning")} color="bg-red-500" warning={true} />
               </div>
            </div>
         </div>
@@ -224,12 +226,12 @@ export default function AnalysisPage() {
                     <TrendingUp className="w-7 h-7 text-green-400" />
                  </div>
                  <div>
-                    <h4 className="text-xl font-bold tracking-tight">AI Forecasting</h4>
-                    <p className="text-sm text-slate-400 mt-4 leading-relaxed line-clamp-4">Based on current trajectory, incident volume is expected to decrease by 15% in the next 6 hours.</p>
+                    <h4 className="text-xl font-bold tracking-tight">{t("au_ai_forecasting")}</h4>
+                    <p className="text-sm text-slate-400 mt-4 leading-relaxed line-clamp-4">{t("au_forecast_trajectory_desc")}</p>
                  </div>
               </div>
               <div className="pt-8 mt-8 border-t border-white/10 flex justify-between items-center">
-                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Confidence</span>
+                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t("au_confidence")}</span>
                  <span className="text-2xl font-bold text-green-400 tracking-tighter animate-pulse">92%</span>
               </div>
            </div>
@@ -238,28 +240,28 @@ export default function AnalysisPage() {
                <table className="w-full text-left">
                   <thead>
                      <tr className="bg-slate-50/50">
-                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Region ID</th>
-                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Risk Factor</th>
-                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Population Affected</th>
-                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Trend</th>
-                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Action</th>
+                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t("au_region_id")}</th>
+                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">{t("au_risk_factor")}</th>
+                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">{t("au_population_affected")}</th>
+                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">{t("au_trend")}</th>
+                        <th className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">{t("au_action")}</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                      {loading ? (
-                        <tr><td colSpan={5} className="py-10 text-center text-slate-400 animate-pulse">Loading regional data...</td></tr>
+                        <tr><td colSpan={5} className="py-10 text-center text-slate-400 animate-pulse">{t("au_loading_regional_data")}</td></tr>
                      ) : regions.map(region => (
-                        <RegionRow 
+                        <RegionRow
                           key={region.id}
-                          id={region.name} 
-                          risk={region.severity_level} 
+                          id={region.name}
+                          risk={region.severity_level}
                           riskColor={
                             region.severity_level === 'Critical' ? "text-red-600 bg-red-50" :
                             region.severity_level === 'High' ? "text-orange-600 bg-orange-50" : "text-green-600 bg-green-50"
-                          } 
-                          pop={region.impact_percentage > 50 ? "High Impact" : "Moderate"} 
-                          trend={region.impact_percentage > 50 ? "Rising" : "Stable"} 
-                          trendIcon={region.impact_percentage > 50 ? <ArrowUpRight className="w-4 h-4 text-red-500" /> : <div className="flex items-center gap-2"><div className="w-2 h-0.5 bg-slate-300"></div><span className="text-sm font-bold text-slate-400 tracking-tighter">Stable</span></div>} 
+                          }
+                          pop={region.impact_percentage > 50 ? t("au_high_impact") : t("au_moderate")}
+                          trend={region.impact_percentage > 50 ? t("au_rising") : undefined}
+                          trendIcon={region.impact_percentage > 50 ? <ArrowUpRight className="w-4 h-4 text-red-500" /> : <div className="flex items-center gap-2"><div className="w-2 h-0.5 bg-slate-300"></div><span className="text-sm font-bold text-slate-400 tracking-tighter">{t("stable")}</span></div>}
                         />
                      ))}
                   </tbody>
@@ -276,10 +278,11 @@ export default function AnalysisPage() {
 }
 
 function DistributionLegned({ color, label, value }: any) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   return (
-    <div 
-        onClick={() => showToast(`Filtering distribution by ${label}`, "info")}
+    <div
+        onClick={() => showToast(`${t("au_filtering_distribution_by_toast")} ${label}`, "info")}
         className="flex justify-between items-center group cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition-colors"
     >
        <div className="flex items-center gap-3">
@@ -310,6 +313,7 @@ function EfficiencyBar({ label, value, sub, color = "bg-blue-600", warning = fal
 }
 
 function RegionRow({ id, risk, riskColor, pop, trend, trendIcon }: any) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   return (
     <tr className="hover:bg-slate-50 transition-colors group">
@@ -323,15 +327,15 @@ function RegionRow({ id, risk, riskColor, pop, trend, trendIcon }: any) {
        <td className="px-8 py-6">
           <div className="flex items-center justify-center gap-2">
              {trendIcon}
-             {typeof trend === 'string' && trend !== 'Stable' && <span className="text-sm font-bold text-slate-900 tracking-tighter">{trend}</span>}
+             {typeof trend === 'string' && trend && <span className="text-sm font-bold text-slate-900 tracking-tighter">{trend}</span>}
           </div>
        </td>
        <td className="px-8 py-6 text-right">
-          <button 
-            onClick={() => showToast(`Analyzing regional metrics for ${id}...`, "info")}
+          <button
+            onClick={() => showToast(`${t("au_analyzing_regional_metrics_toast")} ${id}...`, "info")}
             className="text-red-500 hover:text-red-600 font-bold text-xs uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-red-50 transition-all active:scale-95"
           >
-             Analyze
+             {t("au_analyze")}
           </button>
        </td>
     </tr>

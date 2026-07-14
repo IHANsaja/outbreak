@@ -5,8 +5,10 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Skeleton } from "./Skeleton";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function NetworkStatus() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,15 +17,15 @@ export function NetworkStatus() {
   }, []);
 
   const statuses = [
-    { name: "Internet", detail: "Stable Connection", status: "Online", color: "text-green-500", icon: Wifi },
-    { name: "SMS Alerts", detail: "Emergency Broadcasts", status: "Active", color: "text-green-500", icon: MessageSquare },
+    { name: t("c_internet"), detail: t("c_stable_connection"), status: t("online"), color: "text-green-500", icon: Wifi },
+    { name: t("c_sms_alerts"), detail: t("c_emergency_broadcasts"), status: t("c_active_status"), color: "text-green-500", icon: MessageSquare },
   ];
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-md border border-slate-200 flex-1 h-full flex flex-col">
       <div className="flex items-center gap-2 mb-8">
         <Wifi className="w-5 h-5 text-gray-400" />
-        <h3 className="font-bold text-zinc-900 italic">Network Status</h3>
+        <h3 className="font-bold text-zinc-900 italic">{t("network_status")}</h3>
       </div>
 
       <div className="space-y-6 flex-1">
@@ -61,15 +63,15 @@ export function NetworkStatus() {
       </div>
 
       <div className="pt-6 border-t border-gray-50 mt-auto space-y-4">
-        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Offline Resources</span>
+        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{t("offline_resources")}</span>
         <div className="space-y-3">
           <button className="flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-brand-red transition-colors group">
             <Download className="w-4 h-4 text-gray-400 group-hover:text-brand-red" />
-            Download Emergency Guide (PDF)
+            {t("c_download_emergency_guide")}
           </button>
           <button className="flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-brand-red transition-colors group">
             <Phone className="w-4 h-4 text-gray-400 group-hover:text-brand-red" />
-            Save Emergency Contacts
+            {t("c_save_emergency_contacts")}
           </button>
         </div>
       </div>
@@ -78,6 +80,7 @@ export function NetworkStatus() {
 }
 
 export function OfficialUpdates() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [updates, setUpdates] = useState<any[]>([]);
 
@@ -114,7 +117,7 @@ export function OfficialUpdates() {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-black text-zinc-900 italic mb-4">Official Updates</h3>
+      <h3 className="font-black text-zinc-900 italic mb-4">{t("updates")}</h3>
       <div className="space-y-3">
         {loading ? (
           <>
@@ -155,7 +158,7 @@ export function OfficialUpdates() {
         )}
         {!loading && updates.length === 0 && (
           <div className="p-10 text-center text-gray-400 border border-dashed border-slate-200 rounded-2xl">
-            No official updates at this time.
+            {t("c_no_official_updates")}
           </div>
         )}
       </div>

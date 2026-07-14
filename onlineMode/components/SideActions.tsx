@@ -2,6 +2,7 @@
 
 import { History, Phone, ShieldCheck, Download, FileText, Map as MapIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface TimelineEvent {
   id: string;
@@ -13,11 +14,12 @@ interface TimelineEvent {
 }
 
 export function EventTimeline({ events }: { events: TimelineEvent[] }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-8">
         <History className="w-5 h-5 text-gray-500" />
-        <h3 className="font-bold text-zinc-900 italic">Event Timeline</h3>
+        <h3 className="font-bold text-zinc-900 italic">{t("c_event_timeline")}</h3>
       </div>
       
       <div className="space-y-8 relative">
@@ -52,11 +54,12 @@ interface Responder {
 }
 
 export function LocalResponders({ responders }: { responders: Responder[] }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-[#0F172A] rounded-2xl p-6 shadow-xl space-y-6">
       <div className="flex items-center gap-2">
         <ShieldCheck className="w-5 h-5 text-brand-red" />
-        <h3 className="font-bold text-white italic">Local Responders</h3>
+        <h3 className="font-bold text-white italic">{t("c_local_responders")}</h3>
       </div>
       
       <div className="space-y-3">
@@ -78,13 +81,14 @@ export function LocalResponders({ responders }: { responders: Responder[] }) {
       
       <button className="w-full bg-brand-red hover:bg-red-600 text-white font-black py-4 rounded-xl shadow-lg shadow-red-900/20 transition-all flex items-center justify-center gap-2 italic uppercase tracking-wider text-sm">
         <Phone className="w-4 h-4 animate-bounce" />
-        Request Assistance
+        {t("c_request_assistance")}
       </button>
     </div>
   );
 }
 
 export function Downloads() {
+  const { t } = useLanguage();
   const files = [
     { name: "Evacuation Route Map.pdf", icon: MapIcon, color: "text-red-500" },
     { name: "Emergency Checklist.pdf", icon: FileText, color: "text-blue-500" },
@@ -92,7 +96,7 @@ export function Downloads() {
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <h3 className="font-black text-zinc-900 italic mb-6">DOWNLOADS</h3>
+      <h3 className="font-black text-zinc-900 italic mb-6">{t("c_downloads")}</h3>
       <div className="space-y-3">
         {files.map((file, idx) => (
           <a 
