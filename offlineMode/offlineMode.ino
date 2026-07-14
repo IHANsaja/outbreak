@@ -5,6 +5,9 @@
 #include <SPI.h>
 #include <LoRa.h>
 #include <math.h>
+#include <time.h>
+#include <esp_wifi.h>
+#include <esp_netif.h>
 
 // --- Configuration ---
 const char* ssid = "Outbreak-WIFI-AP";
@@ -91,6 +94,16 @@ int peerRecordCount = 0;
 const int MAX_SEEN_IDS = 16;
 String seenFrameIds[MAX_SEEN_IDS];
 int seenFrameIdx = 0;
+
+// --- WiFi peer nicknames (browser nick registered per DHCP client IP) ---
+struct PeerNickEntry {
+  String ip;
+  String nick;
+  unsigned long lastSeenMs;
+};
+const int MAX_NICKS = 12;
+PeerNickEntry peerNicks[MAX_NICKS];
+int peerNickCount = 0;
 
 bool loraOk = false;
 unsigned long lastBeaconMs = 0;
@@ -358,42 +371,6 @@ const char* index_html = R"rawliteral(<!doctype html>
         padding: 20px;
         gap: 24px;
         overflow-y: auto;
-      }
-
-      .map-box {
-        width: 100%;
-        aspect-ratio: 4/3;
-        background: #e2e8f0;
-        border-radius: 12px;
-        position: relative;
-        overflow: hidden;
-        border: 1px solid var(--border);
-      }
-
-      .map-marker {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 12px;
-        height: 12px;
-        background: var(--accent-green);
-        border: 2px solid white;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.2);
-        animation: pulse 2s infinite;
-      }
-
-      @keyframes pulse {
-        0% {
-          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-        }
-        70% {
-          box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-        }
-        100% {
-          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-        }
       }
 
       .metric-card {
@@ -733,47 +710,39 @@ const char* index_html = R"rawliteral(<!doctype html>
 
     <div class="app-container">
       <aside class="sidebar">
-        <div class="map-box">
-          <svg width="100%" height="100%" viewBox="0 0 200 150">
-            <rect width="200" height="150" fill="#cbd5e1" />
-            <path d="M20,20 L180,20 L180,130 L20,130 Z" fill="#e2e8f0" />
-            <circle cx="100" cy="75" r="40" fill="#94a3b8" opacity="0.2" />
-          </svg>
-          <div class="map-marker"></div>
-          <div
-            style="
-              position: absolute;
-              bottom: 10px;
-              left: 10px;
-              background: white;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 9px;
-              font-weight: bold;
-              color: #1e293b;
-              border: 1px solid #e2e8f0;
-            "
-          >
-            YOU ARE HERE
+        <div class="metric-card">
+          <div class="metric-label">This Node</div>
+          <div class="metric-value" id="nodeIdValue">--</div>
+          <div class="metric-sub" id="nodeApValue" style="color: var(--text-muted)">Waiting for node...</div>
+          <div class="metric-sub" id="nodeUptimeValue" style="color: var(--text-muted)">Uptime: --</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">WiFi Peers</div>
+          <div class="metric-value" id="wifiPeerCount">--</div>
+          <div class="metric-sub">Devices on this hotspot</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Peer Map</div>
+          <svg id="peerRadar" viewBox="0 0 200 200" width="100%" style="display:block;margin-top:8px;"></svg>
+          <div id="peerList" style="margin-top:8px;"></div>
+          <div class="metric-sub" style="color: var(--text-muted); font-weight: 400">
+            Distance from edge node, estimated via WiFi signal. Direction on
+            the map is illustrative — move toward the node to find peers.
           </div>
         </div>
 
         <div class="metric-card">
-          <div class="metric-label">Signal Strength</div>
-          <div class="metric-value" id="signalStrengthValue">Unknown</div>
-          <div class="metric-sub" id="signalStrengthSub">Waiting for data</div>
+          <div class="metric-label">LoRa Signal</div>
+          <div class="metric-value" id="signalStrengthValue">--</div>
+          <div class="metric-sub" id="signalStrengthSub">Waiting for node...</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Broadcast Range</div>
-          <div class="metric-value" id="broadcastRangeValue">Unknown</div>
-          <div class="metric-sub" id="broadcastRangeSub">No LoRa data</div>
-        </div>
-
-        <div class="metric-card">
-          <div class="metric-label">Peers Connected</div>
-          <div class="metric-value" id="peerCount">0 Devices</div>
-          <div class="metric-sub">LoRa Mesh Channel</div>
+          <div class="metric-value" id="broadcastRangeValue">--</div>
+          <div class="metric-sub" id="broadcastRangeSub">Waiting for node...</div>
         </div>
       </aside>
 
@@ -1117,16 +1086,30 @@ const char* index_html = R"rawliteral(<!doctype html>
       // ================================================================
       // LOAD DATA FROM SERVER
       // ================================================================
+      // Polls overlap on slow captive-portal links; the in-flight guard plus
+      // a consecutive-failure threshold stops connect/disconnect toast spam.
+      var isPollingFeed = false;
+      var feedFailStreak = 0;
+      var FEED_FAIL_THRESHOLD = 3;
+      var everConnected = false;
+
       async function loadDataFromServer() {
-        var wasConnected = isOfflineBackend;
+        if (isPollingFeed) return;
+        isPollingFeed = true;
         try {
           var resMsg = await fetchWithTimeout('/api/messages', {}, 5000);
           if (!resMsg.ok) {
             throw new Error('Server returned HTTP ' + resMsg.status);
           }
-          isOfflineBackend = true;
-          if (!wasConnected) {
-            toastSuccess('Node Connected', 'Real-time mesh feed active.');
+          feedFailStreak = 0;
+          if (!isOfflineBackend) {
+            isOfflineBackend = true;
+            if (everConnected) {
+              toastSuccess('Edge Node Reconnected', 'Connection to the node restored.');
+            } else {
+              toastSuccess('Connected to Edge Node', 'Live message feed active.');
+            }
+            everConnected = true;
           }
 
           var dataMsg;
@@ -1173,27 +1156,42 @@ const char* index_html = R"rawliteral(<!doctype html>
           }
 
         } catch (err) {
-          if (isOfflineBackend) {
+          feedFailStreak++;
+          if (isOfflineBackend && feedFailStreak >= FEED_FAIL_THRESHOLD) {
+            isOfflineBackend = false;
             console.warn('loadDataFromServer failed:', err.message);
-            toastWarning('Connection Lost', 'Could not reach edge node. Retrying...');
-          } else {
-            console.log('Running in standalone/mock mode:', err.message);
+            toastWarning('Edge Node Unreachable', 'Lost contact with the node. Retrying in the background...');
+          } else if (!isOfflineBackend) {
+            console.log('Edge node not reachable yet:', err.message);
           }
-          isOfflineBackend = false;
+        } finally {
+          isPollingFeed = false;
         }
       }
 
-      // ADDED: poll node status for backhaul indicator
+      // Poll node status for the backhaul indicator and sidebar metrics.
+      // lastNodeStatus is cached so updateSyncUI() can reuse it without
+      // firing its own /api/status request.
+      var isPollingStatus = false;
+      var lastNodeStatus = null;
+
       async function loadNodeStatus() {
+        if (isPollingStatus) return;
+        isPollingStatus = true;
         try {
           var res = await fetchWithTimeout('/api/status', {}, 4000);
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var status = await res.json();
+          lastNodeStatus = status;
           updateConnectionIndicator(status);
-          updateLoraMetrics(status);
+          updateNodeMetrics(status);
+          updateSyncUI();
         } catch (err) {
+          lastNodeStatus = null;
           updateConnectionIndicator(null);
-          updateLoraMetrics(null);
+          updateNodeMetrics(null);
+        } finally {
+          isPollingStatus = false;
         }
       }
 
@@ -1205,37 +1203,169 @@ const char* index_html = R"rawliteral(<!doctype html>
         return Math.max(1, Math.min(5000, Math.round(d)));
       }
 
-      function updateLoraMetrics(status) {
-        var sigVal = document.getElementById('signalStrengthValue');
-        var sigSub = document.getElementById('signalStrengthSub');
-        var rangeVal = document.getElementById('broadcastRangeValue');
-        var rangeSub = document.getElementById('broadcastRangeSub');
-        var peerVal = document.getElementById('peerCount');
+      function formatUptime(ms) {
+        var s = Math.floor(ms / 1000);
+        var d = Math.floor(s / 86400);
+        var h = Math.floor((s % 86400) / 3600);
+        var m = Math.floor((s % 3600) / 60);
+        if (d > 0) return d + 'd ' + h + 'h';
+        if (h > 0) return h + 'h ' + m + 'm';
+        return m + 'm';
+      }
 
-        if (!status || !status.lora_ok) {
-          if (sigVal) sigVal.innerText = 'Offline';
-          if (sigSub) sigSub.innerText = 'LoRa module not detected';
-          if (rangeVal) rangeVal.innerText = 'Unknown';
-          if (rangeSub) rangeSub.innerText = 'No LoRa data';
-          if (peerVal) peerVal.innerText = '0 Devices';
+      function setMetric(id, text) {
+        var el = document.getElementById(id);
+        if (el) el.innerText = text;
+      }
+
+      function updateNodeMetrics(status) {
+        if (!status) {
+          setMetric('nodeIdValue', 'Unreachable');
+          setMetric('nodeApValue', 'No response from edge node');
+          setMetric('nodeUptimeValue', 'Uptime: --');
+          setMetric('wifiPeerCount', '--');
+          setMetric('signalStrengthValue', '--');
+          setMetric('signalStrengthSub', 'Node unreachable');
+          setMetric('broadcastRangeValue', '--');
+          setMetric('broadcastRangeSub', 'Node unreachable');
+          return;
+        }
+
+        setMetric('nodeIdValue', 'Node ' + (status.node_id || '----'));
+        setMetric('nodeApValue', 'AP ' + (status.ap_ip || '192.168.4.1'));
+        setMetric('nodeUptimeValue', 'Uptime: ' + formatUptime(status.uptime_ms || 0));
+
+        var wifiClients = status.wifi_clients || 0;
+        setMetric('wifiPeerCount', wifiClients + (wifiClients === 1 ? ' Device' : ' Devices'));
+
+        if (!status.lora_ok) {
+          setMetric('signalStrengthValue', '--');
+          setMetric('signalStrengthSub', 'LoRa radio offline');
+          setMetric('broadcastRangeValue', '--');
+          setMetric('broadcastRangeSub', 'LoRa radio offline');
           return;
         }
 
         var peerCount = status.lora_peers || 0;
         var rssi = status.lora_best_rssi || 0;
 
-        if (peerVal) peerVal.innerText = peerCount + (peerCount === 1 ? ' Device' : ' Devices');
-
         if (peerCount === 0) {
-          if (sigVal) sigVal.innerText = 'No Peers';
-          if (sigSub) sigSub.innerText = 'Listening for beacons...';
-          if (rangeVal) rangeVal.innerText = '--';
-          if (rangeSub) rangeSub.innerText = 'No peers in range';
+          setMetric('signalStrengthValue', 'No Signal');
+          setMetric('signalStrengthSub', 'No mesh nodes in range');
+          setMetric('broadcastRangeValue', '--');
+          setMetric('broadcastRangeSub', 'No mesh nodes in range');
         } else {
-          if (sigVal) sigVal.innerText = rssi + ' dBm';
-          if (sigSub) sigSub.innerText = 'Strongest of ' + peerCount + ' peer(s)';
-          if (rangeVal) rangeVal.innerText = '~' + estimateDistanceJs(rssi) + 'm';
-          if (rangeSub) rangeSub.innerText = 'Estimated via RSSI';
+          setMetric('signalStrengthValue', rssi + ' dBm');
+          setMetric('signalStrengthSub', 'Strongest of ' + peerCount + ' node(s)');
+          setMetric('broadcastRangeValue', '~' + estimateDistanceJs(rssi) + 'm');
+          setMetric('broadcastRangeSub', 'Estimated from RSSI');
+        }
+      }
+
+      // ================================================================
+      // WIFI PEER MAP
+      // ================================================================
+      // Radar-style view centered on the edge node. Radius = estimated
+      // distance from the node (RSSI path-loss model on the firmware side).
+      // RSSI has no bearing information, so each device gets a stable
+      // placeholder angle derived from its id — direction is NOT real.
+      var isPollingPeers = false;
+
+      function peerAngle(id) {
+        var h = 0;
+        for (var i = 0; i < id.length; i++) {
+          h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+        }
+        return (Math.abs(h) % 360) * Math.PI / 180;
+      }
+
+      function renderPeerMap(peers) {
+        var svg = document.getElementById('peerRadar');
+        var list = document.getElementById('peerList');
+        if (!svg || !list) return;
+
+        if (!peers) {
+          svg.innerHTML = '<text x="100" y="100" text-anchor="middle" font-size="11" fill="#94a3b8">Node unreachable</text>';
+          list.innerHTML = '';
+          return;
+        }
+
+        var maxDist = 10;
+        peers.forEach(function(p) { if (p.dist_m > maxDist) maxDist = p.dist_m; });
+        maxDist = Math.ceil(maxDist / 10) * 10;
+
+        var rMax = 88;
+        var parts = '';
+
+        // Range rings with meter labels
+        [1/3, 2/3, 1].forEach(function(frac) {
+          var r = rMax * frac;
+          parts += '<circle cx="100" cy="100" r="' + r.toFixed(1) + '" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3"/>';
+          parts += '<text x="100" y="' + (100 - r - 2).toFixed(1) + '" text-anchor="middle" font-size="8" fill="#94a3b8">' + Math.round(maxDist * frac) + 'm</text>';
+        });
+
+        // Edge node at center
+        parts += '<circle cx="100" cy="100" r="6" fill="#ef4444"/>';
+        parts += '<text x="100" y="115" text-anchor="middle" font-size="8" font-weight="bold" fill="#64748b">EDGE NODE</text>';
+
+        var listHtml = '';
+        peers.forEach(function(p) {
+          var angle = peerAngle(p.device);
+          // Floor keeps very close peers from overlapping the center label
+          var r = Math.max(0.22, Math.min(p.dist_m / maxDist, 1)) * rMax;
+          var x = 100 + r * Math.cos(angle);
+          var y = 100 + r * Math.sin(angle);
+          var isSelf = !!p.self;
+          var color = isSelf ? '#3b82f6' : '#22c55e';
+          var label = p.nick ? p.nick : 'Device-' + p.device.replace(':', '');
+          if (isSelf) label += ' (You)';
+
+          parts += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="' + color + '" stroke="white" stroke-width="1.5"/>';
+          parts += '<text x="' + x.toFixed(1) + '" y="' + (y - 8).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="bold" fill="#334155">' + escapeHtml(label) + '</text>';
+
+          listHtml +=
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+              '<span style="font-weight:600;color:' + (isSelf ? '#3b82f6' : 'var(--text-main)') + '">' + escapeHtml(label) + '</span>' +
+              '<span style="color:var(--text-muted)">~' + p.dist_m + 'm ∙ ' + p.rssi + ' dBm</span>' +
+            '</div>';
+        });
+
+        if (peers.length === 0) {
+          parts += '<text x="100" y="140" text-anchor="middle" font-size="10" fill="#94a3b8">No devices connected</text>';
+          listHtml = '';
+        }
+
+        svg.innerHTML = parts;
+        list.innerHTML = listHtml;
+      }
+
+      async function loadPeers() {
+        if (isPollingPeers) return;
+        isPollingPeers = true;
+        try {
+          var res = await fetchWithTimeout('/api/peers', {}, 4000);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          var peers = await res.json();
+          if (!Array.isArray(peers)) throw new Error('bad payload');
+          renderPeerMap(peers);
+        } catch (err) {
+          renderPeerMap(null);
+        } finally {
+          isPollingPeers = false;
+        }
+      }
+
+      // Registers this browser's nickname with the node so the peer map can
+      // label this device instead of showing a bare MAC suffix.
+      async function sayHello() {
+        try {
+          await fetchWithTimeout('/api/hello', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'nick=' + encodeURIComponent(myNick)
+          }, 4000);
+        } catch (e) {
+          // Harmless: the device shows as Device-XXXX until the next attempt.
         }
       }
 
@@ -1364,7 +1494,7 @@ const char* index_html = R"rawliteral(<!doctype html>
                 addMySentId(msgId);
                 input.value = '';
                 await loadDataFromServer();
-                toastSuccess('Sent', 'Message broadcast to mesh network.');
+                toastSuccess('Message Sent', 'Shared with all devices connected to this node.');
                 return;
               } else {
                 var errBody = '';
@@ -1373,7 +1503,7 @@ const char* index_html = R"rawliteral(<!doctype html>
               }
             } catch (fetchErr) {
               console.error('POST /api/messages failed, falling back to local:', fetchErr.message);
-              toastWarning('Offline Fallback', 'Node unreachable. Message queued locally.');
+              toastWarning('Node Unreachable', 'Message saved on this device — will sync when reconnected.');
             }
           }
 
@@ -1391,7 +1521,7 @@ const char* index_html = R"rawliteral(<!doctype html>
           input.value = '';
           updateSyncUI();
           renderFeed();
-          toastSuccess('Queued Locally', 'Will sync when connection is restored.');
+          toastInfo('Message Saved Locally', 'It will be delivered when the node connection is restored.');
 
         } catch (e) {
           console.error('sendMessage unexpected error:', e);
@@ -1430,21 +1560,7 @@ const char* index_html = R"rawliteral(<!doctype html>
             if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 600]);
           } catch (_) {}
 
-          var approxDistance = 0;
-
-          state.messages.push({
-            id: sosId,
-            user: '🚨 EMERGENCY',
-            text:
-              'SOS ALERT ACTIVE\n' +
-              'Approx Distance: ' + approxDistance + 'm\n' +
-              'Move toward stronger signal.',
-            time: formatSLTime(slTime),
-            alert: true,
-            queued: true,
-            dist: approxDistance + 'm',
-          });
-          renderFeed();
+          var deliveredToNode = false;
 
           if (isOfflineBackend) {
             try {
@@ -1453,22 +1569,42 @@ const char* index_html = R"rawliteral(<!doctype html>
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body:
                   'id=' + sosId +
-                  '&distance=' + approxDistance +
                   '&time=' + encodeURIComponent(formatSLTime(slTime))
               }, 6000);
 
               if (res.ok) {
+                deliveredToNode = true;
                 await loadDataFromServer();
-                toastSuccess('SOS Broadcast Sent', 'Distress signal queued on node.');
+                toastSuccess('SOS Broadcast Sent', 'Alert stored on the edge node and queued for cloud sync.');
               } else {
                 throw new Error('Server returned HTTP ' + res.status);
               }
             } catch (fetchErr) {
               console.error('quickSOS POST failed:', fetchErr.message);
-              toastError('SOS Relay Failed', 'Could not reach node. Signal queued locally.');
+              toastError('SOS Not Delivered', 'Edge node unreachable — alert saved on this device instead.');
             }
           } else {
-            toastWarning('SOS Queued Locally', 'No node connection. Will sync when online.');
+            toastWarning('SOS Saved on This Device', 'No connection to the edge node. It will sync once reconnected.');
+          }
+
+          if (!deliveredToNode) {
+            state.messages.push({
+              id: sosId,
+              user: '🚨 EMERGENCY',
+              text: 'SOS ALERT — saved on this device, waiting for edge node connection.',
+              time: formatSLTime(slTime),
+              alert: true,
+              queued: true,
+            });
+            state.syncQueue.push({
+              id: 'SOS-' + sosId,
+              type: 'SOS_BROADCAST',
+              content: 'EMERGENCY SOS TRIGGERED (edge node unreachable at send time)',
+              priority: 'CRITICAL',
+              timestamp_sl: slTime.toISOString(),
+              timestamp_ms: slTime.getTime()
+            });
+            renderFeed();
           }
 
           updateSyncUI();
@@ -1525,7 +1661,7 @@ const char* index_html = R"rawliteral(<!doctype html>
               if (res.ok) {
                 closeModal('sosModal');
                 await loadDataFromServer();
-                toastSuccess('SOS Broadcast Sent', 'CRITICAL signal relayed to mesh. Location: ' + location);
+                toastSuccess('SOS Broadcast Sent', 'Alert stored on the edge node. Location: ' + location);
                 return;
               } else {
                 var errBody = '';
@@ -1534,15 +1670,15 @@ const char* index_html = R"rawliteral(<!doctype html>
               }
             } catch (fetchErr) {
               console.error('triggerSOS POST failed, falling back:', fetchErr.message);
-              toastWarning('Node Unreachable', 'SOS queued locally. Will upload when internet restored.');
+              toastError('SOS Not Delivered', 'Edge node unreachable — alert saved on this device instead.');
             }
           }
 
           state.syncQueue.push(sosData);
           state.messages.push({
             id: Date.now(),
-            user: 'SYSTEM',
-            text: 'SOS BROADCAST SENT. LOCATION: ' + location + '. DISTRESS SIGNAL QUEUED.',
+            user: '🚨 EMERGENCY',
+            text: 'SOS ALERT — saved on this device with location ' + location + ', waiting for edge node connection.',
             time: formatSLTime(slTime),
             alert: true,
             queued: true,
@@ -1551,7 +1687,7 @@ const char* index_html = R"rawliteral(<!doctype html>
           closeModal('sosModal');
           updateSyncUI();
           renderFeed();
-          toastSuccess('SOS Queued', 'Distress signal stored locally.');
+          toastWarning('SOS Saved on This Device', 'It will sync once the node connection is restored.');
 
         } catch (e) {
           console.error('triggerSOS unexpected error:', e);
@@ -1690,46 +1826,29 @@ const char* index_html = R"rawliteral(<!doctype html>
       // ================================================================
       // UI UTILITIES
       // ================================================================
-      var isJobPending = false;
-
-      async function updateSyncUI() {
+      // Reads the status cached by loadNodeStatus() — never fetches on its own.
+      function updateSyncUI() {
         try {
           var count = Array.isArray(state.syncQueue) ? state.syncQueue.length : 0;
+          if (lastNodeStatus && typeof lastNodeStatus.queue_count === 'number') {
+            count = lastNodeStatus.queue_count;
+          }
           queueCountEl.innerText = count + ' Items';
           modalQueueCountEl.innerText = count;
           var progress = Math.min(count * 5, 100);
           syncProgressEl.style.width = (count === 0 ? 0 : 20 + progress) + '%';
 
-          if (isOfflineBackend) {
-            try {
-              var res = await fetchWithTimeout('/api/status', {}, 4000);
-              if (res.ok) {
-                var statusData;
-                try {
-                  statusData = await res.json();
-                } catch (parseErr) {
-                  throw new Error('Invalid JSON from /api/status');
-                }
-                isJobPending = !!statusData.sync_job_pending;
-                count = (typeof statusData.queue_count === 'number') ? statusData.queue_count : count;
-                queueCountEl.innerText = count + ' Items';
-                modalQueueCountEl.innerText = count;
-
-                var syncStatusLabel = document.querySelector('.sync-status span');
-                if (syncStatusLabel) {
-                  if (isJobPending) {
-                    syncStatusLabel.innerHTML = '⏳ Background Upload Job Active (Waiting for Internet)';
-                    syncStatusLabel.style.color = 'var(--accent-green)';
-                    syncProgressEl.style.background = 'var(--accent-green)';
-                  } else {
-                    syncStatusLabel.innerHTML = 'Cloud Sync Pending';
-                    syncStatusLabel.style.color = '';
-                    syncProgressEl.style.background = '';
-                  }
-                }
-              }
-            } catch (e) {
-              console.log('Sync status check failed:', e.message);
+          var isJobPending = !!(lastNodeStatus && lastNodeStatus.sync_job_pending);
+          var syncStatusLabel = document.querySelector('.sync-status span');
+          if (syncStatusLabel) {
+            if (isJobPending) {
+              syncStatusLabel.innerHTML = '⏳ Upload job active — uploads when internet is available';
+              syncStatusLabel.style.color = 'var(--accent-green)';
+              syncProgressEl.style.background = 'var(--accent-green)';
+            } else {
+              syncStatusLabel.innerHTML = 'Cloud Sync Pending';
+              syncStatusLabel.style.color = '';
+              syncProgressEl.style.background = '';
             }
           }
         } catch (e) {
@@ -1792,6 +1911,7 @@ const char* index_html = R"rawliteral(<!doctype html>
       // INIT
       // ================================================================
       try {
+        sayHello().then(loadPeers);
         loadDataFromServer();
         loadNodeStatus();
         updateSyncUI();
@@ -1801,17 +1921,33 @@ const char* index_html = R"rawliteral(<!doctype html>
         toastError('Init Failed', 'Could not start edge node UI.');
       }
 
+      // The ESP32 web server handles one request at a time (and also serves
+      // captive-portal probes), so keep polling modest to avoid timeouts.
       setInterval(function() {
         try {
           loadDataFromServer();
         } catch (e) { console.error('Poll error:', e); }
-      }, 1200);
+      }, 2500);
 
       setInterval(function() {
         try {
           loadNodeStatus();
         } catch (e) { console.error('Status poll error:', e); }
-      }, 3000);
+      }, 5000);
+
+      setInterval(function() {
+        try {
+          loadPeers();
+        } catch (e) { console.error('Peer poll error:', e); }
+      }, 6000);
+
+      // Re-register the nickname periodically (covers node reboots and
+      // DHCP lease changes).
+      setInterval(function() {
+        try {
+          sayHello();
+        } catch (e) { console.error('Hello error:', e); }
+      }, 30000);
 
     </script>
   </body>
@@ -1884,6 +2020,23 @@ void addSyncItem(const String& id, const String& type, const String& content,
     }
     syncQueue[MAX_SYNC - 1] = item;
   }
+}
+
+// Message ids are the sending client's Date.now() (Unix epoch ms), so a valid
+// ISO-8601 UTC timestamp can be derived from them. Postgres rejects the
+// locale-formatted wall-clock time ("11:47 AM") the UI sends, so this is the
+// only reliable source for the captured_at_sl column.
+String isoFromEpochMs(long long ms) {
+  if (ms < 100000000000LL) return "1970-01-01T00:00:00.000Z"; // not epoch ms
+  time_t secs = (time_t)(ms / 1000);
+  int msPart = (int)(ms % 1000);
+  struct tm t;
+  gmtime_r(&secs, &t);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+           t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+           t.tm_hour, t.tm_min, t.tm_sec, msPart);
+  return String(buf);
 }
 
 // --- JSON Helpers ---
@@ -1997,6 +2150,100 @@ long estimateDistance(int rssi) {
   if (distance < 1) distance = 1;
   if (distance > 5000) distance = 5000;
   return (long)distance;
+}
+
+// --- WiFi Peer Map (users connected to the SoftAP) ---
+// Log-distance path-loss for 2.4GHz WiFi: PL0 ~= 40dB @ 1m, n = 3.0 (indoor,
+// bodies and walls). Same caveat as the LoRa model: order-of-magnitude
+// estimate. RSSI carries no bearing, so this yields distance only.
+long estimateWifiDistance(int rssi) {
+  float exponent = (-40.0 - (float)rssi) / (10.0 * 3.0);
+  float d = pow(10.0, exponent);
+  if (d < 1) d = 1;
+  if (d > 300) d = 300;
+  return (long)d;
+}
+
+void upsertPeerNick(const String& ip, const String& nick) {
+  unsigned long now = millis();
+  for (int i = 0; i < peerNickCount; i++) {
+    if (peerNicks[i].ip == ip) {
+      peerNicks[i].nick = nick;
+      peerNicks[i].lastSeenMs = now;
+      return;
+    }
+  }
+  if (peerNickCount < MAX_NICKS) {
+    peerNicks[peerNickCount].ip = ip;
+    peerNicks[peerNickCount].nick = nick;
+    peerNicks[peerNickCount].lastSeenMs = now;
+    peerNickCount++;
+  } else {
+    int oldestIdx = 0;
+    unsigned long oldest = peerNicks[0].lastSeenMs;
+    for (int i = 1; i < MAX_NICKS; i++) {
+      if (peerNicks[i].lastSeenMs < oldest) { oldest = peerNicks[i].lastSeenMs; oldestIdx = i; }
+    }
+    peerNicks[oldestIdx].ip = ip;
+    peerNicks[oldestIdx].nick = nick;
+    peerNicks[oldestIdx].lastSeenMs = now;
+  }
+}
+
+String nickForIp(const String& ip) {
+  for (int i = 0; i < peerNickCount; i++) {
+    if (peerNicks[i].ip == ip) return peerNicks[i].nick;
+  }
+  return "";
+}
+
+// Connected AP stations with per-client RSSI, estimated distance, and the
+// nickname registered from that client's IP (via POST /api/hello). "self"
+// marks the entry belonging to the requesting browser.
+String getWifiPeersJSON(const String& requesterIp) {
+  wifi_sta_list_t staList;
+  if (esp_wifi_ap_get_sta_list(&staList) != ESP_OK) return "[]";
+
+  esp_netif_t* apNetif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+
+  String json = "[";
+  bool first = true;
+  for (int i = 0; i < staList.num; i++) {
+    char macBuf[18];
+    snprintf(macBuf, sizeof(macBuf), "%02X:%02X:%02X:%02X:%02X:%02X",
+             staList.sta[i].mac[0], staList.sta[i].mac[1], staList.sta[i].mac[2],
+             staList.sta[i].mac[3], staList.sta[i].mac[4], staList.sta[i].mac[5]);
+    String macStr(macBuf);
+
+    // Resolve the station's DHCP lease so nick (keyed by IP) can be joined
+    // with RSSI (keyed by MAC).
+    String ipStr = "";
+    if (apNetif != nullptr) {
+      esp_netif_pair_mac_ip_t pair;
+      memcpy(pair.mac, staList.sta[i].mac, 6);
+      pair.ip.addr = 0;
+      if (esp_netif_dhcps_get_clients_by_mac(apNetif, 1, &pair) == ESP_OK && pair.ip.addr != 0) {
+        char ipBuf[16];
+        snprintf(ipBuf, sizeof(ipBuf), IPSTR, IP2STR(&pair.ip));
+        ipStr = ipBuf;
+      }
+    }
+
+    int rssi = staList.sta[i].rssi;
+    String nick = ipStr.length() > 0 ? nickForIp(ipStr) : "";
+
+    if (!first) json += ",";
+    first = false;
+    json += "{";
+    json += "\"device\":\"" + macStr.substring(12) + "\",";  // last 2 octets only
+    json += "\"rssi\":" + String(rssi) + ",";
+    json += "\"dist_m\":" + String(estimateWifiDistance(rssi)) + ",";
+    json += "\"nick\":\"" + jsonEscape(nick) + "\",";
+    json += "\"self\":" + String(ipStr.length() > 0 && ipStr == requesterIp ? "true" : "false");
+    json += "}";
+  }
+  json += "]";
+  return json;
 }
 
 // --- LoRa Identity, Peers & Dedup ---
@@ -2155,7 +2402,7 @@ void loraPoll() {
 
     long long idNum = atoll(msgId.c_str());
     addMessage(idNum, nick + " (LoRa)", text, time, false, rssi, distM, origin);
-    String timestamp_sl = "2026-01-01T" + time + ":00.000Z";
+    String timestamp_sl = isoFromEpochMs(idNum);
     addSyncItem("MSG-" + origin + "-" + msgId, "MESSAGE", text, "NORMAL", "", timestamp_sl, idNum, nick, origin, rssi, distM);
     Serial.println("[LoRa RX] Message relayed from " + origin + " (RSSI " + String(rssi) + ")");
   }
@@ -2172,9 +2419,23 @@ void loraPoll() {
     long long idNum = atoll(msgId.c_str());
     String fullText = "🆘 RELAYED SOS from " + origin + " | " + text;
     addMessage(idNum, "🚨 SOS ALERT (LoRa)", fullText, time, true, rssi, distM, origin);
-    String timestamp_sl = "2026-01-01T" + time + ":00.000Z";
+    String timestamp_sl = isoFromEpochMs(idNum);
     addSyncItem("SOS-" + origin + "-" + msgId, "SOS_BROADCAST", fullText, "CRITICAL", loc, timestamp_sl, idNum, "", origin, rssi, distM);
     Serial.println("[LoRa RX] SOS relayed from " + origin + " (RSSI " + String(rssi) + ")");
+  }
+}
+
+// --- WiFi AP client events (serial visibility for hotspot joins/leaves) ---
+void onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+  switch (event) {
+    case ARDUINO_EVENT_WIFI_AP_STACONNECTED:
+      Serial.printf("[AP] Device joined hotspot. Connected clients: %d\n", WiFi.softAPgetStationNum());
+      break;
+    case ARDUINO_EVENT_WIFI_AP_STADISCONNECTED:
+      Serial.printf("[AP] Device left hotspot. Connected clients: %d\n", WiFi.softAPgetStationNum());
+      break;
+    default:
+      break;
   }
 }
 
@@ -2208,6 +2469,7 @@ void setup() {
   syncCount    = 0;
 
   // AP+STA: broadcast local portal AND connect to router for internet backhaul
+  WiFi.onEvent(onWiFiEvent);
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
   WiFi.softAP(ssid);
@@ -2276,6 +2538,8 @@ void setup() {
     json += "\"sta_ssid\":\"" + jsonEscape(String(STA_SSID)) + "\",";
     json += "\"sta_ip\":" + staIpStr + ",";
     json += "\"ap_ip\":\"" + WiFi.softAPIP().toString() + "\",";
+    json += "\"node_id\":\"" + nodeId4() + "\",";
+    json += "\"wifi_clients\":" + String(WiFi.softAPgetStationNum()) + ",";
     json += "\"mac\":\"" + WiFi.macAddress() + "\",";
     json += "\"queue_count\":" + String(syncCount) + ",";
     json += "\"sync_job_pending\":" + String(isSyncJobPending ? "true" : "false") + ",";
@@ -2286,6 +2550,24 @@ void setup() {
     json += "\"uptime_ms\":" + String(millis());
     json += "}";
     server.send(200, "application/json", json);
+  });
+
+  server.on("/api/peers", HTTP_GET, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    String requesterIp = server.client().remoteIP().toString();
+    server.send(200, "application/json", getWifiPeersJSON(requesterIp));
+  });
+
+  // Browsers register their nickname here so /api/peers can label devices.
+  server.on("/api/hello", HTTP_POST, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    String nick = server.hasArg("nick") ? server.arg("nick") : "";
+    if (nick.length() == 0 || nick.length() > 32) {
+      server.send(400, "application/json", "{\"error\":\"nick must be 1-32 chars\"}");
+      return;
+    }
+    upsertPeerNick(server.client().remoteIP().toString(), nick);
+    server.send(200, "application/json", "{\"status\":\"OK\"}");
   });
 
   server.on("/api/messages", HTTP_POST, []() {
@@ -2325,7 +2607,7 @@ void setup() {
     addMessage(id, user, text, time, false, 0, 0, "");
     loraBroadcastMessage(id, user, text, time);
 
-    String timestamp_sl = "2026-01-01T" + time + ":00.000Z";
+    String timestamp_sl = isoFromEpochMs(id);
     addSyncItem("MSG-" + String(id), "MESSAGE", text, "NORMAL", "", timestamp_sl, id, user, "", 0, 0);
 
     Serial.println("[POST /api/messages] New message from " + user + ": " + text);
@@ -2342,9 +2624,7 @@ void setup() {
     }
 
     String idStr    = server.arg("id");
-    // "distance" and "location" are both optional: quickSOS() sends distance,
-    // triggerSOS() (GPS-confirmed modal flow) sends location instead.
-    String distance = server.hasArg("distance") ? server.arg("distance") : "0";
+    // "location" is optional: only triggerSOS() (GPS-confirmed modal flow) sends it.
     String location = server.hasArg("location") ? server.arg("location") : "";
     String time      = server.arg("time");
 
@@ -2355,33 +2635,39 @@ void setup() {
       return;
     }
 
-    // Real signal strength from the best currently-visible LoRa peer
-    // (0 = no LoRa peers heard, not a valid dBm reading).
+    // Alert text is composed entirely from real radio state on this node
+    // (0 dBm = no LoRa peers heard, not a valid reading).
     int rssi = bestPeerRssi();
-    String signalLevel;
-
-    if (rssi == 0)           signalLevel = "NO LORA PEERS";
-    else if (rssi > -50)     signalLevel = "VERY STRONG";
-    else if (rssi > -60)     signalLevel = "STRONG";
-    else if (rssi > -70)     signalLevel = "MEDIUM";
-    else                     signalLevel = "WEAK";
-
-    String text  = "🆘 EMERGENCY SOS ACTIVE | ";
-    text += "Approx Distance: " + distance + "m | ";
-    text += "Signal: " + signalLevel + " | ";
-    text += "Move toward stronger signal.";
+    String text = "🆘 EMERGENCY SOS ACTIVE | ";
+    if (rssi == 0) {
+      text += "No LoRa mesh nodes in range. Alert stored on this node and queued for cloud sync.";
+    } else {
+      String signalLevel;
+      if (rssi > -50)      signalLevel = "VERY STRONG";
+      else if (rssi > -60) signalLevel = "STRONG";
+      else if (rssi > -70) signalLevel = "MEDIUM";
+      else                 signalLevel = "WEAK";
+      long distM = estimateDistance(rssi);
+      text += "Relayed over LoRa mesh | Nearest node: ~" + String(distM) + "m | Signal: " + signalLevel + " (" + String(rssi) + " dBm)";
+    }
+    if (location.length() > 0) {
+      text += " | GPS: " + location;
+    }
 
     addMessage(id, "🚨 SOS ALERT", text, time, true, 0, 0, "");
 
-    String timestamp_sl = "2026-01-01T" + time + ":00.000Z";
+    String timestamp_sl = isoFromEpochMs(id);
     addSyncItem("SOS-" + String(id), "SOS_BROADCAST", text, "CRITICAL", location, timestamp_sl, id, "", "", 0, 0);
 
     loraBroadcastSOS(id, time, location, text);
 
     Serial.println("========== SOS ALERT ==========");
-    Serial.println("Approx Distance: " + distance + "m");
-    Serial.println("Best LoRa peer RSSI: " + String(rssi));
-    Serial.println("Signal Strength: " + signalLevel);
+    if (rssi == 0) {
+      Serial.println("LoRa peers in range: none");
+    } else {
+      Serial.println("Best LoRa peer RSSI: " + String(rssi) + " dBm");
+      Serial.println("Est. nearest node distance: ~" + String(estimateDistance(rssi)) + "m");
+    }
     Serial.println("================================");
 
     server.send(200, "application/json", "{\"status\":\"OK\"}");
@@ -2537,7 +2823,8 @@ bool uploadSOSToSupabase() {
 
     String body = "{";
     body += "\"user_id\":\""        + String(NODE_USER_ID)                  + "\",";
-    body += "\"stype\":\"other\",";
+    // sos_requests.stype enum only allows: medical, rescue, supplies, fire.
+    body += "\"stype\":\"rescue\",";
     body += "\"latitude\":"         + latStr                                 + ",";
     body += "\"longitude\":"        + lngStr                                 + ",";
     body += "\"additional_info\":\"" + jsonEscape(syncQueue[i].content)     + provenance + "\",";
